@@ -1,0 +1,61 @@
+{
+  "name": "progress-tracker-electron",
+  "version": "0.1.0",
+  "description": "Electron desktop project progress tracker with four configurable tracking categories.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/main.js && node --check src/preload.js && node --check src/data/categories.js && node --check src/renderer/app.js && node --check scripts/smoke-electron.js",
+    "smoke": "electron scripts/smoke-electron.js",
+    "dist:win": "electron-builder --win nsis portable",
+    "dist:mac": "electron-builder --mac dmg zip"
+  },
+  "keywords": [
+    "electron",
+    "progress",
+    "tracker"
+  ],
+  "author": "",
+  "license": "MIT",
+  "build": {
+    "appId": "com.local.progress.tracker",
+    "productName": "项目进度跟踪",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "项目进度跟踪"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}-${arch}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^37.0.0",
+    "electron-builder": "^26.15.0"
+  }
+}

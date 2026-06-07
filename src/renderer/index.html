@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>项目进度跟踪</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+          <div class="brand">
+          <div class="brand-mark">台</div>
+          <div>
+            <h1>项目台账跟踪</h1>
+            <p>软著 / 专利 / 论文 / 比赛</p>
+          </div>
+        </div>
+        <nav id="categoryList" class="category-list" aria-label="类别"></nav>
+        <div class="shortcut-panel">
+          <h2>快捷键</h2>
+          <div class="shortcut-line"><kbd>Ctrl</kbd><kbd>N</kbd><span>新增任务</span></div>
+          <div class="shortcut-line"><kbd>Ctrl</kbd><kbd>S</kbd><span>保存</span></div>
+          <div class="shortcut-line"><kbd>Ctrl</kbd><kbd>E</kbd><span>导出 CSV</span></div>
+          <div class="shortcut-line"><kbd>Ctrl</kbd><kbd>Enter</kbd><span>标记完成</span></div>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Desktop Progress Tracker</p>
+            <h2 id="activeCategoryTitle">需求与规划</h2>
+            <p id="activeCategoryDescription" class="category-description"></p>
+          </div>
+          <div class="toolbar" aria-label="工具栏">
+            <button id="newItemBtn" type="button">新增</button>
+            <button id="duplicateItemBtn" type="button">复制</button>
+            <button id="saveBtn" type="button">保存</button>
+            <button id="importJsonBtn" type="button">导入 JSON</button>
+            <button id="exportJsonBtn" type="button">导出 JSON</button>
+            <button id="exportCsvBtn" type="button">导出 CSV</button>
+          </div>
+        </header>
+
+        <section class="metric-row" aria-label="统计">
+          <div class="metric">
+            <span>总任务</span>
+            <strong id="totalMetric">0</strong>
+          </div>
+          <div class="metric">
+            <span>进行中</span>
+            <strong id="activeMetric">0</strong>
+          </div>
+          <div class="metric">
+            <span>逾期</span>
+            <strong id="overdueMetric">0</strong>
+          </div>
+          <div class="metric">
+            <span id="completionMetricLabel">完成/提交</span>
+            <strong id="progressMetric">0%</strong>
+          </div>
+        </section>
+
+        <section class="control-strip" aria-label="筛选和快捷方式">
+          <label class="search-box">
+            <span>搜索</span>
+            <input id="searchInput" type="search" placeholder="项目名称、中文解释、路径、网址" />
+          </label>
+          <label>
+            <span>状态</span>
+            <select id="statusFilter"></select>
+          </label>
+          <label>
+            <span>日期</span>
+            <select id="dateFilter">
+              <option value="all">全部</option>
+              <option value="overdue">已逾期</option>
+              <option value="week">7 天内到期</option>
+              <option value="empty">未设置截止日期</option>
+            </select>
+          </label>
+          <div id="quickActions" class="quick-actions">
+            <button type="button" data-quick-due="7">截止 +7 天</button>
+          </div>
+        </section>
+
+        <div class="content-grid">
+          <section class="table-pane" aria-label="进度表">
+            <div class="table-scroll">
+              <table>
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
+            <div id="emptyState" class="empty-state" hidden>
+              <strong>当前没有任务</strong>
+              <span>点击“新增”创建第一条进度记录。</span>
+            </div>
+          </section>
+
+          <aside class="detail-pane" aria-label="选中任务详情">
+            <div class="detail-header">
+              <div>
+                <p class="eyebrow">Selected Item</p>
+                <h3>选中任务详情</h3>
+              </div>
+              <button id="deleteItemBtn" type="button" class="danger">删除</button>
+            </div>
+            <div id="detailForm" class="detail-form"></div>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="../data/categories.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
