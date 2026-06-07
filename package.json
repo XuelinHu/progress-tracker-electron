@@ -1,0 +1,42 @@
+{
+  "name": "progress-tracker-electron",
+  "version": "0.1.0",
+  "description": "Electron desktop project progress tracker",
+  "main": "electron/main.cjs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5180",
+    "start": "concurrently -k \"vite --host 0.0.0.0 --port 5180\" \"wait-on tcp:5180 && electron --no-sandbox .\"",
+    "check": "vite build",
+    "build": "vite build",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "vite": "^7.0.0",
+    "typescript": "^5.8.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "lucide-react": "^0.468.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8",
+    "wait-on": "^8.0.0"
+  },
+  "build": {
+    "appId": "com.local.progress-tracker",
+    "productName": "项目进度跟踪桌面端",
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "dist-electron"
+    }
+  }
+}

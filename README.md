@@ -1,23 +1,29 @@
 # 项目进度跟踪桌面端
 
-这是 Electron 桌面台账应用，用于按 Excel 的 4 个 sheet 管理项目进度。
+这是一个 Electron + Vite + React 的项目进度台账应用，用于按 4 个类别管理软著、专利、论文、比赛进程。
 
 ## 功能
 
-- 4 个可配置类别：软著、专利、论文、比赛。
-- 每个类别都使用 Excel 原 sheet 表头，并统一追加“计划截止日期”列。
-- 默认数据来自 `C:\Users\De\Desktop\todo.xlsx`。
-- 支持新增、复制、删除、编辑、搜索、状态筛选、到期筛选。
-- 支持快捷操作：按当前类别真实状态快速设置状态，快速设置截止日期。
-- 支持本机保存、导出 JSON、导入 JSON、导出当前类别 CSV。
-- 支持菜单快捷键：`Ctrl+N`、`Ctrl+S`、`Ctrl+E`、`Ctrl+Shift+E`、`Ctrl+Enter`。
+- 4 个类别：软著、专利、论文、比赛。
+- 按 `1` / `2` / `3` / `4` 可直接切换类别；四个类别使用不同颜色。
+- 状态包含：开发中、开发已完成、已提交到系统、已结束、暂缓、其他；每个状态都有独立颜色。
+- 表格第 3、4 列固定为“开始日期”和“结束日期”。
+- 点击某一行进程会直接在右侧打开编辑区，当前记录的字段都可编辑。
+- 表格单元格支持直接编辑，已有历史记录也支持编辑、追加和删除。
+- 支持搜索、状态筛选、本地保存、导出 JSON、导入 JSON、导出当前类别 CSV。
 
 ## 运行
 
-先安装依赖：
+安装依赖：
 
 ```bash
 npm install
+```
+
+启动浏览器预览：
+
+```bash
+npm run dev -- --port 5180
 ```
 
 启动桌面应用：
@@ -26,7 +32,14 @@ npm install
 npm start
 ```
 
-语法检查：
+如果 Electron 二进制下载较慢，可以先跳过下载完成前端验证：
+
+```bash
+ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm install
+npm run dev -- --port 5180
+```
+
+语法和生产构建检查：
 
 ```bash
 npm run check
@@ -34,40 +47,16 @@ npm run check
 
 ## 打包
 
-Windows 安装包和免安装版：
+Windows 安装包：
 
 ```bash
 npm run dist:win
 ```
 
-输出目录：
-
-```text
-dist/
-```
-
-macOS 需要在苹果电脑上执行：
+macOS 安装包：
 
 ```bash
-npm install
 npm run dist:mac
 ```
 
-Windows 环境不适合直接生成可交付的 macOS `.dmg` / `.app`，正式发布还需要在 macOS 上做签名和公证。
-
-## 表头配置
-
-表头模板集中在：
-
-```text
-src/data/categories.js
-```
-
-如果后续提供 Excel 原件，可把 4 个类别的真实表头替换到该文件的 `fields` 中。每个类别需要保留或新增：
-
-```text
-plannedDueDate / 计划截止日期
-```
-
-这样应用仍能正确计算逾期、7 天内到期和快捷截止日期。
-"# progress-tracker-electron" 
+打包前需要确保 Electron 二进制已正常安装。
