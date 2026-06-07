@@ -234,8 +234,11 @@ button {
 
 .status-strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(118px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
   gap: 9px;
+  max-height: 132px;
+  overflow-y: auto;
+  align-content: start;
   padding: 12px 14px;
   border-bottom: 1px solid #e2e8f0;
 }

@@ -14,7 +14,7 @@ import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
 import { STATUSES, STATUS_BY_ID } from "./data/statuses.js";
 
-const STORAGE_KEY = "progress-tracker-records-v2";
+const STORAGE_KEY = "progress-tracker-records-v4";
 
 function today(offsetDays = 0) {
   const date = new Date();
@@ -62,6 +62,10 @@ function csvCell(value) {
   return text;
 }
 
+function getRecordTitle(record) {
+  return record.title?.trim() || "未命名记录";
+}
+
 function App() {
   const [records, setRecords] = useState(loadRecords);
   const [activeCategoryId, setActiveCategoryId] = useState(CATEGORIES[0].id);
@@ -86,18 +90,19 @@ function App() {
         return matchStatus;
       }
       const haystack = [
-        record.title,
-        record.status,
-        record.owner,
-        record.currentProgress,
-        record.nextAction,
-        record.remarks,
+        ...activeCategory.fields.map((field) => record[field.key]),
+        ...(record.history ?? []).flatMap((entry) => [
+          entry.date,
+          entry.status,
+          entry.owner,
+          entry.summary,
+        ]),
       ]
         .join(" ")
         .toLowerCase();
       return matchStatus && haystack.includes(keyword);
     });
-  }, [categoryRecords, searchTerm, statusFilter]);
+  }, [activeCategory.fields, categoryRecords, searchTerm, statusFilter]);
 
   const selectedRecord = useMemo(
     () => records.find((record) => record.id === selectedId) ?? null,
@@ -163,27 +168,31 @@ function App() {
   }
 
   function addRecord() {
-    const record = {
-      id: createId(activeCategoryId),
-      categoryId: activeCategoryId,
-      title: `${activeCategory.name}新进程`,
-      status: "开发中",
-      startDate: today(),
-      endDate: today(14),
-      owner: "",
-      currentProgress: "",
-      nextAction: "",
-      remarks: "",
-      history: [
-        {
-          id: createId("history"),
-          date: today(),
-          status: "开发中",
-          owner: "",
-          summary: "创建进程记录",
-        },
-      ],
-    };
+    const defaultStatus = STATUSES[0]?.id ?? "进行中";
+    const record = activeCategory.fields.reduce(
+      (draft, field) => {
+        if (field.key === "status") {
+          draft.status = defaultStatus;
+          return draft;
+        }
+
+        draft[field.key] = field.key === "title" ? `${activeCategory.name}新记录` : "";
+        return draft;
+      },
+      {
+        id: createId(activeCategoryId),
+        categoryId: activeCategoryId,
+        history: [
+          {
+            id: createId("history"),
+            date: today(),
+            status: defaultStatus,
+            owner: "",
+            summary: "创建记录",
+          },
+        ],
+      },
+    );
 
     setRecords((current) => [record, ...current]);
     setSelectedId(record.id);
@@ -311,7 +320,7 @@ function App() {
           value={record.status}
           onFocus={() => setSelectedId(record.id)}
           onChange={(event) => updateRecord(record.id, { status: event.target.value })}
-          aria-label={`${record.title} 状态`}
+          aria-label={`${getRecordTitle(record)} 状态`}
         >
           {STATUSES.map((item) => (
             <option key={item.id} value={item.id}>
@@ -330,7 +339,7 @@ function App() {
           value={record[field.key] ?? ""}
           onFocus={() => setSelectedId(record.id)}
           onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
-          aria-label={`${record.title} ${field.label}`}
+          aria-label={`${getRecordTitle(record)} ${field.label}`}
         />
       );
     }
@@ -342,7 +351,7 @@ function App() {
         value={record[field.key] ?? ""}
         onFocus={() => setSelectedId(record.id)}
         onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
-        aria-label={`${record.title} ${field.label}`}
+        aria-label={`${getRecordTitle(record)} ${field.label}`}
       />
     );
   }
@@ -381,7 +390,7 @@ function App() {
       );
     }
 
-    if (field.key === "currentProgress" || field.key === "nextAction" || field.key === "remarks") {
+    if (field.type === "textarea") {
       return (
         <textarea
           className="form-control textarea"
@@ -441,7 +450,7 @@ function App() {
               <Search size={17} />
               <input
                 type="search"
-                placeholder="搜索进程、负责人、进度"
+                placeholder="搜索名称、说明、路径、地址"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
@@ -461,7 +470,7 @@ function App() {
               ))}
             </select>
 
-            <button className="icon-button primary" type="button" onClick={addRecord} title="新增进程">
+            <button className="icon-button primary" type="button" onClick={addRecord} title="新增记录">
               <Plus size={18} />
               <span>新增</span>
             </button>
@@ -545,7 +554,7 @@ function App() {
               ))}
 
               {visibleRecords.length === 0 && (
-                <div className="empty-state">当前筛选条件下没有进程记录</div>
+                <div className="empty-state">当前筛选条件下没有记录</div>
               )}
             </div>
           </div>
@@ -556,14 +565,14 @@ function App() {
             <>
               <div className="editor-header">
                 <div>
-                  <p>{activeCategory.name}进程</p>
-                  <h2>{selectedRecord.title || "未命名进程"}</h2>
+                  <p>{activeCategory.name}记录</p>
+                  <h2>{getRecordTitle(selectedRecord)}</h2>
                 </div>
                 <button
                   className="danger-button"
                   type="button"
                   onClick={() => deleteRecord(selectedRecord.id)}
-                  title="删除当前进程"
+                  title="删除当前记录"
                 >
                   <Trash2 size={17} />
                 </button>
@@ -574,9 +583,7 @@ function App() {
                   <label
                     key={field.key}
                     className={`form-field ${
-                      field.key === "currentProgress" ||
-                      field.key === "nextAction" ||
-                      field.key === "remarks"
+                      field.type === "textarea"
                         ? "wide"
                         : ""
                     }`}
@@ -680,7 +687,7 @@ function App() {
               </section>
             </>
           ) : (
-            <div className="editor-empty">选择或新增一条进程后编辑</div>
+            <div className="editor-empty">选择或新增一条记录后编辑</div>
           )}
         </aside>
       </main>

@@ -1,12 +1,9 @@
 node_modules/
 dist/
-<<<<<<< HEAD
-build/
-*.log
-.DS_Store
-=======
 dist-electron/
+build/
 .playwright-mcp/
 *.log
 *.png
->>>>>>> a5ac428cf54dc7990c9e93bf1156d5f1679904a4
+*.xlsx
+.DS_Store
