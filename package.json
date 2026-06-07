@@ -45,7 +45,7 @@
       ]
     },
     "nsis": {
-      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}",
+      "artifactName": "Progress-Tracker-Desktop-Setup-${version}-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
@@ -53,7 +53,7 @@
       "shortcutName": "项目进度跟踪桌面端"
     },
     "portable": {
-      "artifactName": "${productName}-Portable-${version}-${arch}.${ext}"
+      "artifactName": "Progress-Tracker-Desktop-Portable-${version}-${arch}.${ext}"
     },
     "mac": {
       "target": [
@@ -61,7 +61,7 @@
         "zip"
       ],
       "category": "public.app-category.productivity",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "Progress-Tracker-Desktop-${version}-${arch}.${ext}"
     }
   }
 }
