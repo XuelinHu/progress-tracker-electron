@@ -118,8 +118,8 @@ button {
 
 .main-area {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 430px;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   padding: 16px;
 }
 
@@ -304,8 +304,33 @@ button {
   white-space: nowrap;
 }
 
+.action-head {
+  justify-content: center;
+  padding: 0;
+}
+
+.head-sort-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: inherit;
+}
+
+.head-sort-button:hover,
+.head-sort-button.active {
+  color: var(--category-accent);
+}
+
 .data-row {
-  min-height: 54px;
+  min-height: 66px;
   border-bottom: 1px solid #edf1f6;
   background: #ffffff;
 }
@@ -322,9 +347,36 @@ button {
 .table-cell {
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   padding: 7px 8px;
   border-right: 1px solid #edf1f6;
+}
+
+.row-action-cell {
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10px 4px;
+}
+
+.row-delete-button,
+.url-open-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.row-delete-button {
+  width: 22px;
+  height: 22px;
+  color: #b91c1c;
+}
+
+.row-delete-button:hover {
+  border-color: #fecaca;
+  background: #fff1f2;
 }
 
 .cell-input,
@@ -339,8 +391,47 @@ button {
 }
 
 .cell-input {
-  height: 38px;
+  min-height: 38px;
   padding: 0 8px;
+}
+
+.cell-textarea {
+  height: auto;
+  min-height: 52px;
+  padding: 7px 8px;
+  line-height: 1.35;
+  resize: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.url-cell {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 6px;
+}
+
+.url-open-button {
+  width: 28px;
+  min-height: 38px;
+  align-self: start;
+  color: var(--category-accent);
+  border-color: #cfd8e6;
+  background: #ffffff;
+}
+
+.url-open-button:hover:not(:disabled) {
+  border-color: var(--category-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--category-accent) 12%, transparent);
+}
+
+.url-open-button:disabled {
+  cursor: not-allowed;
+  color: #a7b0bf;
+  background: #f6f8fb;
 }
 
 .cell-input:hover,

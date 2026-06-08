@@ -32,6 +32,8 @@
     "productName": "项目进度跟踪桌面端",
     "files": [
       "dist/**/*",
+      "!dist/**/*.exe",
+      "!dist/**/*.blockmap",
       "electron/**/*",
       "package.json"
     ],

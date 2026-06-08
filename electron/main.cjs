@@ -1,7 +1,21 @@
-const { app, BrowserWindow, Menu, shell } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, shell } = require("electron");
 const path = require("node:path");
 
 const isDev = !app.isPackaged;
+
+ipcMain.handle("open-external", async (_event, rawUrl) => {
+  try {
+    const url = new URL(String(rawUrl ?? ""));
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return false;
+    }
+
+    await shell.openExternal(url.toString());
+    return true;
+  } catch {
+    return false;
+  }
+});
 
 function createWindow() {
   const mainWindow = new BrowserWindow({

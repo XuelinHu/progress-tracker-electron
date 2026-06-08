@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowDownUp,
   Download,
+  ExternalLink,
   FileDown,
-  History,
   Keyboard,
   Plus,
   RotateCcw,
@@ -14,7 +15,8 @@ import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
 import { STATUSES, STATUS_BY_ID } from "./data/statuses.js";
 
-const STORAGE_KEY = "progress-tracker-records-v4";
+const STORAGE_KEY = "progress-tracker-records-v6";
+const STATUS_ORDER = new Map(STATUSES.map((status, index) => [status.id, index]));
 
 function today(offsetDays = 0) {
   const date = new Date();
@@ -66,16 +68,39 @@ function getRecordTitle(record) {
   return record.title?.trim() || "未命名记录";
 }
 
+function normalizeExternalUrl(value) {
+  const text = String(value ?? "").trim();
+  if (!text) {
+    return "";
+  }
+
+  const withProtocol = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+  try {
+    const url = new URL(withProtocol);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
+function estimateTextRows(value) {
+  const text = String(value ?? "");
+  const explicitRows = text.split(/\r\n|\r|\n/).length;
+  const inferredRows = Math.ceil(text.length / 42);
+  return Math.min(5, Math.max(2, explicitRows, inferredRows));
+}
+
 function App() {
   const [records, setRecords] = useState(loadRecords);
   const [activeCategoryId, setActiveCategoryId] = useState(CATEGORIES[0].id);
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [statusSortDirection, setStatusSortDirection] = useState("none");
   const fileInputRef = useRef(null);
 
   const activeCategory = CATEGORY_BY_ID[activeCategoryId];
-  const tableTemplate = activeCategory.fields.map((field) => field.width).join(" ");
+  const tableTemplate = ["34px", ...activeCategory.fields.map((field) => field.width)].join(" ");
 
   const categoryRecords = useMemo(
     () => records.filter((record) => record.categoryId === activeCategoryId),
@@ -84,7 +109,7 @@ function App() {
 
   const visibleRecords = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-    return categoryRecords.filter((record) => {
+    const filteredRecords = categoryRecords.filter((record) => {
       const matchStatus = statusFilter === "all" || record.status === statusFilter;
       if (!keyword) {
         return matchStatus;
@@ -102,12 +127,22 @@ function App() {
         .toLowerCase();
       return matchStatus && haystack.includes(keyword);
     });
-  }, [activeCategory.fields, categoryRecords, searchTerm, statusFilter]);
 
-  const selectedRecord = useMemo(
-    () => records.find((record) => record.id === selectedId) ?? null,
-    [records, selectedId],
-  );
+    if (statusSortDirection === "none") {
+      return filteredRecords;
+    }
+
+    return [...filteredRecords].sort((left, right) => {
+      const leftOrder = STATUS_ORDER.get(left.status) ?? STATUSES.length;
+      const rightOrder = STATUS_ORDER.get(right.status) ?? STATUSES.length;
+      const orderDiff =
+        leftOrder - rightOrder ||
+        String(left.status ?? "").localeCompare(String(right.status ?? ""), "zh-Hans-CN") ||
+        String(left.title ?? "").localeCompare(String(right.title ?? ""), "zh-Hans-CN");
+
+      return statusSortDirection === "asc" ? orderDiff : -orderDiff;
+    });
+  }, [activeCategory.fields, categoryRecords, searchTerm, statusFilter, statusSortDirection]);
 
   const categoryStats = useMemo(() => {
     return STATUSES.map((status) => ({
@@ -147,6 +182,7 @@ function App() {
       if (category) {
         setActiveCategoryId(category.id);
         setStatusFilter("all");
+        setStatusSortDirection("none");
       }
     }
 
@@ -176,6 +212,11 @@ function App() {
           return draft;
         }
 
+        if (field.type === "date") {
+          draft[field.key] = today();
+          return draft;
+        }
+
         draft[field.key] = field.key === "title" ? `${activeCategory.name}新记录` : "";
         return draft;
       },
@@ -202,59 +243,37 @@ function App() {
     setRecords((current) => current.filter((record) => record.id !== recordId));
   }
 
-  function updateHistoryItem(recordId, historyId, patch) {
-    setRecords((current) =>
-      current.map((record) => {
-        if (record.id !== recordId) {
-          return record;
-        }
-
-        return {
-          ...record,
-          history: (record.history ?? []).map((entry) =>
-            entry.id === historyId ? { ...entry, ...patch } : entry,
-          ),
-        };
-      }),
-    );
+  function cycleStatusSort() {
+    setStatusSortDirection((current) => {
+      if (current === "none") {
+        return "asc";
+      }
+      if (current === "asc") {
+        return "desc";
+      }
+      return "none";
+    });
   }
 
-  function addHistoryItem(recordId) {
-    setRecords((current) =>
-      current.map((record) => {
-        if (record.id !== recordId) {
-          return record;
+  async function openExternalUrl(value) {
+    const url = normalizeExternalUrl(value);
+    if (!url) {
+      return;
+    }
+
+    const openExternal = window.desktopApp?.openExternal;
+    if (openExternal) {
+      try {
+        const opened = await openExternal(url);
+        if (opened) {
+          return;
         }
+      } catch {
+        // Browser preview does not expose the Electron bridge.
+      }
+    }
 
-        const entry = {
-          id: createId("history"),
-          date: today(),
-          status: record.status,
-          owner: record.owner,
-          summary: "",
-        };
-
-        return {
-          ...record,
-          history: [...(record.history ?? []), entry],
-        };
-      }),
-    );
-  }
-
-  function deleteHistoryItem(recordId, historyId) {
-    setRecords((current) =>
-      current.map((record) => {
-        if (record.id !== recordId) {
-          return record;
-        }
-
-        return {
-          ...record,
-          history: (record.history ?? []).filter((entry) => entry.id !== historyId),
-        };
-      }),
-    );
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function resetRecords() {
@@ -262,6 +281,7 @@ function App() {
     setSelectedId(null);
     setSearchTerm("");
     setStatusFilter("all");
+    setStatusSortDirection("none");
   }
 
   function exportJson() {
@@ -344,10 +364,39 @@ function App() {
       );
     }
 
+    if (field.type === "url") {
+      const externalUrl = normalizeExternalUrl(record[field.key]);
+      return (
+        <div className="url-cell">
+          <textarea
+            className="cell-input cell-textarea"
+            rows={estimateTextRows(record[field.key])}
+            value={record[field.key] ?? ""}
+            onFocus={() => setSelectedId(record.id)}
+            onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
+            aria-label={`${getRecordTitle(record)} ${field.label}`}
+          />
+          <button
+            className="url-open-button"
+            type="button"
+            disabled={!externalUrl}
+            onClick={(event) => {
+              event.stopPropagation();
+              openExternalUrl(record[field.key]);
+            }}
+            title={externalUrl ? "用默认浏览器打开" : "没有可打开的网址"}
+            aria-label={`打开 ${getRecordTitle(record)} ${field.label}`}
+          >
+            <ExternalLink size={13} />
+          </button>
+        </div>
+      );
+    }
+
     return (
-      <input
-        className="cell-input"
-        type="text"
+      <textarea
+        className="cell-input cell-textarea"
+        rows={estimateTextRows(record[field.key])}
         value={record[field.key] ?? ""}
         onFocus={() => setSelectedId(record.id)}
         onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
@@ -356,59 +405,12 @@ function App() {
     );
   }
 
-  function renderEditorField(record, field) {
-    if (field.type === "status") {
-      const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
-      return (
-        <select
-          className="form-control status-select"
-          style={{
-            "--status-bg": status.bg,
-            "--status-color": status.color,
-            "--status-border": status.border,
-          }}
-          value={record.status}
-          onChange={(event) => updateRecord(record.id, { status: event.target.value })}
-        >
-          {STATUSES.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-      );
-    }
-
-    if (field.type === "date") {
-      return (
-        <input
-          className="form-control"
-          type="date"
-          value={record[field.key] ?? ""}
-          onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
-        />
-      );
-    }
-
-    if (field.type === "textarea") {
-      return (
-        <textarea
-          className="form-control textarea"
-          value={record[field.key] ?? ""}
-          onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
-        />
-      );
-    }
-
-    return (
-      <input
-        className="form-control"
-        type="text"
-        value={record[field.key] ?? ""}
-        onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
-      />
-    );
-  }
+  const statusSortTitle =
+    statusSortDirection === "asc"
+      ? "状态升序，点击切换为降序"
+      : statusSortDirection === "desc"
+        ? "状态降序，点击取消排序"
+        : "点击按状态排序";
 
   return (
     <div className="app-shell" style={{ "--category-accent": activeCategory.accent }}>
@@ -434,6 +436,7 @@ function App() {
               onClick={() => {
                 setActiveCategoryId(category.id);
                 setStatusFilter("all");
+                setStatusSortDirection("none");
               }}
             >
               <span className="shortcut-key">{category.shortcut}</span>
@@ -530,9 +533,27 @@ function App() {
 
           <div className="table-wrap">
             <div className="table-grid header-row" style={{ gridTemplateColumns: tableTemplate }}>
+              <div className="table-head action-head" aria-hidden="true" />
               {activeCategory.fields.map((field, index) => (
                 <div key={field.key} className="table-head">
-                  {index + 1}. {field.label}
+                  {field.type === "status" ? (
+                    <button
+                      className={`head-sort-button ${statusSortDirection !== "none" ? "active" : ""}`}
+                      type="button"
+                      onClick={cycleStatusSort}
+                      title={statusSortTitle}
+                      aria-label={statusSortTitle}
+                    >
+                      <span>
+                        {index + 1}. {field.label}
+                      </span>
+                      <ArrowDownUp size={13} />
+                    </button>
+                  ) : (
+                    <>
+                      {index + 1}. {field.label}
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -545,6 +566,20 @@ function App() {
                   style={{ gridTemplateColumns: tableTemplate }}
                   onClick={() => setSelectedId(record.id)}
                 >
+                  <div className="table-cell row-action-cell">
+                    <button
+                      className="row-delete-button"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteRecord(record.id);
+                      }}
+                      title="删除这一行"
+                      aria-label={`删除 ${getRecordTitle(record)}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                   {activeCategory.fields.map((field) => (
                     <div key={field.key} className="table-cell">
                       {renderCell(record, field)}
@@ -559,137 +594,6 @@ function App() {
             </div>
           </div>
         </section>
-
-        <aside className="editor-panel">
-          {selectedRecord ? (
-            <>
-              <div className="editor-header">
-                <div>
-                  <p>{activeCategory.name}记录</p>
-                  <h2>{getRecordTitle(selectedRecord)}</h2>
-                </div>
-                <button
-                  className="danger-button"
-                  type="button"
-                  onClick={() => deleteRecord(selectedRecord.id)}
-                  title="删除当前记录"
-                >
-                  <Trash2 size={17} />
-                </button>
-              </div>
-
-              <div className="editor-form">
-                {activeCategory.fields.map((field) => (
-                  <label
-                    key={field.key}
-                    className={`form-field ${
-                      field.type === "textarea"
-                        ? "wide"
-                        : ""
-                    }`}
-                  >
-                    <span>{field.label}</span>
-                    {renderEditorField(selectedRecord, field)}
-                  </label>
-                ))}
-              </div>
-
-              <section className="history-section">
-                <div className="section-title">
-                  <History size={18} />
-                  <h3>历史记录</h3>
-                  <button
-                    className="text-button"
-                    type="button"
-                    onClick={() => addHistoryItem(selectedRecord.id)}
-                  >
-                    <Plus size={16} />
-                    添加
-                  </button>
-                </div>
-
-                <div className="history-list">
-                  {(selectedRecord.history ?? []).map((entry) => {
-                    const status = STATUS_BY_ID[entry.status] ?? STATUSES[0];
-                    return (
-                      <div key={entry.id} className="history-item">
-                        <input
-                          className="form-control"
-                          type="date"
-                          value={entry.date ?? ""}
-                          onChange={(event) =>
-                            updateHistoryItem(selectedRecord.id, entry.id, {
-                              date: event.target.value,
-                            })
-                          }
-                          aria-label="历史日期"
-                        />
-                        <select
-                          className="form-control status-select"
-                          style={{
-                            "--status-bg": status.bg,
-                            "--status-color": status.color,
-                            "--status-border": status.border,
-                          }}
-                          value={entry.status}
-                          onChange={(event) =>
-                            updateHistoryItem(selectedRecord.id, entry.id, {
-                              status: event.target.value,
-                            })
-                          }
-                          aria-label="历史状态"
-                        >
-                          {STATUSES.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.label}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          className="form-control"
-                          type="text"
-                          value={entry.owner ?? ""}
-                          onChange={(event) =>
-                            updateHistoryItem(selectedRecord.id, entry.id, {
-                              owner: event.target.value,
-                            })
-                          }
-                          placeholder="负责人"
-                          aria-label="历史负责人"
-                        />
-                        <textarea
-                          className="form-control textarea history-summary"
-                          value={entry.summary ?? ""}
-                          onChange={(event) =>
-                            updateHistoryItem(selectedRecord.id, entry.id, {
-                              summary: event.target.value,
-                            })
-                          }
-                          placeholder="进展说明"
-                          aria-label="历史进展说明"
-                        />
-                        <button
-                          className="danger-button small"
-                          type="button"
-                          onClick={() => deleteHistoryItem(selectedRecord.id, entry.id)}
-                          title="删除历史记录"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    );
-                  })}
-
-                  {(selectedRecord.history ?? []).length === 0 && (
-                    <div className="empty-history">暂无历史记录</div>
-                  )}
-                </div>
-              </section>
-            </>
-          ) : (
-            <div className="editor-empty">选择或新增一条记录后编辑</div>
-          )}
-        </aside>
       </main>
     </div>
   );

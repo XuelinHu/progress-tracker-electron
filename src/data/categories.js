@@ -1,4 +1,10 @@
 const statusField = { key: "status", label: "状态", type: "status", width: "132px" };
+const todoField = {
+  key: "todo",
+  label: "Todo",
+  type: "textarea",
+  width: "minmax(220px, 0.9fr)",
+};
 const titleField = {
   key: "title",
   label: "GitHub项目名称",
@@ -10,6 +16,12 @@ const descriptionField = {
   label: "中文解释",
   type: "textarea",
   width: "minmax(260px, 1fr)",
+};
+const stageDateField = {
+  key: "stageDate",
+  label: "阶段日期",
+  type: "date",
+  width: "150px",
 };
 const windowsPathField = {
   key: "windowsPath",
@@ -45,8 +57,10 @@ export const CATEGORIES = [
     tint: "#dbeafe",
     fields: [
       statusField,
+      todoField,
       titleField,
       descriptionField,
+      stageDateField,
       windowsPathField,
       serverPathField,
       githubUrlField,
@@ -60,8 +74,10 @@ export const CATEGORIES = [
     tint: "#dcfce7",
     fields: [
       statusField,
+      todoField,
       titleField,
       descriptionField,
+      stageDateField,
       windowsPathField,
       linuxPathField,
       serverPathField,
@@ -76,8 +92,10 @@ export const CATEGORIES = [
     tint: "#fef3c7",
     fields: [
       statusField,
+      todoField,
       titleField,
       descriptionField,
+      stageDateField,
       windowsPathField,
       linuxPathField,
       githubUrlField,
@@ -91,23 +109,30 @@ export const CATEGORIES = [
     tint: "#ffe4e6",
     fields: [
       statusField,
+      todoField,
       titleField,
       {
-        key: "contestDate",
-        label: "最近比赛日期",
-        type: "textarea",
-        width: "minmax(300px, 1fr)",
+        key: "registrationDate",
+        label: "报名日期",
+        type: "date",
+        width: "150px",
+      },
+      {
+        key: "endDate",
+        label: "结束日期",
+        type: "date",
+        width: "150px",
       },
       {
         key: "platformUrl",
         label: "平台网址",
-        type: "text",
+        type: "url",
         width: "minmax(300px, 1fr)",
       },
       {
         key: "officialUrl",
         label: "官网",
-        type: "text",
+        type: "url",
         width: "minmax(300px, 1fr)",
       },
     ],
