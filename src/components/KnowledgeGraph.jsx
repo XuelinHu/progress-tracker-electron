@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Background,
   Controls,
@@ -22,7 +22,7 @@ import { STATUSES, STATUS_BY_ID } from "../data/statuses.js";
 import "../styles/graph.css";
 
 const DRAG_TYPE = "application/progress-record";
-const RELATION_TYPES = ["前置依赖", "产出", "引用", "复用", "参与", "关联", "自定义"];
+const RELATION_TYPES = ["前置依赖", "衍生出", "产出", "引用", "复用", "参与", "关联", "自定义"];
 
 function createGraphId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -250,8 +250,12 @@ function GraphCanvas({
   setGraphEdges,
   selectedElement,
   setSelectedElement,
+  addRecordFromGraph,
 }) {
   const { screenToFlowPosition } = useReactFlow();
+  const [contextMenu, setContextMenu] = useState(null);
+  const [contextCategory, setContextCategory] = useState(CATEGORIES[0].id);
+  const contextMenuRef = useRef(null);
   const recordById = useMemo(
     () => Object.fromEntries(records.map((record) => [record.id, record])),
     [records],
@@ -427,7 +431,63 @@ function GraphCanvas({
     [setGraphEdges, setSelectedElement],
   );
 
+  const handleContextMenu = useCallback(
+    (event) => {
+      event.preventDefault();
+      const nodeEl = event.target.closest(".react-flow__node");
+      if (nodeEl) {
+        const nodeId = nodeEl.getAttribute("data-id");
+        const node = graphNodes.find((n) => n.id === nodeId);
+        const record = node ? recordById[node.data.recordId] : null;
+        setSelectedElement(node ? { type: "node", id: nodeId } : null);
+        setContextCategory(record?.categoryId ?? CATEGORIES[0].id);
+        setContextMenu({
+          x: event.clientX,
+          y: event.clientY,
+          sourceNodeId: nodeId,
+        });
+      } else {
+        const edgeEl = event.target.closest(".react-flow__edge");
+        if (edgeEl) {
+          return;
+        }
+        setContextCategory(CATEGORIES[0].id);
+        setContextMenu({
+          x: event.clientX,
+          y: event.clientY,
+          sourceNodeId: null,
+        });
+      }
+    },
+    [graphNodes, recordById, setSelectedElement],
+  );
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    function onMouseDown(e) {
+      if (contextMenuRef.current?.contains(e.target)) return;
+      setContextMenu(null);
+    }
+    function onKey(e) {
+      if (e.key === "Escape") setContextMenu(null);
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [contextMenu]);
+
+  function handleContextCreate() {
+    if (!contextMenu) return;
+    const pos = screenToFlowPosition({ x: contextMenu.x, y: contextMenu.y });
+    addRecordFromGraph(contextCategory, pos, contextMenu.sourceNodeId);
+    setContextMenu(null);
+  }
+
   return (
+    <>
     <ReactFlow
       nodes={flowNodes}
       edges={flowEdges}
@@ -438,6 +498,7 @@ function GraphCanvas({
       onNodeClick={(_event, node) => setSelectedElement({ type: "node", id: node.id })}
       onEdgeClick={(_event, edge) => setSelectedElement({ type: "edge", id: edge.id })}
       onPaneClick={() => setSelectedElement(null)}
+      onContextMenu={handleContextMenu}
       onDrop={onDrop}
       onDragOver={(event) => {
         event.preventDefault();
@@ -458,6 +519,35 @@ function GraphCanvas({
       />
       <Controls showInteractive={false} />
     </ReactFlow>
+    {contextMenu && (
+      <div className="graph-context-menu" ref={contextMenuRef} style={{ left: contextMenu.x, top: contextMenu.y }}>
+        <div className="graph-context-menu-header">
+          {contextMenu.sourceNodeId ? "从此节点衍生新建" : "新建节点"}
+        </div>
+        <div className="graph-context-menu-options">
+          {CATEGORIES.map((cat) => (
+            <label key={cat.id} className="graph-context-radio">
+              <input
+                type="radio"
+                name="graph-context-category"
+                value={cat.id}
+                checked={contextCategory === cat.id}
+                onChange={() => setContextCategory(cat.id)}
+              />
+              <span>{cat.name}</span>
+            </label>
+          ))}
+        </div>
+        <button
+          className="graph-context-create-button"
+          type="button"
+          onClick={handleContextCreate}
+        >
+          确定新建
+        </button>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -471,6 +561,7 @@ export default function KnowledgeGraph({
   openExternalUrl,
   updateRecordDate,
   updateDateHistoryItem,
+  addRecordFromGraph,
 }) {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceCategory, setSourceCategory] = useState("all");
@@ -667,6 +758,7 @@ export default function KnowledgeGraph({
             setGraphEdges={setGraphEdges}
             selectedElement={selectedElement}
             setSelectedElement={setSelectedElement}
+            addRecordFromGraph={addRecordFromGraph}
           />
         </ReactFlowProvider>
         {graphNodes.length === 0 && (

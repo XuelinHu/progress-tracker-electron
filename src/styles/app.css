@@ -46,8 +46,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 20px 24px 16px;
+  gap: 16px;
+  padding: 14px 20px 10px;
   border-bottom: 1px solid #dce1ea;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
@@ -55,7 +55,7 @@ button {
 
 .topbar h1 {
   margin: 0;
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1.2;
   font-weight: 720;
 }
@@ -74,8 +74,9 @@ button {
 }
 
 .global-data-actions .icon-button {
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
   white-space: nowrap;
 }
 
@@ -83,9 +84,9 @@ button {
   display: flex;
   align-items: center;
   gap: 7px;
-  margin-top: 8px;
+  margin-top: 6px;
   color: #647084;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .category-tabs {
@@ -99,13 +100,14 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 0 12px;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
   border: 1px solid #d5dce8;
   border-radius: 8px;
   background: #ffffff;
   color: #344156;
+  font-size: 13px;
   font-weight: 680;
   white-space: nowrap;
 }
@@ -126,12 +128,12 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   background: rgba(255, 255, 255, 0.76);
   border: 1px solid currentColor;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1;
 }
 
@@ -139,7 +141,7 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0;
-  padding: 16px;
+  padding: 10px;
 }
 
 .workspace,
@@ -158,8 +160,8 @@ button {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px;
   border-bottom: 1px solid #e2e8f0;
   background: #fbfcfe;
 }
@@ -167,15 +169,16 @@ button {
 .search-box {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 1 1 300px;
-  min-width: 220px;
-  height: 38px;
-  padding: 0 11px;
+  gap: 6px;
+  flex: 1 1 260px;
+  min-width: 200px;
+  height: 32px;
+  padding: 0 9px;
   border: 1px solid #cfd8e6;
-  border-radius: 8px;
+  border-radius: 7px;
   background: #ffffff;
   color: #6b7280;
+  font-size: 12px;
 }
 
 .search-box input {
@@ -185,22 +188,24 @@ button {
   outline: 0;
   background: transparent;
   color: #172033;
+  font-size: 12px;
 }
 
 .filter-select,
 .icon-button,
 .text-button,
 .danger-button {
-  min-height: 38px;
-  border-radius: 8px;
+  min-height: 32px;
+  border-radius: 7px;
   border: 1px solid #cfd8e6;
   background: #ffffff;
   color: #273449;
+  font-size: 12px;
 }
 
 .filter-select {
-  width: 140px;
-  padding: 0 10px;
+  width: 130px;
+  padding: 0 8px;
 }
 
 .icon-button,
@@ -209,8 +214,8 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 0 12px;
+  gap: 5px;
+  padding: 0 10px;
   font-weight: 660;
 }
 
@@ -231,7 +236,8 @@ button {
 }
 
 .danger-button {
-  width: 38px;
+  width: 32px;
+  min-height: 32px;
   padding: 0;
   color: #b91c1c;
   border-color: #fecaca;
@@ -243,8 +249,8 @@ button {
 }
 
 .danger-button.small {
-  width: 34px;
-  min-height: 34px;
+  width: 28px;
+  min-height: 28px;
 }
 
 .hidden-input {
@@ -253,12 +259,12 @@ button {
 
 .status-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: 9px;
-  max-height: 132px;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 6px;
+  max-height: 110px;
   overflow-y: auto;
   align-content: start;
-  padding: 12px 14px;
+  padding: 8px 10px;
   border-bottom: 1px solid #e2e8f0;
 }
 
@@ -266,25 +272,26 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
-  padding: 0 11px;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 8px;
   border: 1px solid var(--status-border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--status-bg);
   color: var(--status-color);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 680;
 }
 
 .status-chip strong {
-  min-width: 24px;
-  height: 22px;
+  min-width: 20px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.68);
+  font-size: 11px;
 }
 
 .status-chip.selected {
@@ -294,7 +301,7 @@ button {
 
 .table-wrap {
   overflow: auto;
-  max-height: calc(100vh - 250px);
+  max-height: calc(100vh - 210px);
   background: #ffffff;
 }
 
@@ -312,13 +319,13 @@ button {
 }
 
 .table-head {
-  min-height: 42px;
+  min-height: 34px;
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 8px;
   border-right: 1px solid #d9e0eb;
   color: #475569;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 720;
   white-space: nowrap;
 }
@@ -331,15 +338,16 @@ button {
 .head-sort-button {
   width: 100%;
   min-width: 0;
-  min-height: 32px;
+  min-height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 4px;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
+  font-size: inherit;
   font-weight: inherit;
 }
 
@@ -349,7 +357,7 @@ button {
 }
 
 .data-row {
-  min-height: 66px;
+  min-height: 52px;
   border-bottom: 1px solid #edf1f6;
   background: #ffffff;
 }
@@ -362,21 +370,21 @@ button {
 
 .data-row.selected {
   background: color-mix(in srgb, var(--category-accent) 10%, #ffffff);
-  box-shadow: inset 4px 0 0 var(--category-accent);
+  box-shadow: inset 3px 0 0 var(--category-accent);
 }
 
 .table-cell {
   min-width: 0;
   display: flex;
   align-items: stretch;
-  padding: 7px 8px;
+  padding: 5px 6px;
   border-right: 1px solid #edf1f6;
 }
 
 .row-action-cell {
   align-items: flex-start;
   justify-content: center;
-  padding: 10px 4px;
+  padding: 7px 4px;
 }
 
 .row-delete-button,
@@ -390,8 +398,8 @@ button {
 }
 
 .row-delete-button {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   color: #b91c1c;
 }
 
@@ -405,15 +413,16 @@ button {
   width: 100%;
   min-width: 0;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 6px;
   background: transparent;
   color: #172033;
   outline: 0;
+  font-size: 12px;
 }
 
 .cell-input {
-  min-height: 38px;
-  padding: 0 8px;
+  min-height: 32px;
+  padding: 0 6px;
 }
 
 .date-history-field {
@@ -421,7 +430,7 @@ button {
   width: 100%;
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .status-history-field {
@@ -435,19 +444,20 @@ button {
 
 .status-history-popover {
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 4px);
   left: 0;
   z-index: 25;
   display: none;
-  width: max(300px, 100%);
-  max-width: 420px;
-  max-height: 250px;
+  width: max(260px, 100%);
+  max-width: 380px;
+  max-height: 220px;
   overflow: auto;
   border: 1px solid #cbd5e1;
-  border-radius: 7px;
+  border-radius: 6px;
   background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
   color: #1e293b;
+  font-size: 11px;
 }
 
 .status-history-field:hover .status-history-popover,
@@ -457,31 +467,33 @@ button {
 
 .date-input,
 .date-item-input {
-  min-height: 34px;
+  min-height: 30px;
   background: #ffffff;
   border-color: #d9e0eb;
+  font-size: 11px;
 }
 
 .date-item-input {
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .date-history-popover {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   left: 0;
   z-index: 20;
   display: none;
-  width: max(300px, 100%);
-  max-width: 420px;
-  max-height: 250px;
+  width: max(260px, 100%);
+  max-width: 380px;
+  max-height: 220px;
   overflow: auto;
-  padding: 9px;
+  padding: 7px;
   border: 1px solid #cbd5e1;
-  border-radius: 7px;
+  border-radius: 6px;
   background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
   color: #334155;
+  font-size: 11px;
 }
 
 .date-history-field:hover .date-history-popover,
@@ -490,22 +502,22 @@ button {
 }
 
 .date-history-title {
-  margin-bottom: 7px;
+  margin-bottom: 5px;
   color: #1e293b;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
 }
 
 .date-history-table {
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: 90px minmax(0, 1fr);
   border-top: 1px solid #e2e8f0;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .date-history-table span {
   min-width: 0;
-  padding: 7px;
+  padding: 5px;
   overflow-wrap: anywhere;
 }
 
@@ -525,21 +537,22 @@ button {
 }
 
 .date-history-empty {
-  padding: 14px 8px 8px;
+  padding: 10px 6px;
   color: #7c8798;
-  font-size: 12px;
+  font-size: 11px;
   text-align: center;
 }
 
 .cell-textarea {
   height: auto;
-  min-height: 52px;
-  padding: 7px 8px;
-  line-height: 1.35;
+  min-height: 42px;
+  padding: 5px 6px;
+  line-height: 1.3;
   resize: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  font-size: 12px;
 }
 
 .url-cell {
@@ -551,8 +564,8 @@ button {
 }
 
 .url-open-button {
-  width: 28px;
-  min-height: 38px;
+  width: 24px;
+  min-height: 32px;
   align-self: start;
   color: var(--category-accent);
   border-color: #cfd8e6;
@@ -736,7 +749,7 @@ button {
   }
 
   .table-wrap {
-    max-height: 560px;
+    max-height: 540px;
   }
 }
 

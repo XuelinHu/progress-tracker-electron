@@ -332,9 +332,10 @@ function App() {
     );
   }
 
-  function addRecord() {
+  function buildRecord(categoryId) {
+    const category = CATEGORY_BY_ID[categoryId] ?? CATEGORIES[0];
     const defaultStatus = STATUSES[0]?.id ?? "进行中";
-    const record = activeCategory.fields.reduce(
+    return category.fields.reduce(
       (draft, field) => {
         if (field.key === "status") {
           draft.status = defaultStatus;
@@ -346,12 +347,12 @@ function App() {
           return draft;
         }
 
-        draft[field.key] = field.key === "title" ? `${activeCategory.name}新记录` : "";
+        draft[field.key] = field.key === "title" ? `${category.name}新记录` : "";
         return draft;
       },
       {
-        id: createId(activeCategoryId),
-        categoryId: activeCategoryId,
+        id: createId(categoryId),
+        categoryId,
         dateHistory: {},
         history: [
           {
@@ -364,9 +365,41 @@ function App() {
         ],
       },
     );
+  }
 
+  function addRecord() {
+    const record = buildRecord(activeCategoryId);
     setRecords((current) => [record, ...current]);
     setSelectedId(record.id);
+  }
+
+  function addRecordFromGraph(categoryId, position, sourceNodeId) {
+    const record = buildRecord(categoryId);
+    const nodeId = `node-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+
+    setRecords((current) => [record, ...current]);
+
+    setGraphNodes((current) => [
+      ...current,
+      {
+        id: nodeId,
+        position,
+        data: { recordId: record.id, categoryId },
+      },
+    ]);
+
+    if (sourceNodeId) {
+      setGraphEdges((current) => [
+        ...current,
+        {
+          id: `edge-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          source: sourceNodeId,
+          target: nodeId,
+          type: "smoothstep",
+          data: { relationType: "衍生出", label: "", description: "" },
+        },
+      ]);
+    }
   }
 
   function deleteRecord(recordId) {
@@ -661,6 +694,7 @@ function App() {
             openExternalUrl={openExternalUrl}
             updateRecordDate={updateRecordDate}
             updateDateHistoryItem={updateDateHistoryItem}
+            addRecordFromGraph={addRecordFromGraph}
           />
         ) : (
         <section className="workspace">
