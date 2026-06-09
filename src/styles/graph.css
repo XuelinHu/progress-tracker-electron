@@ -197,7 +197,7 @@
 .graph-node-content {
   position: relative;
   display: grid;
-  gap: 5px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -205,23 +205,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: 2px;
 }
 
 .graph-node-content strong {
   color: #1e293b;
-  font-size: 11px;
-  line-height: 1.3;
+  font-size: 8px;
+  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
 .graph-node-status {
   width: fit-content;
   max-width: 100%;
-  padding: 2px 5px;
+  padding: 1px 3px;
   border: 1px solid;
-  border-radius: 4px;
-  font-size: 9px;
+  border-radius: 3px;
+  font-size: 7px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -229,9 +229,9 @@
 .graph-node-category {
   width: fit-content;
   max-width: 100%;
-  padding: 2px 5px;
-  border-radius: 4px;
-  font-size: 9px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-size: 7px;
   font-weight: 750;
   white-space: nowrap;
 }
@@ -259,9 +259,9 @@
 }
 
 .react-flow__handle {
-  width: 8px;
-  height: 8px;
-  border: 2px solid #ffffff;
+  width: 6px;
+  height: 6px;
+  border: 1px solid #ffffff;
   background: #475569;
 }
 
@@ -381,6 +381,12 @@
 
 .graph-detail-form .date-history-popover {
   top: calc(100% + 5px);
+  right: 0;
+  left: auto;
+  width: min(360px, calc(100vw - 40px));
+}
+
+.graph-detail-form .status-history-popover {
   right: 0;
   left: auto;
   width: min(360px, calc(100vw - 40px));

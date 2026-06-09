@@ -424,6 +424,37 @@ button {
   gap: 6px;
 }
 
+.status-history-field {
+  position: relative;
+  min-width: 0;
+}
+
+.status-history-field > select {
+  width: 100%;
+}
+
+.status-history-popover {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 25;
+  display: none;
+  width: max(300px, 100%);
+  max-width: 420px;
+  max-height: 250px;
+  overflow: auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  color: #1e293b;
+}
+
+.status-history-field:hover .status-history-popover,
+.status-history-field:focus-within .status-history-popover {
+  display: block;
+}
+
 .date-input,
 .date-item-input {
   min-height: 34px;

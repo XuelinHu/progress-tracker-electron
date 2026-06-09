@@ -16,6 +16,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { ExternalLink, GripVertical, Plus, Search, Trash2 } from "lucide-react";
 import DateHistoryField from "./DateHistoryField.jsx";
+import StatusHistoryPopover from "./StatusHistoryPopover.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 import { STATUSES, STATUS_BY_ID } from "../data/statuses.js";
 import "../styles/graph.css";
@@ -47,12 +48,27 @@ function getDateHistoryGroups(record, category) {
     }));
 }
 
+function getRecordHistoryGroups(record, category) {
+  return [
+    {
+      key: "status",
+      label: "状态变化",
+      entries: (record?.history ?? []).map((entry) => ({
+        id: entry.id,
+        date: entry.date,
+        item: entry.summary || entry.status || "状态更新",
+      })),
+    },
+    ...getDateHistoryGroups(record, category),
+  ];
+}
+
 function DateHistorySummary({ groups, compact = false }) {
   const hasEntries = groups.some((group) => group.entries.length > 0);
 
   return (
     <div className={compact ? "graph-history-summary compact" : "graph-history-summary"}>
-      {!compact && <h3>日期历史记录</h3>}
+      {!compact && <h3>历史记录</h3>}
       {hasEntries ? (
         groups.map(
           (group) =>
@@ -75,7 +91,7 @@ function DateHistorySummary({ groups, compact = false }) {
             ),
         )
       ) : (
-        <div className="graph-history-empty">暂无日期历史记录</div>
+        <div className="graph-history-empty">暂无历史记录</div>
       )}
     </div>
   );
@@ -144,22 +160,25 @@ function GraphField({
   if (field.type === "status") {
     const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
     return (
-      <select
-        className="graph-form-control status-select"
-        style={{
-          "--status-bg": status.bg,
-          "--status-color": status.color,
-          "--status-border": status.border,
-        }}
-        value={record.status ?? ""}
-        onChange={(event) => onChange(field.key, event.target.value)}
-      >
-        {STATUSES.map((item) => (
-          <option key={item.id} value={item.id}>
-            {item.label}
-          </option>
-        ))}
-      </select>
+      <div className="status-history-field">
+        <select
+          className="graph-form-control status-select"
+          style={{
+            "--status-bg": status.bg,
+            "--status-color": status.color,
+            "--status-border": status.border,
+          }}
+          value={record.status ?? ""}
+          onChange={(event) => onChange(field.key, event.target.value)}
+        >
+          {STATUSES.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        <StatusHistoryPopover history={record.history} />
+      </div>
     );
   }
 
@@ -257,14 +276,14 @@ function GraphCanvas({
             statusColor: status.color,
             statusBg: status.bg,
             statusBorder: status.border,
-            dateHistories: getDateHistoryGroups(record, category),
+            dateHistories: getRecordHistoryGroups(record, category),
           },
           style: {
             borderColor: status.border,
             background: `color-mix(in srgb, ${status.bg} 62%, #ffffff)`,
-            borderRadius: 7,
-            width: 154,
-            padding: 7,
+            borderRadius: 5,
+            width: 104,
+            padding: 5,
             boxShadow:
               selectedElement?.type === "node" && selectedElement.id === node.id
                 ? `0 0 0 3px ${status.border}`
@@ -503,13 +522,13 @@ export default function KnowledgeGraph({
       return;
     }
 
-    const column = graphNodes.length % 3;
-    const row = Math.floor(graphNodes.length / 3);
+    const column = graphNodes.length % 4;
+    const row = Math.floor(graphNodes.length / 4);
     const node = {
       id: createGraphId("node"),
       position: {
-        x: 80 + column * 240,
-        y: 80 + row * 150,
+        x: 60 + column * 170,
+        y: 60 + row * 110,
       },
       data: {
         recordId: record.id,
@@ -696,7 +715,7 @@ export default function KnowledgeGraph({
               ))}
             </div>
             <DateHistorySummary
-              groups={getDateHistoryGroups(selectedRecord, selectedCategory)}
+              groups={getRecordHistoryGroups(selectedRecord, selectedCategory)}
             />
           </>
         )}

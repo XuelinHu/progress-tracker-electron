@@ -13,6 +13,7 @@ import {
   Upload,
 } from "lucide-react";
 import DateHistoryField from "./components/DateHistoryField.jsx";
+import StatusHistoryPopover from "./components/StatusHistoryPopover.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
@@ -251,14 +252,33 @@ function App() {
 
   function updateRecord(recordId, patch) {
     setRecords((current) =>
-      current.map((record) =>
-        record.id === recordId
-          ? {
-              ...record,
-              ...patch,
-            }
-          : record,
-      ),
+      current.map((record) => {
+        if (record.id !== recordId) {
+          return record;
+        }
+
+        const nextRecord = {
+          ...record,
+          ...patch,
+        };
+        if (patch.status && patch.status !== record.status) {
+          const previousStatus =
+            STATUS_BY_ID[record.status]?.label || record.status || "未设置";
+          const nextStatus = STATUS_BY_ID[patch.status]?.label || patch.status;
+          nextRecord.history = [
+            ...(record.history ?? []),
+            {
+              id: createId("history"),
+              date: today(),
+              status: patch.status,
+              owner: "",
+              summary: `状态由“${previousStatus}”变更为“${nextStatus}”`,
+            },
+          ];
+        }
+
+        return nextRecord;
+      }),
     );
   }
 
@@ -472,24 +492,27 @@ function App() {
     if (field.type === "status") {
       const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
       return (
-        <select
-          className="cell-input status-select"
-          style={{
-            "--status-bg": status.bg,
-            "--status-color": status.color,
-            "--status-border": status.border,
-          }}
-          value={record.status}
-          onFocus={() => setSelectedId(record.id)}
-          onChange={(event) => updateRecord(record.id, { status: event.target.value })}
-          aria-label={`${getRecordTitle(record)} 状态`}
-        >
-          {STATUSES.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+        <div className="status-history-field">
+          <select
+            className="cell-input status-select"
+            style={{
+              "--status-bg": status.bg,
+              "--status-color": status.color,
+              "--status-border": status.border,
+            }}
+            value={record.status}
+            onFocus={() => setSelectedId(record.id)}
+            onChange={(event) => updateRecord(record.id, { status: event.target.value })}
+            aria-label={`${getRecordTitle(record)} 状态`}
+          >
+            {STATUSES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+          <StatusHistoryPopover history={record.history} />
+        </div>
       );
     }
 
