@@ -9,7 +9,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/ai-based-intelligent-qa-system-for-railway",
     "githubUrl": "git@github.com:XuelinHu/ai-based-intelligent-qa-system-for-railway.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "software-2",
@@ -21,7 +22,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/ai/DS-OCR2-3090-Runner",
     "githubUrl": "git@github.com:XuelinHu/DS-OCR2-3090-Runner.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "software-3",
@@ -33,7 +35,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/chinese-vietnamese-railway-term-learning",
     "githubUrl": "git@github.com:XuelinHu/chinese-vietnamese-railway-term-learning.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "software-4",
@@ -45,7 +48,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/school-chinese-exam-practice",
     "githubUrl": "git@github.com:XuelinHu/school-chinese-exam-practice.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "software-5",
@@ -57,7 +61,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/southeast-asian-student-service-platform",
     "githubUrl": "git@github.com:XuelinHu/southeast-asian-student-service-platform.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "software-6",
@@ -69,7 +74,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/railway_sign",
     "githubUrl": "git@github.com:XuelinHu/railway_sign.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "2026-06-03",
+    "todo": ""
   },
   {
     "id": "software-7",
@@ -81,7 +87,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/school-bike-rent-international",
     "githubUrl": "git@github.com:XuelinHu/school-bike-rent-international.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "2026-06-03",
+    "todo": ""
   },
   {
     "id": "software-8",
@@ -93,7 +100,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/railway-signal-runner",
     "githubUrl": "git@github.com:XuelinHu/railway-signal-runner.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "software-9",
@@ -105,7 +113,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/ai/railway-power-operation-video-ai-evaluator",
     "githubUrl": "git@github.com:XuelinHu/railway-power-operation-video-ai-evaluator.git",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "software-10",
@@ -117,103 +126,8 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/ai/OralSEAChinese",
     "githubUrl": "git@github.com:XuelinHu/OralSEAChinese.git",
     "history": [],
-    "stageDate": ""
-  },
-  {
-    "id": "paper-1",
-    "categoryId": "paper",
-    "status": "已提交",
-    "title": "Graph-Neural-Networks-A-Comprehensive-Survey",
-    "description": "综述",
-    "windowsPath": "D:\\paper\\Graph-Neural-Networks-A-Comprehensive-Survey",
-    "linuxPath": "",
-    "githubUrl": "",
-    "history": [],
-    "stageDate": ""
-  },
-  {
-    "id": "paper-2",
-    "categoryId": "paper",
-    "status": "已提交",
-    "title": "KG-CrossResGNN-CropPhenoGene",
-    "description": "作物表型基因知识图谱分析软件",
-    "windowsPath": "D:\\workspace\\ai\\KG-CrossResGNN-CropPhenoGene",
-    "linuxPath": "/ds1/workspace/ai/KG-CrossResGNN-CropPhenoGene",
-    "githubUrl": "git@github.com:XuelinHu/KG-CrossResGNN-CropPhenoGene.git",
-    "history": [],
-    "stageDate": ""
-  },
-  {
-    "id": "paper-3",
-    "categoryId": "paper",
-    "status": "已提交",
-    "title": "Matrix-ResGNN-GraphClassification",
-    "description": "矩阵残差图神经网络分类软件",
-    "windowsPath": "D:\\workspace\\ai\\Matrix-ResGNN-GraphClassificatio",
-    "linuxPath": "/ds1/workspace/ai/Matrix-ResGNN-GraphClassification",
-    "githubUrl": "git@github.com:XuelinHu/Matrix-ResGNN-GraphClassificatio.git",
-    "history": [],
-    "stageDate": ""
-  },
-  {
-    "id": "paper-4",
-    "categoryId": "paper",
-    "status": "暂缓",
-    "title": "QDCR-Net",
-    "description": "水下图片目标识别",
-    "windowsPath": "D:\\workspace\\ai\\QDCR-Net",
-    "linuxPath": "/ds1/workspace/ai/QDCR-Net",
-    "githubUrl": "git@github.com:XuelinHu/QDCR-Net.git",
-    "history": [],
-    "stageDate": ""
-  },
-  {
-    "id": "paper-5",
-    "categoryId": "paper",
-    "status": "暂缓",
-    "title": "multilingual-railway-llm-edu",
-    "description": "多语种铁路大模型教育软件",
-    "windowsPath": "D:\\workspace\\ai\\multilingual-railway-llm-edu",
-    "linuxPath": "/ds1/workspace/ai/multilingual-railway-llm-edu",
-    "githubUrl": "git@github.com:XuelinHu/multilingual-railway-llm-edu.git",
-    "history": [],
-    "stageDate": ""
-  },
-  {
-    "id": "paper-6",
-    "categoryId": "paper",
-    "status": "暂缓",
-    "title": "railway-qa-agent",
-    "description": "铁路知识问答智能助手软件",
-    "windowsPath": "D:\\workspace\\ai\\railway-qa-agent",
-    "linuxPath": "/ds1/workspace/ai/railway-qa-agent",
-    "githubUrl": "git@github.com:XuelinHu/railway-qa-agent.git",
-    "history": [],
-    "stageDate": ""
-  },
-  {
-    "id": "paper-7",
-    "categoryId": "paper",
-    "status": "暂缓",
-    "title": "resource-constrained-llm-eval",
-    "description": "资源受限大模型评测软件",
-    "windowsPath": "D:\\workspace\\ai\\resource-constrained-llm-eval",
-    "linuxPath": "/ds1/workspace/ai/resource-constrained-llm-eval",
-    "githubUrl": "git@github.com:XuelinHu/resource-constrained-llm-eval.git",
-    "history": [],
-    "stageDate": ""
-  },
-  {
-    "id": "paper-8",
-    "categoryId": "paper",
-    "status": "暂缓",
-    "title": "resource-constrained-railway-image-captioning",
-    "description": "资源受限铁路图像描述生成软件",
-    "windowsPath": "D:\\workspace\\ai\\resource-constrained-railway-image-captioning",
-    "linuxPath": "/ds1/workspace/ai/resource-constrained-railway-image-captioning",
-    "githubUrl": "git@github.com:XuelinHu/resource-constrained-railway-image-captioning.git",
-    "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "patent-1",
@@ -226,7 +140,8 @@ export const seedRecords = [
     "serverPath": "",
     "githubUrl": "",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "patent-2",
@@ -239,7 +154,8 @@ export const seedRecords = [
     "serverPath": "",
     "githubUrl": "",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "patent-3",
@@ -252,29 +168,136 @@ export const seedRecords = [
     "serverPath": "",
     "githubUrl": "",
     "history": [],
-    "stageDate": ""
+    "stageDate": "",
+    "todo": ""
+  },
+  {
+    "id": "paper-1",
+    "categoryId": "paper",
+    "status": "已提交",
+    "title": "Bridging theory, tasks, and evidence in graph representation learning: a unified survey on architectures, generalization, and evaluation validity",
+    "description": "图表示学习中的理论、任务与证据的桥梁：关于架构、泛化能力与评估有效性的统一综述",
+    "windowsPath": "D:\\paper\\Graph-Neural-Networks-A-Comprehensive-Survey",
+    "linuxPath": "",
+    "githubUrl": "",
+    "history": [],
+    "stageDate": "2026-05-23",
+    "todo": ""
+  },
+  {
+    "id": "paper-2",
+    "categoryId": "paper",
+    "status": "返修中",
+    "title": "KG-CrossResGNN-CropPhenoGene",
+    "description": "作物表型基因知识图谱分析软件",
+    "windowsPath": "D:\\workspace\\ai\\KG-CrossResGNN-CropPhenoGene",
+    "linuxPath": "/ds1/workspace/ai/KG-CrossResGNN-CropPhenoGene",
+    "githubUrl": "git@github.com:XuelinHu/KG-CrossResGNN-CropPhenoGene.git",
+    "history": [],
+    "stageDate": "2026-06-02",
+    "todo": ""
+  },
+  {
+    "id": "paper-3",
+    "categoryId": "paper",
+    "status": "已提交",
+    "title": "Matrix-ResGNN-GraphClassification",
+    "description": "矩阵残差图神经网络分类软件",
+    "windowsPath": "D:\\workspace\\ai\\Matrix-ResGNN-GraphClassificatio",
+    "linuxPath": "/ds1/workspace/ai/Matrix-ResGNN-GraphClassification",
+    "githubUrl": "git@github.com:XuelinHu/Matrix-ResGNN-GraphClassificatio.git",
+    "history": [],
+    "stageDate": "2026-05-23",
+    "todo": ""
+  },
+  {
+    "id": "paper-4",
+    "categoryId": "paper",
+    "status": "暂缓",
+    "title": "QDCR-Net",
+    "description": "水下图片目标识别",
+    "windowsPath": "D:\\workspace\\ai\\QDCR-Net",
+    "linuxPath": "/ds1/workspace/ai/QDCR-Net",
+    "githubUrl": "git@github.com:XuelinHu/QDCR-Net.git",
+    "history": [],
+    "stageDate": "",
+    "todo": ""
+  },
+  {
+    "id": "paper-5",
+    "categoryId": "paper",
+    "status": "暂缓",
+    "title": "multilingual-railway-llm-edu",
+    "description": "多语种铁路大模型教育软件",
+    "windowsPath": "D:\\workspace\\ai\\multilingual-railway-llm-edu",
+    "linuxPath": "/ds1/workspace/ai/multilingual-railway-llm-edu",
+    "githubUrl": "git@github.com:XuelinHu/multilingual-railway-llm-edu.git",
+    "history": [],
+    "stageDate": "",
+    "todo": ""
+  },
+  {
+    "id": "paper-6",
+    "categoryId": "paper",
+    "status": "暂缓",
+    "title": "railway-qa-agent",
+    "description": "铁路知识问答智能助手软件",
+    "windowsPath": "D:\\workspace\\ai\\railway-qa-agent",
+    "linuxPath": "/ds1/workspace/ai/railway-qa-agent",
+    "githubUrl": "git@github.com:XuelinHu/railway-qa-agent.git",
+    "history": [],
+    "stageDate": "",
+    "todo": ""
+  },
+  {
+    "id": "paper-7",
+    "categoryId": "paper",
+    "status": "进行中",
+    "title": "resource-constrained-llm-eval",
+    "description": "资源受限大模型评测软件",
+    "windowsPath": "D:\\workspace\\ai\\resource-constrained-llm-eval",
+    "linuxPath": "/ds1/workspace/ai/resource-constrained-llm-eval",
+    "githubUrl": "git@github.com:XuelinHu/resource-constrained-llm-eval.git",
+    "history": [],
+    "stageDate": "2026-06-08",
+    "todo": ""
+  },
+  {
+    "id": "paper-8",
+    "categoryId": "paper",
+    "status": "暂缓",
+    "title": "resource-constrained-railway-image-captioning",
+    "description": "资源受限铁路图像描述生成软件",
+    "windowsPath": "D:\\workspace\\ai\\resource-constrained-railway-image-captioning",
+    "linuxPath": "/ds1/workspace/ai/resource-constrained-railway-image-captioning",
+    "githubUrl": "git@github.com:XuelinHu/resource-constrained-railway-image-captioning.git",
+    "history": [],
+    "stageDate": "",
+    "todo": ""
   },
   {
     "id": "contest-1",
     "categoryId": "contest",
     "status": "进行中",
     "title": "2026全国大学生“麟创杯”创新数学竞赛",
-    "platformUrl": "https://new.saikr.com/vse/DFIC2026Robot",
+    "platformUrl": "https://new.saikr.com/vse/LCBCXSX",
     "officialUrl": "https://new.saikr.com/vse/DFIC2026Robot",
     "history": [],
-    "registrationDate": "",
-    "endDate": ""
+    "registrationDate": "2026-06-06",
+    "endDate": "2026-08-22",
+    "todo": ""
   },
   {
     "id": "contest-2",
     "categoryId": "contest",
     "status": "进行中",
     "title": "2026“华青杯”【AI机器人赛项】",
-    "platformUrl": "https://new.saikr.com/vse/LCBCXSX",
-    "officialUrl": "https://new.saikr.com/vse/LCBCXSX",
+    "platformUrl": "https://new.saikr.com/vse/DFIC2026Robot",
+    "officialUrl": "",
     "history": [],
     "registrationDate": "",
-    "endDate": ""
+    "endDate": "2026-06-27",
+    "todo": ""
   },
   {
     "id": "contest-3",
@@ -284,8 +307,9 @@ export const seedRecords = [
     "platformUrl": "https://new.saikr.com/vse/apmcm2602",
     "officialUrl": "",
     "history": [],
-    "registrationDate": "",
-    "endDate": ""
+    "registrationDate": "2026-06-12",
+    "endDate": "2026-06-15",
+    "todo": ""
   },
   {
     "id": "contest-4",
@@ -296,61 +320,7 @@ export const seedRecords = [
     "officialUrl": "",
     "history": [],
     "registrationDate": "",
-    "endDate": ""
-  },
-  {
-    "id": "contest-5",
-    "categoryId": "contest",
-    "status": "已提交",
-    "title": "",
-    "platformUrl": "",
-    "officialUrl": "",
-    "history": [],
-    "registrationDate": "",
-    "endDate": ""
-  },
-  {
-    "id": "contest-6",
-    "categoryId": "contest",
-    "status": "已提交",
-    "title": "",
-    "platformUrl": "",
-    "officialUrl": "",
-    "history": [],
-    "registrationDate": "",
-    "endDate": ""
-  },
-  {
-    "id": "contest-7",
-    "categoryId": "contest",
-    "status": "结束",
-    "title": "",
-    "platformUrl": "",
-    "officialUrl": "",
-    "history": [],
-    "registrationDate": "",
-    "endDate": ""
-  },
-  {
-    "id": "contest-8",
-    "categoryId": "contest",
-    "status": "结束",
-    "title": "",
-    "platformUrl": "",
-    "officialUrl": "",
-    "history": [],
-    "registrationDate": "",
-    "endDate": ""
-  },
-  {
-    "id": "contest-9",
-    "categoryId": "contest",
-    "status": "结束",
-    "title": "",
-    "platformUrl": "",
-    "officialUrl": "",
-    "history": [],
-    "registrationDate": "",
-    "endDate": ""
+    "endDate": "2026-09-01",
+    "todo": ""
   }
 ];

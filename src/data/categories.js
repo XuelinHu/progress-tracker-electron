@@ -21,7 +21,7 @@ const stageDateField = {
   key: "stageDate",
   label: "阶段日期",
   type: "date",
-  width: "150px",
+  width: "minmax(230px, 0.8fr)",
 };
 const windowsPathField = {
   key: "windowsPath",
@@ -115,13 +115,13 @@ export const CATEGORIES = [
         key: "registrationDate",
         label: "报名日期",
         type: "date",
-        width: "150px",
+        width: "minmax(230px, 0.8fr)",
       },
       {
         key: "endDate",
         label: "结束日期",
         type: "date",
-        width: "150px",
+        width: "minmax(230px, 0.8fr)",
       },
       {
         key: "platformUrl",
