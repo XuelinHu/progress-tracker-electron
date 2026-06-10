@@ -11,46 +11,60 @@ export default function DateHistoryField({
   onDateChange,
   onHistoryItemChange,
 }) {
+  const [draftDate, setDraftDate] = useState(value ?? "");
   const [item, setItem] = useState("");
-  const [latestHistoryId, setLatestHistoryId] = useState(null);
 
   useEffect(() => {
+    setDraftDate(value ?? "");
     setItem("");
-    setLatestHistoryId(null);
-  }, [resetKey]);
+  }, [resetKey, value]);
 
-  function handleDateChange(event) {
-    const historyId = onDateChange(event.target.value, item.trim());
-    setLatestHistoryId(historyId);
+  function handleConfirm() {
+    const date = draftDate.trim();
+    const text = item.trim();
+    if (!date) return;
+    onDateChange(date, text);
+    setItem("");
   }
 
-  function handleItemChange(event) {
-    const nextItem = event.target.value;
-    setItem(nextItem);
-    if (latestHistoryId) {
-      onHistoryItemChange(latestHistoryId, nextItem);
+  function handleItemKeydown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      handleConfirm();
     }
   }
 
   return (
     <div className="date-history-field">
-      <input
-        className={inputClassName}
-        type="date"
-        value={value ?? ""}
-        onFocus={onFocus}
-        onChange={handleDateChange}
-        aria-label={label}
-      />
-      <input
-        className={itemClassName}
-        type="text"
-        value={item}
-        onFocus={onFocus}
-        onChange={handleItemChange}
-        placeholder="填写本次事项"
-        aria-label={`${label}事项`}
-      />
+      <div className="date-history-row">
+        <input
+          className={inputClassName}
+          type="date"
+          value={draftDate}
+          onFocus={onFocus}
+          onChange={(e) => setDraftDate(e.target.value)}
+          aria-label={label}
+        />
+        <input
+          className={itemClassName}
+          type="text"
+          value={item}
+          onFocus={onFocus}
+          onChange={(e) => setItem(e.target.value)}
+          onKeyDown={handleItemKeydown}
+          placeholder="填写本次事项"
+          aria-label={`${label}事项`}
+        />
+        <button
+          className="date-confirm-btn"
+          type="button"
+          onClick={handleConfirm}
+          disabled={!draftDate.trim()}
+          title="确认添加"
+        >
+          ✓
+        </button>
+      </div>
 
       <div className="date-history-popover" role="tooltip">
         <div className="date-history-title">历史记录</div>

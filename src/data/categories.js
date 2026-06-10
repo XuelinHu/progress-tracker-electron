@@ -21,7 +21,7 @@ const stageDateField = {
   key: "stageDate",
   label: "阶段日期",
   type: "date",
-  width: "minmax(230px, 0.8fr)",
+  width: "minmax(250px, 0.85fr)",
 };
 const windowsPathField = {
   key: "windowsPath",

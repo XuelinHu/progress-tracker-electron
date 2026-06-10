@@ -382,9 +382,9 @@ button {
 }
 
 .row-action-cell {
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 7px 4px;
+  padding: 5px 4px;
 }
 
 .row-delete-button,
@@ -398,8 +398,8 @@ button {
 }
 
 .row-delete-button {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   color: #b91c1c;
 }
 
@@ -431,6 +431,49 @@ button {
   min-width: 0;
   display: grid;
   gap: 4px;
+}
+
+.date-history-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.date-history-row .date-input {
+  flex: 0 0 auto;
+  width: 116px;
+}
+
+.date-history-row .date-item-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.date-confirm-btn {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #16a34a;
+  border-radius: 5px;
+  background: #f0fdf4;
+  color: #16a34a;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.date-confirm-btn:hover:not(:disabled) {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.date-confirm-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .status-history-field {
@@ -543,6 +586,32 @@ button {
   text-align: center;
 }
 
+/* history entry type colors */
+.history-type-status {
+  --history-dot: #3b82f6;
+}
+
+.history-type-todo {
+  --history-dot: #16a34a;
+}
+
+.history-type-date {
+  --history-dot: #d97706;
+}
+
+.date-history-table .history-type-status span:first-child::before,
+.date-history-table .history-type-todo span:first-child::before,
+.date-history-table .history-type-date span:first-child::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 5px;
+  background: var(--history-dot);
+  vertical-align: middle;
+}
+
 .cell-textarea {
   height: auto;
   min-height: 42px;
@@ -553,6 +622,97 @@ button {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   font-size: 12px;
+}
+
+.todo-cell {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.todo-list {
+  display: grid;
+  gap: 2px;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 2px 3px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.todo-item:hover {
+  background: #f1f5f9;
+}
+
+.todo-item:hover .todo-delete-btn {
+  opacity: 1;
+}
+
+.todo-item.done .todo-text {
+  color: #16a34a;
+  text-decoration: line-through;
+}
+
+.todo-delete-btn {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  opacity: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.todo-delete-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  opacity: 1;
+}
+
+.todo-date {
+  margin-left: auto;
+  color: #94a3b8;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.todo-item.done .todo-date {
+  color: #16a34a;
+}
+
+.todo-checkbox {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  accent-color: #16a34a;
+  cursor: pointer;
+}
+
+.todo-new-input {
+  min-height: 30px !important;
+  font-size: 11px !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+}
+
+.todo-new-input:focus {
+  color: #172033 !important;
+  border-color: var(--category-accent) !important;
 }
 
 .url-cell {

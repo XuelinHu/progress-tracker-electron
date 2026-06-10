@@ -42,6 +42,7 @@ function getDateHistoryGroups(record, category) {
     .map((field) => ({
       key: field.key,
       label: field.label,
+      type: "date",
       entries: Array.isArray(record.dateHistory?.[field.key])
         ? record.dateHistory[field.key]
         : [],
@@ -53,11 +54,24 @@ function getRecordHistoryGroups(record, category) {
     {
       key: "status",
       label: "状态变化",
+      type: "status",
       entries: (record?.history ?? []).map((entry) => ({
         id: entry.id,
         date: entry.date,
         item: entry.summary || entry.status || "状态更新",
       })),
+    },
+    {
+      key: "todo",
+      label: "Todo完成",
+      type: "todo",
+      entries: (record?.todoHistory ?? [])
+        .filter((entry) => entry.doneDate != null)
+        .map((entry) => ({
+          id: entry.id,
+          date: entry.doneDate,
+          item: entry.item || "完成Todo项",
+        })),
     },
     ...getDateHistoryGroups(record, category),
   ];
@@ -81,7 +95,7 @@ function DateHistorySummary({ groups, compact = false }) {
                     <span>事项</span>
                   </div>
                   {[...group.entries].reverse().map((entry) => (
-                    <div key={entry.id} className="graph-history-row">
+                    <div key={entry.id} className={`graph-history-row history-type-${group.type || "date"}`}>
                       <span>{entry.date || "-"}</span>
                       <span>{entry.item || "未填写事项"}</span>
                     </div>
@@ -156,6 +170,8 @@ function GraphField({
   onDateChange,
   onHistoryItemChange,
   onOpenExternal,
+  onToggleTodo,
+  onDeleteTodo,
 }) {
   if (field.type === "status") {
     const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
@@ -177,12 +193,67 @@ function GraphField({
             </option>
           ))}
         </select>
-        <StatusHistoryPopover history={record.history} />
+        <StatusHistoryPopover history={record.history} todoHistory={record.todoHistory ?? []} />
       </div>
     );
   }
 
   if (field.type === "textarea") {
+    if (field.key === "todo" && onToggleTodo) {
+      const todoText = record.todo ?? "";
+      const lines = todoText.split(/\r?\n/).filter((l) => l.trim());
+      const todoHistory = record.todoHistory ?? [];
+      const histByItem = new Map(todoHistory.map((e) => [e.item, e]));
+      function addTodoLine(text) {
+        const val = text.trim();
+        if (!val) return;
+        const newText = todoText ? todoText + "\n" + val : val;
+        onChange(field.key, newText);
+      }
+      function handleTodoKeydown(event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          addTodoLine(event.target.value);
+          event.target.value = "";
+        }
+      }
+      return (
+        <div className="todo-cell">
+          <div className="todo-list">
+            {lines.map((line, idx) => {
+              const trimmed = line.trim();
+              if (!trimmed) return null;
+              const hist = histByItem.get(trimmed);
+              const done = hist?.doneDate != null;
+              return (
+                <label key={`${idx}-${trimmed.substring(0, 12)}`} className={`todo-item ${done ? "done" : ""}`}>
+                  <button
+                    className="todo-delete-btn"
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onDeleteTodo) onDeleteTodo(field.key, trimmed); }}
+                    title="删除此项"
+                  >×</button>
+                  <input
+                    type="checkbox"
+                    className="todo-checkbox"
+                    checked={done}
+                    onChange={() => onToggleTodo(field.key, trimmed)}
+                  />
+                  <span className="todo-text">{trimmed}</span>
+                  <span className="todo-date">{done ? (hist?.doneDate || "") : (hist?.addedDate || "")}</span>
+                </label>
+              );
+            })}
+          </div>
+          <textarea
+            className="graph-form-control graph-textarea todo-new-input"
+            rows={1}
+            onKeyDown={handleTodoKeydown}
+            placeholder="输入待办，回车添加"
+          />
+        </div>
+      );
+    }
     return (
       <textarea
         className="graph-form-control graph-textarea"
@@ -251,6 +322,8 @@ function GraphCanvas({
   selectedElement,
   setSelectedElement,
   addRecordFromGraph,
+  toggleTodoItem,
+  deleteTodoItem,
 }) {
   const { screenToFlowPosition } = useReactFlow();
   const [contextMenu, setContextMenu] = useState(null);
@@ -562,6 +635,8 @@ export default function KnowledgeGraph({
   updateRecordDate,
   updateDateHistoryItem,
   addRecordFromGraph,
+  toggleTodoItem,
+  deleteTodoItem,
 }) {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceCategory, setSourceCategory] = useState("all");
@@ -759,6 +834,8 @@ export default function KnowledgeGraph({
             selectedElement={selectedElement}
             setSelectedElement={setSelectedElement}
             addRecordFromGraph={addRecordFromGraph}
+            toggleTodoItem={toggleTodoItem}
+            deleteTodoItem={deleteTodoItem}
           />
         </ReactFlowProvider>
         {graphNodes.length === 0 && (
@@ -802,6 +879,8 @@ export default function KnowledgeGraph({
                       updateDateHistoryItem(selectedRecord.id, key, historyId, item)
                     }
                     onOpenExternal={openExternalUrl}
+                    onToggleTodo={(key, item) => toggleTodoItem(selectedRecord.id, item)}
+                    onDeleteTodo={(key, item) => deleteTodoItem(selectedRecord.id, item)}
                   />
                 </label>
               ))}

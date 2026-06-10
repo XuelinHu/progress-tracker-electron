@@ -396,6 +396,19 @@
   grid-template-columns: 60px minmax(0, 1fr);
 }
 
+.graph-node-history-popover .history-type-status span:first-child::before,
+.graph-node-history-popover .history-type-todo span:first-child::before,
+.graph-node-history-popover .history-type-date span:first-child::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-right: 3px;
+  background: var(--history-dot);
+  vertical-align: middle;
+}
+
 .graph-detail-form label {
   min-width: 0;
   display: grid;
@@ -407,6 +420,44 @@
   right: 0;
   left: auto;
   width: min(360px, calc(100vw - 40px));
+}
+
+.graph-detail-form .date-history-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.graph-detail-form .date-history-row .graph-form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.graph-detail-form .date-confirm-btn {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #16a34a;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #16a34a;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.graph-detail-form .date-confirm-btn:hover:not(:disabled) {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.graph-detail-form .date-confirm-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .graph-detail-form .status-history-popover {

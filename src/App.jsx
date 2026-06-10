@@ -42,6 +42,7 @@ function createId(prefix = "item") {
 }
 
 function normalizeRecord(record) {
+  const rawTodo = Array.isArray(record.todoHistory) ? record.todoHistory : [];
   return {
     ...record,
     history: Array.isArray(record.history) ? record.history : [],
@@ -49,6 +50,12 @@ function normalizeRecord(record) {
       record.dateHistory && typeof record.dateHistory === "object"
         ? record.dateHistory
         : {},
+    todoHistory: rawTodo.map((e) => ({
+      id: e.id,
+      addedDate: e.addedDate || "",
+      item: e.item || "",
+      doneDate: e.doneDate || (!e.addedDate && e.date ? e.date : null),
+    })),
   };
 }
 
@@ -332,6 +339,52 @@ function App() {
     );
   }
 
+  function syncTodoItems(recordId, todoText) {
+    const lines = (todoText ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        const oldHistory = record.todoHistory ?? [];
+        const oldById = new Map(oldHistory.map((e) => [e.item, e]));
+        const nextHistory = lines.map((item) => {
+          const existing = oldById.get(item);
+          if (existing) return existing;
+          return { id: createId("todo-hist"), addedDate: today(), item, doneDate: null };
+        });
+        return { ...record, todoHistory: nextHistory };
+      }),
+    );
+  }
+
+  function toggleTodoItem(recordId, lineText) {
+    const text = lineText.trim();
+    if (!text) return;
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        const todoHistory = (record.todoHistory ?? []).map((e) =>
+          e.item === text ? { ...e, doneDate: e.doneDate ? null : today() } : e,
+        );
+        return { ...record, todoHistory };
+      }),
+    );
+  }
+
+  function deleteTodoItem(recordId, lineText) {
+    const text = lineText.trim();
+    if (!text) return;
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        const todoText = record.todo ?? "";
+        const lines = todoText.split(/\r?\n/);
+        const newText = lines.filter((l) => l.trim() !== text).join("\n");
+        const todoHistory = (record.todoHistory ?? []).filter((e) => e.item !== text);
+        return { ...record, todo: newText, todoHistory };
+      }),
+    );
+  }
+
   function buildRecord(categoryId) {
     const category = CATEGORY_BY_ID[categoryId] ?? CATEGORIES[0];
     const defaultStatus = STATUSES[0]?.id ?? "进行中";
@@ -544,7 +597,7 @@ function App() {
               </option>
             ))}
           </select>
-          <StatusHistoryPopover history={record.history} />
+          <StatusHistoryPopover history={record.history} todoHistory={record.todoHistory} />
         </div>
       );
     }
@@ -594,6 +647,65 @@ function App() {
           >
             <ExternalLink size={13} />
           </button>
+        </div>
+      );
+    }
+
+    if (field.key === "todo") {
+      const todoText = record.todo ?? "";
+      const lines = todoText.split(/\r?\n/).filter((l) => l.trim());
+      const todoHistory = record.todoHistory ?? [];
+      const histByItem = new Map(todoHistory.map((e) => [e.item, e]));
+      function addTodoLine(text) {
+        const val = text.trim();
+        if (!val) return;
+        const newText = todoText ? todoText + "\n" + val : val;
+        updateRecord(record.id, { todo: newText });
+        syncTodoItems(record.id, newText);
+      }
+      function handleTodoKeydown(event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          addTodoLine(event.target.value);
+          event.target.value = "";
+        }
+      }
+      return (
+        <div className="todo-cell">
+          <div className="todo-list">
+            {lines.map((line, idx) => {
+              const trimmed = line.trim();
+              if (!trimmed) return null;
+              const hist = histByItem.get(trimmed);
+              const done = hist?.doneDate != null;
+              return (
+                <label key={`${idx}-${trimmed.substring(0, 12)}`} className={`todo-item ${done ? "done" : ""}`}>
+                  <button
+                    className="todo-delete-btn"
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteTodoItem(record.id, trimmed); }}
+                    title="删除此项"
+                  >×</button>
+                  <input
+                    type="checkbox"
+                    className="todo-checkbox"
+                    checked={done}
+                    onChange={() => toggleTodoItem(record.id, trimmed)}
+                  />
+                  <span className="todo-text">{trimmed}</span>
+                  <span className="todo-date">{done ? (hist?.doneDate || "") : (hist?.addedDate || "")}</span>
+                </label>
+              );
+            })}
+          </div>
+          <textarea
+            className="cell-input cell-textarea todo-new-input"
+            rows={1}
+            onFocus={() => setSelectedId(record.id)}
+            onKeyDown={handleTodoKeydown}
+            placeholder="输入待办，回车添加"
+            aria-label={`${getRecordTitle(record)} 新增待办`}
+          />
         </div>
       );
     }
@@ -695,6 +807,8 @@ function App() {
             updateRecordDate={updateRecordDate}
             updateDateHistoryItem={updateDateHistoryItem}
             addRecordFromGraph={addRecordFromGraph}
+            toggleTodoItem={toggleTodoItem}
+            deleteTodoItem={deleteTodoItem}
           />
         ) : (
         <section className="workspace">
