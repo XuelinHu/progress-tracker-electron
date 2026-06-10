@@ -20,11 +20,10 @@ export default function DateHistoryField({
   }, [resetKey, value]);
 
   function handleConfirm() {
-    const date = draftDate.trim();
-    const text = item.trim();
-    if (!date) return;
-    onDateChange(date, text);
+    const date = draftDate.trim() || new Date().toISOString().slice(0, 10);
+    onDateChange(date, item.trim());
     setItem("");
+    setDraftDate(date);
   }
 
   function handleItemKeydown(event) {
@@ -59,8 +58,7 @@ export default function DateHistoryField({
           className="date-confirm-btn"
           type="button"
           onClick={handleConfirm}
-          disabled={!draftDate.trim()}
-          title="确认添加"
+          title="确认添加（日期为空则默认今天）"
         >
           ✓
         </button>
