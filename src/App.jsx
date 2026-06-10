@@ -859,6 +859,7 @@ function App() {
             deleteDateHistoryItem={deleteDateHistoryItem}
             deleteStatusHistoryItem={deleteStatusHistoryItem}
             deleteTodoHistoryItem={deleteTodoHistoryItem}
+            syncTodoItems={syncTodoItems}
           />
         ) : (
         <section className="workspace">

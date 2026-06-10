@@ -123,6 +123,36 @@ function DateHistorySummary({ groups, compact = false, onDeleteEntry }) {
 }
 
 function RecordNode({ data }) {
+  const h = data.handlers ?? {};
+  const todoLines = (data.todoText ?? "").split(/\r?\n/).filter((l) => l.trim());
+  const todoHistByItem = new Map((data.todoHistory ?? []).map((e) => [e.item, e]));
+  const [todoDraft, setTodoDraft] = useState("");
+  const [dateVal, setDateVal] = useState(data.dateValue ?? "");
+  const [dateItem, setDateItem] = useState("");
+
+  function handleTodoKey(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const val = todoDraft.trim();
+      if (!val) return;
+      h.addTodo?.(val);
+      setTodoDraft("");
+    }
+  }
+
+  function handleDateConfirm() {
+    const d = dateVal.trim() || new Date().toISOString().slice(0, 10);
+    h.addDate?.(d, dateItem.trim());
+    setDateItem("");
+  }
+
+  function handleDateKey(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleDateConfirm();
+    }
+  }
+
   return (
     <>
       <Handle type="target" position={Position.Left} />
@@ -146,6 +176,54 @@ function RecordNode({ data }) {
           </small>
         </div>
         <strong>{data.title}</strong>
+
+        {/* inline todo */}
+        <div className="graph-node-todo">
+          {todoLines.map((line, idx) => {
+            const hist = todoHistByItem.get(line);
+            const done = hist?.doneDate != null;
+            return (
+              <label key={idx} className={`graph-node-todo-item ${done ? "done" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={done}
+                  onChange={() => h.toggleTodo?.(line)}
+                />
+                <span>{line}</span>
+                <button
+                  className="graph-node-todo-del"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); h.deleteTodo?.(line); }}
+                >×</button>
+              </label>
+            );
+          })}
+          <input
+            className="graph-node-input"
+            placeholder="+待办"
+            value={todoDraft}
+            onChange={(e) => setTodoDraft(e.target.value)}
+            onKeyDown={handleTodoKey}
+          />
+        </div>
+
+        {/* inline date */}
+        <div className="graph-node-date">
+          <input
+            className="graph-node-input graph-node-date-input"
+            type="date"
+            value={dateVal}
+            onChange={(e) => setDateVal(e.target.value)}
+          />
+          <input
+            className="graph-node-input"
+            placeholder="事项"
+            value={dateItem}
+            onChange={(e) => setDateItem(e.target.value)}
+            onKeyDown={handleDateKey}
+          />
+          <button className="graph-node-confirm" onClick={handleDateConfirm}>✓</button>
+        </div>
+
         <div className="graph-node-history-popover">
           <DateHistorySummary groups={data.dateHistories} compact />
         </div>
@@ -351,6 +429,9 @@ function GraphCanvas({
   deleteDateHistoryItem,
   deleteStatusHistoryItem,
   deleteTodoHistoryItem,
+  syncTodoItems,
+  updateRecord,
+  updateRecordDate,
 }) {
   const { screenToFlowPosition } = useReactFlow();
   const [contextMenu, setContextMenu] = useState(null);
@@ -367,6 +448,8 @@ function GraphCanvas({
         const record = recordById[node.data.recordId];
         const category = CATEGORY_BY_ID[node.data.categoryId] ?? CATEGORIES[0];
         const status = STATUS_BY_ID[record?.status] ?? STATUSES[0];
+        const dateField = category.fields.find((f) => f.type === "date");
+        const dateKey = dateField?.key ?? "";
         return {
           ...node,
           type: "record",
@@ -381,13 +464,33 @@ function GraphCanvas({
             statusBg: status.bg,
             statusBorder: status.border,
             dateHistories: getRecordHistoryGroups(record, category),
+            todoText: record?.todo ?? "",
+            todoHistory: record?.todoHistory ?? [],
+            dateKey,
+            dateValue: record?.[dateKey] ?? "",
+            dateHistoryEntries: record?.dateHistory?.[dateKey] ?? [],
+            recordId: node.data.recordId,
+            handlers: {
+              addTodo: (text) => {
+                const val = text.trim();
+                if (!val || !record) return;
+                const newText = record.todo ? record.todo + "\n" + val : val;
+                updateRecord?.(record.id, { todo: newText });
+                syncTodoItems?.(record.id, newText);
+              },
+              toggleTodo: (text) => toggleTodoItem?.(record?.id, text),
+              deleteTodo: (text) => deleteTodoItem?.(record?.id, text),
+              addDate: (date, item) => {
+                if (dateKey && record) updateRecordDate?.(record.id, dateKey, date, item);
+              },
+            },
           },
           style: {
             borderColor: status.border,
             background: `color-mix(in srgb, ${status.bg} 62%, #ffffff)`,
             borderRadius: 5,
-            width: 104,
-            padding: 5,
+            width: 180,
+            padding: 6,
             boxShadow:
               selectedElement?.type === "node" && selectedElement.id === node.id
                 ? `0 0 0 3px ${status.border}`
@@ -395,7 +498,7 @@ function GraphCanvas({
           },
         };
       }),
-    [graphNodes, recordById, selectedElement],
+    [graphNodes, recordById, selectedElement, toggleTodoItem, deleteTodoItem, updateRecord, updateRecordDate, syncTodoItems],
   );
 
   const flowEdges = useMemo(
@@ -667,6 +770,7 @@ export default function KnowledgeGraph({
   deleteDateHistoryItem,
   deleteStatusHistoryItem,
   deleteTodoHistoryItem,
+  syncTodoItems,
 }) {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceCategory, setSourceCategory] = useState("all");
@@ -869,6 +973,9 @@ export default function KnowledgeGraph({
             deleteDateHistoryItem={deleteDateHistoryItem}
             deleteStatusHistoryItem={deleteStatusHistoryItem}
             deleteTodoHistoryItem={deleteTodoHistoryItem}
+            syncTodoItems={syncTodoItems}
+            updateRecord={updateRecord}
+            updateRecordDate={updateRecordDate}
           />
         </ReactFlowProvider>
         {graphNodes.length === 0 && (

@@ -215,6 +215,124 @@
   overflow-wrap: anywhere;
 }
 
+.graph-node-todo {
+  display: grid;
+  gap: 1px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 3px;
+  margin-top: 2px;
+}
+
+.graph-node-todo-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 7px;
+  color: #475569;
+}
+
+.graph-node-todo-item.done span {
+  color: #16a34a;
+  text-decoration: line-through;
+}
+
+.graph-node-todo-item input[type="checkbox"] {
+  width: 9px;
+  height: 9px;
+  margin: 0;
+  accent-color: #16a34a;
+}
+
+.graph-node-todo-item span {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-node-todo-del {
+  width: 12px;
+  height: 12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.graph-node-todo-item:hover .graph-node-todo-del {
+  display: flex;
+}
+
+.graph-node-todo-del:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.graph-node-date {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 3px;
+  margin-top: 2px;
+}
+
+.graph-node-input {
+  width: 100%;
+  min-width: 0;
+  height: 18px;
+  padding: 0 3px;
+  border: 1px solid #d9e0eb;
+  border-radius: 3px;
+  font-size: 7px;
+  font-family: inherit;
+  color: #334155;
+  background: #ffffff;
+  outline: none;
+}
+
+.graph-node-input::placeholder {
+  color: #94a3b8;
+}
+
+.graph-node-input:focus {
+  border-color: #3b82f6;
+}
+
+.graph-node-date-input {
+  flex: 0 0 auto;
+  width: 78px;
+}
+
+.graph-node-confirm {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #16a34a;
+  border-radius: 3px;
+  background: #f0fdf4;
+  color: #16a34a;
+  font-size: 9px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.graph-node-confirm:hover {
+  background: #16a34a;
+  color: #ffffff;
+}
+
 .graph-node-status {
   width: fit-content;
   max-width: 100%;
