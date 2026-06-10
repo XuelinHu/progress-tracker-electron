@@ -182,11 +182,11 @@ function RecordNode({ data }) {
           {todoLines.map((line, idx) => {
             const hist = todoHistByItem.get(line);
             const done = hist?.doneDate != null;
+            if (done) return null;
             return (
-              <label key={idx} className={`graph-node-todo-item ${done ? "done" : ""}`}>
+              <label key={idx} className="graph-node-todo-item">
                 <input
                   type="checkbox"
-                  checked={done}
                   onChange={() => h.toggleTodo?.(line)}
                 />
                 <span>{line}</span>
@@ -204,6 +204,26 @@ function RecordNode({ data }) {
             onChange={(e) => setTodoDraft(e.target.value)}
             onKeyDown={handleTodoKey}
           />
+          {todoLines.some((l) => (todoHistByItem.get(l)?.doneDate != null)) && (
+            <div className="graph-node-todo-done-popover">
+              <div className="graph-node-todo-done-title">已完成</div>
+              {todoLines.map((line, idx) => {
+                const hist = todoHistByItem.get(line);
+                if (hist?.doneDate == null) return null;
+                return (
+                  <label key={idx} className="graph-node-todo-item done">
+                    <input
+                      type="checkbox"
+                      checked={true}
+                      onChange={() => h.toggleTodo?.(line)}
+                    />
+                    <span>{line}</span>
+                    <span className="graph-node-todo-done-date">{hist.doneDate}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* inline date */}
@@ -318,16 +338,16 @@ function GraphField({
           event.target.value = "";
         }
       }
+      const doneItems = lines.filter((l) => histByItem.get(l)?.doneDate != null);
+      const activeItems = lines.filter((l) => !histByItem.get(l)?.doneDate);
       return (
         <div className="todo-cell">
           <div className="todo-list">
-            {lines.map((line, idx) => {
+            {activeItems.map((line, idx) => {
               const trimmed = line.trim();
               if (!trimmed) return null;
-              const hist = histByItem.get(trimmed);
-              const done = hist?.doneDate != null;
               return (
-                <label key={`${idx}-${trimmed.substring(0, 12)}`} className={`todo-item ${done ? "done" : ""}`}>
+                <label key={`a-${idx}-${trimmed.substring(0, 12)}`} className="todo-item">
                   <button
                     className="todo-delete-btn"
                     type="button"
@@ -337,15 +357,36 @@ function GraphField({
                   <input
                     type="checkbox"
                     className="todo-checkbox"
-                    checked={done}
                     onChange={() => onToggleTodo(field.key, trimmed)}
                   />
                   <span className="todo-text">{trimmed}</span>
-                  <span className="todo-date">{done ? (hist?.doneDate || "") : (hist?.addedDate || "")}</span>
+                  <span className="todo-date">{histByItem.get(trimmed)?.addedDate || ""}</span>
                 </label>
               );
             })}
           </div>
+          {doneItems.length > 0 && (
+            <div className="todo-done-popover">
+              <div className="todo-done-title">已完成 ({doneItems.length})</div>
+              {doneItems.map((line, idx) => {
+                const trimmed = line.trim();
+                if (!trimmed) return null;
+                const hist = histByItem.get(trimmed);
+                return (
+                  <label key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
+                    <input
+                      type="checkbox"
+                      className="todo-checkbox"
+                      checked={true}
+                      onChange={() => onToggleTodo(field.key, trimmed)}
+                    />
+                    <span className="todo-text">{trimmed}</span>
+                    <span className="todo-date">{hist?.doneDate || ""}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
           <textarea
             className="graph-form-control graph-textarea todo-new-input"
             rows={1}

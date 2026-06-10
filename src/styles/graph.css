@@ -221,6 +221,7 @@
   border-top: 1px solid #e2e8f0;
   padding-top: 3px;
   margin-top: 2px;
+  position: relative;
 }
 
 .graph-node-todo-item {
@@ -234,6 +235,43 @@
 .graph-node-todo-item.done span {
   color: #16a34a;
   text-decoration: line-through;
+}
+
+.graph-node-todo-done-popover {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 6px);
+  z-index: 50;
+  min-width: 130px;
+  max-width: 170px;
+  max-height: 120px;
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.15);
+  white-space: nowrap;
+}
+
+.graph-node-todo:hover .graph-node-todo-done-popover {
+  display: block;
+}
+
+.graph-node-todo-done-title {
+  font-size: 7px;
+  font-weight: 700;
+  color: #16a34a;
+  margin-bottom: 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.graph-node-todo-done-date {
+  margin-left: auto;
+  font-size: 6px;
+  color: #94a3b8;
 }
 
 .graph-node-todo-item input[type="checkbox"] {

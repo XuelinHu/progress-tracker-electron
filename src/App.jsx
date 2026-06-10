@@ -717,16 +717,16 @@ function App() {
           event.target.value = "";
         }
       }
+      const doneItems = lines.filter((l) => histByItem.get(l)?.doneDate != null);
+      const activeItems = lines.filter((l) => !histByItem.get(l)?.doneDate);
       return (
         <div className="todo-cell">
           <div className="todo-list">
-            {lines.map((line, idx) => {
+            {activeItems.map((line, idx) => {
               const trimmed = line.trim();
               if (!trimmed) return null;
-              const hist = histByItem.get(trimmed);
-              const done = hist?.doneDate != null;
               return (
-                <label key={`${idx}-${trimmed.substring(0, 12)}`} className={`todo-item ${done ? "done" : ""}`}>
+                <label key={`a-${idx}-${trimmed.substring(0, 12)}`} className="todo-item">
                   <button
                     className="todo-delete-btn"
                     type="button"
@@ -736,15 +736,36 @@ function App() {
                   <input
                     type="checkbox"
                     className="todo-checkbox"
-                    checked={done}
                     onChange={() => toggleTodoItem(record.id, trimmed)}
                   />
                   <span className="todo-text">{trimmed}</span>
-                  <span className="todo-date">{done ? (hist?.doneDate || "") : (hist?.addedDate || "")}</span>
+                  <span className="todo-date">{histByItem.get(trimmed)?.addedDate || ""}</span>
                 </label>
               );
             })}
           </div>
+          {doneItems.length > 0 && (
+            <div className="todo-done-popover">
+              <div className="todo-done-title">已完成 ({doneItems.length})</div>
+              {doneItems.map((line, idx) => {
+                const trimmed = line.trim();
+                if (!trimmed) return null;
+                const hist = histByItem.get(trimmed);
+                return (
+                  <label key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
+                    <input
+                      type="checkbox"
+                      className="todo-checkbox"
+                      checked={true}
+                      onChange={() => toggleTodoItem(record.id, trimmed)}
+                    />
+                    <span className="todo-text">{trimmed}</span>
+                    <span className="todo-date">{hist?.doneDate || ""}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
           <textarea
             className="cell-input cell-textarea todo-new-input"
             rows={1}
