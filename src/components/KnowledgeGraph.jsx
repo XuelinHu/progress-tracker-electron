@@ -17,6 +17,7 @@ import "@xyflow/react/dist/style.css";
 import { ExternalLink, GripVertical, Plus, Search, Trash2 } from "lucide-react";
 import DateHistoryField from "./DateHistoryField.jsx";
 import StatusHistoryPopover from "./StatusHistoryPopover.jsx";
+import PortalPopover from "./PortalPopover.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 import { STATUSES, STATUS_BY_ID } from "../data/statuses.js";
 import "../styles/graph.css";
@@ -77,7 +78,7 @@ function getRecordHistoryGroups(record, category) {
   ];
 }
 
-function DateHistorySummary({ groups, compact = false }) {
+function DateHistorySummary({ groups, compact = false, onDeleteEntry }) {
   const hasEntries = groups.some((group) => group.entries.length > 0);
 
   return (
@@ -97,7 +98,17 @@ function DateHistorySummary({ groups, compact = false }) {
                   {[...group.entries].reverse().map((entry) => (
                     <div key={entry.id} className={`graph-history-row history-type-${group.type || "date"}`}>
                       <span>{entry.date || "-"}</span>
-                      <span>{entry.item || "未填写事项"}</span>
+                      <span className="history-item-cell">
+                        <span className="history-item-text">{entry.item || "未填写事项"}</span>
+                        {!compact && onDeleteEntry && (
+                          <button
+                            className="history-delete-btn"
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeleteEntry(group.key, entry.id); }}
+                            title="删除此记录"
+                          >×</button>
+                        )}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -172,11 +183,24 @@ function GraphField({
   onOpenExternal,
   onToggleTodo,
   onDeleteTodo,
+  onDeleteDateHistory,
+  onDeleteStatusHistory,
+  onDeleteTodoHistory,
 }) {
   if (field.type === "status") {
     const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
     return (
-      <div className="status-history-field">
+      <PortalPopover
+        className="status-history-field"
+        popover={
+          <StatusHistoryPopover
+            history={record.history}
+            todoHistory={record.todoHistory ?? []}
+            onDeleteStatus={onDeleteStatusHistory}
+            onDeleteTodo={onDeleteTodoHistory}
+          />
+        }
+      >
         <select
           className="graph-form-control status-select"
           style={{
@@ -193,8 +217,7 @@ function GraphField({
             </option>
           ))}
         </select>
-        <StatusHistoryPopover history={record.history} todoHistory={record.todoHistory ?? []} />
-      </div>
+      </PortalPopover>
     );
   }
 
@@ -276,6 +299,7 @@ function GraphField({
         onHistoryItemChange={(historyId, item) =>
           onHistoryItemChange(field.key, historyId, item)
         }
+        onDeleteHistory={(historyId) => onDeleteDateHistory?.(field.key, historyId)}
       />
     );
   }
@@ -324,6 +348,9 @@ function GraphCanvas({
   addRecordFromGraph,
   toggleTodoItem,
   deleteTodoItem,
+  deleteDateHistoryItem,
+  deleteStatusHistoryItem,
+  deleteTodoHistoryItem,
 }) {
   const { screenToFlowPosition } = useReactFlow();
   const [contextMenu, setContextMenu] = useState(null);
@@ -637,6 +664,9 @@ export default function KnowledgeGraph({
   addRecordFromGraph,
   toggleTodoItem,
   deleteTodoItem,
+  deleteDateHistoryItem,
+  deleteStatusHistoryItem,
+  deleteTodoHistoryItem,
 }) {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceCategory, setSourceCategory] = useState("all");
@@ -836,6 +866,9 @@ export default function KnowledgeGraph({
             addRecordFromGraph={addRecordFromGraph}
             toggleTodoItem={toggleTodoItem}
             deleteTodoItem={deleteTodoItem}
+            deleteDateHistoryItem={deleteDateHistoryItem}
+            deleteStatusHistoryItem={deleteStatusHistoryItem}
+            deleteTodoHistoryItem={deleteTodoHistoryItem}
           />
         </ReactFlowProvider>
         {graphNodes.length === 0 && (
@@ -881,12 +914,26 @@ export default function KnowledgeGraph({
                     onOpenExternal={openExternalUrl}
                     onToggleTodo={(key, item) => toggleTodoItem(selectedRecord.id, item)}
                     onDeleteTodo={(key, item) => deleteTodoItem(selectedRecord.id, item)}
+                    onDeleteDateHistory={(key, historyId) =>
+                      deleteDateHistoryItem(selectedRecord.id, key, historyId)
+                    }
+                    onDeleteStatusHistory={(historyId) =>
+                      deleteStatusHistoryItem(selectedRecord.id, historyId)
+                    }
+                    onDeleteTodoHistory={(historyId) =>
+                      deleteTodoHistoryItem(selectedRecord.id, historyId)
+                    }
                   />
                 </label>
               ))}
             </div>
             <DateHistorySummary
               groups={getRecordHistoryGroups(selectedRecord, selectedCategory)}
+              onDeleteEntry={(groupKey, entryId) => {
+                if (groupKey === "status") deleteStatusHistoryItem(selectedRecord.id, entryId);
+                else if (groupKey === "todo") deleteTodoHistoryItem(selectedRecord.id, entryId);
+                else deleteDateHistoryItem(selectedRecord.id, groupKey, entryId);
+              }}
             />
           </>
         )}

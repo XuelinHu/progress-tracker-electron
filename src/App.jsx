@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import DateHistoryField from "./components/DateHistoryField.jsx";
 import StatusHistoryPopover from "./components/StatusHistoryPopover.jsx";
+import PortalPopover from "./components/PortalPopover.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
@@ -385,6 +386,40 @@ function App() {
     );
   }
 
+  function deleteDateHistoryItem(recordId, fieldKey, historyId) {
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        const dateHistory = record.dateHistory ?? {};
+        return {
+          ...record,
+          dateHistory: {
+            ...dateHistory,
+            [fieldKey]: (dateHistory[fieldKey] ?? []).filter((e) => e.id !== historyId),
+          },
+        };
+      }),
+    );
+  }
+
+  function deleteStatusHistoryItem(recordId, historyId) {
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        return { ...record, history: (record.history ?? []).filter((e) => e.id !== historyId) };
+      }),
+    );
+  }
+
+  function deleteTodoHistoryItem(recordId, historyId) {
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        return { ...record, todoHistory: (record.todoHistory ?? []).filter((e) => e.id !== historyId) };
+      }),
+    );
+  }
+
   function buildRecord(categoryId) {
     const category = CATEGORY_BY_ID[categoryId] ?? CATEGORIES[0];
     const defaultStatus = STATUSES[0]?.id ?? "进行中";
@@ -578,7 +613,17 @@ function App() {
     if (field.type === "status") {
       const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
       return (
-        <div className="status-history-field">
+        <PortalPopover
+          className="status-history-field"
+          popover={
+            <StatusHistoryPopover
+              history={record.history}
+              todoHistory={record.todoHistory}
+              onDeleteStatus={(historyId) => deleteStatusHistoryItem(record.id, historyId)}
+              onDeleteTodo={(historyId) => deleteTodoHistoryItem(record.id, historyId)}
+            />
+          }
+        >
           <select
             className="cell-input status-select"
             style={{
@@ -597,8 +642,7 @@ function App() {
               </option>
             ))}
           </select>
-          <StatusHistoryPopover history={record.history} todoHistory={record.todoHistory} />
-        </div>
+        </PortalPopover>
       );
     }
 
@@ -617,6 +661,9 @@ function App() {
           }
           onHistoryItemChange={(historyId, item) =>
             updateDateHistoryItem(record.id, field.key, historyId, item)
+          }
+          onDeleteHistory={(historyId) =>
+            deleteDateHistoryItem(record.id, field.key, historyId)
           }
         />
       );
@@ -809,6 +856,9 @@ function App() {
             addRecordFromGraph={addRecordFromGraph}
             toggleTodoItem={toggleTodoItem}
             deleteTodoItem={deleteTodoItem}
+            deleteDateHistoryItem={deleteDateHistoryItem}
+            deleteStatusHistoryItem={deleteStatusHistoryItem}
+            deleteTodoHistoryItem={deleteTodoHistoryItem}
           />
         ) : (
         <section className="workspace">

@@ -367,13 +367,13 @@ button {
 }
 
 .data-row {
+  position: relative;
   min-height: 52px;
   border-bottom: 1px solid #edf1f6;
   background: #ffffff;
 }
 
 .data-row:hover {
-  position: relative;
   z-index: 3;
   background: #f8fbff;
 }
@@ -495,27 +495,51 @@ button {
   width: 100%;
 }
 
-.status-history-popover {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  z-index: 25;
-  display: none;
-  width: max(260px, 100%);
-  max-width: 380px;
-  max-height: 220px;
-  overflow: auto;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+.portal-popover .date-history-title {
+  margin-bottom: 5px;
   color: #1e293b;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.portal-popover .date-history-table {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  border-top: 1px solid #e2e8f0;
   font-size: 11px;
 }
 
-.status-history-field:hover .status-history-popover,
-.status-history-field:focus-within .status-history-popover {
-  display: block;
+.portal-popover .date-history-table span {
+  min-width: 0;
+  padding: 5px;
+  overflow-wrap: anywhere;
+}
+
+.portal-popover .date-history-table span + span {
+  border-left: 1px solid #e2e8f0;
+}
+
+.portal-popover .date-history-head {
+  border: 1px solid #dbe1ea;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 700;
+}
+
+.portal-popover .date-history-head + .date-history-table {
+  border-top: 0;
+}
+
+.portal-popover .date-history-empty {
+  padding: 10px 6px;
+  color: #7c8798;
+  font-size: 11px;
+  text-align: center;
+}
+
+.status-history-popover.popover-above {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .date-input,
@@ -531,9 +555,9 @@ button {
 }
 
 .date-history-popover {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
   z-index: 20;
   display: none;
   width: max(260px, 100%);
@@ -549,51 +573,45 @@ button {
   font-size: 11px;
 }
 
-.date-history-field:hover .date-history-popover,
-.date-history-field:focus-within .date-history-popover {
-  display: block;
-}
 
-.date-history-title {
-  margin-bottom: 5px;
-  color: #1e293b;
-  font-size: 11px;
-  font-weight: 750;
-}
-
-.date-history-table {
-  display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
-  border-top: 1px solid #e2e8f0;
-  font-size: 11px;
-}
-
-.date-history-table span {
+.history-item-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   min-width: 0;
-  padding: 5px;
+}
+
+.history-item-text {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.date-history-table span + span {
-  border-left: 1px solid #e2e8f0;
+.history-delete-btn {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0;
 }
 
-.date-history-head {
-  border: 1px solid #dbe1ea;
-  background: #f1f5f9;
-  color: #475569;
-  font-weight: 700;
+.date-history-table:hover .history-delete-btn {
+  opacity: 1;
 }
 
-.date-history-head + .date-history-table {
-  border-top: 0;
-}
-
-.date-history-empty {
-  padding: 10px 6px;
-  color: #7c8798;
-  font-size: 11px;
-  text-align: center;
+.history-delete-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 /* history entry type colors */
