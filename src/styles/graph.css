@@ -239,9 +239,7 @@
 
 .graph-node-todo-done-popover {
   display: none;
-  position: absolute;
-  top: 0;
-  left: calc(100% + 6px);
+  position: fixed;
   z-index: 50;
   min-width: 130px;
   max-width: 170px;
@@ -252,7 +250,6 @@
   border-radius: 4px;
   background: #ffffff;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.15);
-  white-space: nowrap;
 }
 
 .graph-node-todo:hover .graph-node-todo-done-popover {

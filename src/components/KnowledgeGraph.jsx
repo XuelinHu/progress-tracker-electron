@@ -205,7 +205,23 @@ function RecordNode({ data }) {
             onKeyDown={handleTodoKey}
           />
           {todoLines.some((l) => (todoHistByItem.get(l)?.doneDate != null)) && (
-            <div className="graph-node-todo-done-popover">
+            <div
+              className="graph-node-todo-done-popover"
+              ref={(el) => {
+                if (!el) return;
+                const rect = el.parentElement?.getBoundingClientRect();
+                if (!rect) return;
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                let left = rect.right + 6;
+                let top = rect.top;
+                if (left + 170 > vw - 10) left = rect.left - 176;
+                if (top + 120 > vh - 10) top = vh - 130;
+                if (top < 0) top = 4;
+                el.style.top = top + "px";
+                el.style.left = left + "px";
+              }}
+            >
               <div className="graph-node-todo-done-title">已完成</div>
               {todoLines.map((line, idx) => {
                 const hist = todoHistByItem.get(line);
@@ -366,7 +382,25 @@ function GraphField({
             })}
           </div>
           {doneItems.length > 0 && (
-            <div className="todo-done-popover">
+            <div
+              className="todo-done-popover"
+              ref={(el) => {
+                if (!el) return;
+                const rect = el.parentElement?.getBoundingClientRect();
+                if (!rect) return;
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                const pw = 240;
+                const ph = Math.min(180, doneItems.length * 28 + 30);
+                let left = rect.right + 6;
+                let top = rect.top;
+                if (left + pw > vw - 10) left = rect.left - pw - 6;
+                if (top + ph > vh - 10) top = vh - ph - 10;
+                if (top < 0) top = 4;
+                el.style.top = top + "px";
+                el.style.left = left + "px";
+              }}
+            >
               <div className="todo-done-title">已完成 ({doneItems.length})</div>
               {doneItems.map((line, idx) => {
                 const trimmed = line.trim();
