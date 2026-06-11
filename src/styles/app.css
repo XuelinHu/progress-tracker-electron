@@ -89,6 +89,48 @@ button {
   font-size: 12px;
 }
 
+.load-time-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #dcfce7;
+  color: #16a34a;
+  font-size: 10px;
+  font-weight: 600;
+  animation: badge-fade-in 0.4s ease;
+}
+
+@keyframes badge-fade-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.import-toast {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  animation: toast-slide-in 0.3s ease;
+}
+
+.import-toast.success {
+  background: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.import-toast.error {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .category-tabs {
   display: grid;
   grid-template-columns: repeat(5, minmax(92px, 1fr));
@@ -394,7 +436,17 @@ button {
 .row-action-cell {
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 2px;
   padding: 5px 4px;
+}
+
+.row-days-since {
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .row-delete-button,

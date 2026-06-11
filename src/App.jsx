@@ -140,6 +140,28 @@ function estimateTextRows(value) {
   return Math.min(5, Math.max(2, explicitRows, inferredRows));
 }
 
+function daysFromToday(dateStr) {
+  if (!dateStr) return 0;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  return Math.floor((today - d) / 86400000);
+}
+
+function DaysSince({ dateField, record }) {
+  const key = dateField?.key;
+  if (!key) return null;
+  const val = record?.[key];
+  const days = daysFromToday(val);
+  return (
+    <span className="row-days-since" title={val ? `阶段日期: ${val}` : "无阶段日期"}>
+      {days > 0 ? `${days}d` : "0d"}
+    </span>
+  );
+}
+
 function App() {
   const [records, setRecords] = useState(loadRecords);
   const [activeCategoryId, setActiveCategoryId] = useState(CATEGORIES[0].id);
@@ -151,6 +173,8 @@ function App() {
   const [graphNodes, setGraphNodes] = useState(initialGraph.nodes);
   const [graphEdges, setGraphEdges] = useState(initialGraph.edges);
   const fileInputRef = useRef(null);
+  const [pageLoadTime, setPageLoadTime] = useState(null);
+  const [importStatus, setImportStatus] = useState(null);
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const activeCategory = CATEGORY_BY_ID[activeCategoryId] ?? CATEGORIES[0];
@@ -258,6 +282,10 @@ function App() {
     return () => window.removeEventListener("keydown", handleKeydown);
   }, []);
 
+  useEffect(() => {
+    setPageLoadTime(Date.now());
+  }, []);
+
   function updateRecord(recordId, patch) {
     setRecords((current) =>
       current.map((record) => {
@@ -280,7 +308,7 @@ function App() {
               date: today(),
               status: patch.status,
               owner: "",
-              summary: `状态由“${previousStatus}”变更为“${nextStatus}”`,
+              summary: `状态由"${previousStatus}"变更为"${nextStatus}"`,
             },
           ];
         }
@@ -553,25 +581,70 @@ function App() {
   }
 
   function exportJson() {
+    const exportData = {
+      version: 3,
+      exportedAt: new Date().toISOString(),
+      records,
+      graph: {
+        nodes: graphNodes,
+        edges: graphEdges,
+      },
+    };
     downloadBlob(
       "项目进度台账-全部数据.json",
-      JSON.stringify(
-        {
-          version: 3,
-          records,
-          graph: {
-            nodes: graphNodes,
-            edges: graphEdges,
-          },
-        },
-        null,
-        2,
-      ),
+      JSON.stringify(exportData, null, 2),
       "application/json;charset=utf-8",
     );
   }
 
-  function exportCsv() {
+  const ALL_CSV_FIELDS = [
+    { key: "categoryName", label: "类别" },
+    { key: "status", label: "状态" },
+    { key: "title", label: "项目名称" },
+    { key: "description", label: "中文解释" },
+    { key: "stageDate", label: "阶段日期" },
+    { key: "registrationDate", label: "报名日期" },
+    { key: "endDate", label: "结束日期" },
+    { key: "windowsPath", label: "Windows路径" },
+    { key: "linuxPath", label: "Linux路径" },
+    { key: "serverPath", label: "服务器路径" },
+    { key: "githubUrl", label: "GitHub地址" },
+    { key: "platformUrl", label: "平台网址" },
+    { key: "officialUrl", label: "官网" },
+    { key: "todo", label: "Todo" },
+  ];
+
+  function resolveStatusLabel(statusId) {
+    return STATUS_BY_ID[statusId]?.label ?? statusId ?? "";
+  }
+
+  function exportAllCsv() {
+    const categoryGroups = CATEGORIES.map((cat) => ({
+      category: cat,
+      records: records.filter((r) => r.categoryId === cat.id),
+    }));
+
+    const headerRow = [...ALL_CSV_FIELDS.map((f) => f.label), "历史记录数", "Todo完成数"];
+    const dataRows = categoryGroups.flatMap(({ category, records: catRecords }) =>
+      catRecords.map((record) => [
+        ...ALL_CSV_FIELDS.map((field) => {
+          if (field.key === "categoryName") return category.name;
+          if (field.key === "status") return resolveStatusLabel(record[field.key]);
+          return record[field.key] ?? "";
+        }),
+        record.history?.length ?? 0,
+        (record.todoHistory ?? []).filter((t) => t.doneDate).length,
+      ]),
+    );
+
+    const csv = [headerRow, ...dataRows]
+      .map((row) => row.map(csvCell).join(","))
+      .join("\n");
+
+    downloadBlob("项目进度台账-全部类别.csv", "﻿" + csv, "text/csv;charset=utf-8");
+  }
+
+  function exportCategoryCsv() {
     const rows = [
       [...activeCategory.fields.map((field) => field.label), "历史记录数"],
       ...categoryRecords.map((record) => [
@@ -580,7 +653,7 @@ function App() {
       ]),
     ];
     const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
-    downloadBlob(`${activeCategory.name}进度台账.csv`, `\ufeff${csv}`, "text/csv;charset=utf-8");
+    downloadBlob(`${activeCategory.name}进度台账.csv`, "﻿" + csv, "text/csv;charset=utf-8");
   }
 
   function importJson(event) {
@@ -594,14 +667,36 @@ function App() {
       try {
         const parsed = JSON.parse(String(reader.result));
         const nextRecords = Array.isArray(parsed) ? parsed : parsed.records;
+        let recordCount = 0;
+        let graphNodeCount = 0;
+        let graphEdgeCount = 0;
+
         if (Array.isArray(nextRecords)) {
-          setRecords(nextRecords.map(normalizeRecord));
+          const normalized = nextRecords.map(normalizeRecord);
+          setRecords(normalized);
+          recordCount = normalized.length;
           setSelectedId(null);
         }
         if (!Array.isArray(parsed) && parsed.graph) {
-          setGraphNodes(Array.isArray(parsed.graph.nodes) ? parsed.graph.nodes : []);
-          setGraphEdges(Array.isArray(parsed.graph.edges) ? parsed.graph.edges : []);
+          const nodes = Array.isArray(parsed.graph.nodes) ? parsed.graph.nodes : [];
+          const edges = Array.isArray(parsed.graph.edges) ? parsed.graph.edges : [];
+          setGraphNodes(nodes);
+          setGraphEdges(edges);
+          graphNodeCount = nodes.length;
+          graphEdgeCount = edges.length;
         }
+
+        setImportStatus({
+          success: true,
+          message: `导入成功：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
+        });
+        setTimeout(() => setImportStatus(null), 4000);
+      } catch (err) {
+        setImportStatus({
+          success: false,
+          message: `导入失败：${err.message || "文件格式错误"}`,
+        });
+        setTimeout(() => setImportStatus(null), 5000);
       } finally {
         event.target.value = "";
       }
@@ -824,6 +919,11 @@ function App() {
             <div className="shortcut-hint">
               <Keyboard size={15} />
               <span>按 1 / 2 / 3 / 4 / 5 切换类别</span>
+              {pageLoadTime && (
+                <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
+                  已刷新
+                </span>
+              )}
             </div>
           </div>
 
@@ -832,10 +932,19 @@ function App() {
               className="icon-button"
               type="button"
               onClick={exportJson}
-              title="一键导出五个栏目的全部数据"
+              title="一键导出五个栏目的全部数据（含历史记录和知识图谱）"
             >
               <Download size={17} />
-              <span>导出全部 JSON</span>
+              <span>一键导出 JSON</span>
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              onClick={exportAllCsv}
+              title="一键导出四个栏目的全部记录为 CSV"
+            >
+              <FileDown size={17} />
+              <span>导出全部 CSV</span>
             </button>
             <button
               className="icon-button"
@@ -844,7 +953,7 @@ function App() {
               title="一键导入五个栏目的全部数据"
             >
               <Upload size={17} />
-              <span>导入全部 JSON</span>
+              <span>导入 JSON</span>
             </button>
             <input
               ref={fileInputRef}
@@ -855,6 +964,12 @@ function App() {
             />
           </div>
         </div>
+
+        {importStatus && (
+          <div className={`import-toast ${importStatus.success ? "success" : "error"}`}>
+            {importStatus.message}
+          </div>
+        )}
 
         <nav className="category-tabs" aria-label="类别切换">
           {NAVIGATION_ITEMS.map((category) => (
@@ -932,7 +1047,7 @@ function App() {
               <span>新增</span>
             </button>
 
-            <button className="icon-button" type="button" onClick={exportCsv} title="导出当前类别 CSV">
+            <button className="icon-button" type="button" onClick={exportCategoryCsv} title="导出当前类别 CSV">
               <FileDown size={18} />
               <span>CSV</span>
             </button>
@@ -1010,6 +1125,7 @@ function App() {
                     >
                       <Trash2 size={12} />
                     </button>
+                    <DaysSince dateField={activeCategory.fields.find((f) => f.type === "date")} record={record} />
                   </div>
                   {activeCategory.fields.map((field) => (
                     <div key={field.key} className="table-cell">
