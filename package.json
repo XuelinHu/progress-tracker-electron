@@ -6,10 +6,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5180",
-    "start": "concurrently -k \"vite --host 0.0.0.0 --port 5180\" \"wait-on tcp:5180 && electron --no-sandbox .\"",
+    "dev": "vite --host 0.0.0.0 --port 4003",
+    "start": "concurrently -k \"vite --host 0.0.0.0 --port 4003\" \"wait-on tcp:4003 && electron --no-sandbox .\"",
     "check": "vite build",
     "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4003",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "android:sync": "vite build && npx cap sync android",

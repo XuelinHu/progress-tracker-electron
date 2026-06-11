@@ -164,16 +164,24 @@ function RecordNode({ data }) {
           >
             {data.categoryName}
           </span>
-          <small
-            className="graph-node-status"
+          <select
+            className="graph-node-status-select nodrag nopan"
             style={{
               color: data.statusColor,
               background: data.statusBg,
               borderColor: data.statusBorder,
             }}
+            value={data.status}
+            onPointerDown={(event) => event.stopPropagation()}
+            onChange={(event) => h.updateStatus?.(event.target.value)}
+            aria-label={`${data.title} 状态`}
           >
-            {data.status}
-          </small>
+            {STATUSES.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.label}
+              </option>
+            ))}
+          </select>
         </div>
         <strong>{data.title}</strong>
 
@@ -558,6 +566,11 @@ function GraphCanvas({
               addDate: (date, item) => {
                 if (dateKey && record) updateRecordDate?.(record.id, dateKey, date, item);
               },
+              updateStatus: (nextStatus) => {
+                if (record && nextStatus !== record.status) {
+                  updateRecord?.(record.id, { status: nextStatus });
+                }
+              },
             },
           },
           style: {
@@ -914,6 +927,12 @@ export default function KnowledgeGraph({
     setSelectedElement({ type: "node", id: node.id });
   }
 
+  function cycleRecordStatus(record) {
+    const currentIndex = STATUSES.findIndex((status) => status.id === record.status);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % STATUSES.length : 0;
+    updateRecord(record.id, { status: STATUSES[nextIndex].id });
+  }
+
   function deleteSelectedNode() {
     if (!selectedNode) {
       return;
@@ -1000,6 +1019,7 @@ export default function KnowledgeGraph({
         <div className="graph-source-list">
           {visibleSourceRecords.map((record) => {
             const category = CATEGORY_BY_ID[record.categoryId] ?? CATEGORIES[0];
+            const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
             const inGraph = graphRecordIds.has(record.id);
             return (
               <article
@@ -1016,7 +1036,26 @@ export default function KnowledgeGraph({
                 <div>
                   <span>{category.name}</span>
                   <strong>{recordTitle(record)}</strong>
-                  <small>{record.status || "未设置状态"}</small>
+                  <button
+                    className="graph-source-status-button"
+                    type="button"
+                    style={{
+                      color: status.color,
+                      background: status.bg,
+                      borderColor: status.border,
+                    }}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onDragStart={(event) => event.preventDefault()}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      cycleRecordStatus(record);
+                    }}
+                    title={`当前状态：${status.label}，点击切换`}
+                    aria-label={`${recordTitle(record)} 当前状态 ${status.label}，点击切换`}
+                  >
+                    {status.label}
+                  </button>
                 </div>
                 <button
                   type="button"

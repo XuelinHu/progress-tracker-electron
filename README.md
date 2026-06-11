@@ -30,7 +30,7 @@ npm install
 启动浏览器预览：
 
 ```bash
-npm run dev -- --port 5180
+npm run dev
 ```
 
 启动桌面应用：
@@ -43,7 +43,7 @@ npm start
 
 ```bash
 ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm install
-npm run dev -- --port 5180
+npm run dev
 ```
 
 语法和生产构建检查：
