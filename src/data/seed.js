@@ -9,7 +9,7 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/ai-based-intelligent-qa-system-for-railway",
     "githubUrl": "git@github.com:XuelinHu/ai-based-intelligent-qa-system-for-railway.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -22,7 +22,7 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/ai/DS-OCR2-3090-Runner",
     "githubUrl": "git@github.com:XuelinHu/DS-OCR2-3090-Runner.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -35,7 +35,7 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/chinese-vietnamese-railway-term-learning",
     "githubUrl": "git@github.com:XuelinHu/chinese-vietnamese-railway-term-learning.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -48,7 +48,7 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/school-chinese-exam-practice",
     "githubUrl": "git@github.com:XuelinHu/school-chinese-exam-practice.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -61,7 +61,7 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/southeast-asian-student-service-platform",
     "githubUrl": "git@github.com:XuelinHu/southeast-asian-student-service-platform.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -100,7 +100,7 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/front/railway-signal-runner",
     "githubUrl": "git@github.com:XuelinHu/railway-signal-runner.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -113,7 +113,7 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/ai/railway-power-operation-video-ai-evaluator",
     "githubUrl": "git@github.com:XuelinHu/railway-power-operation-video-ai-evaluator.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -126,7 +126,7 @@ export const seedRecords = [
     "serverPath": "/ds1/workspace/ai/OralSEAChinese",
     "githubUrl": "git@github.com:XuelinHu/OralSEAChinese.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -140,7 +140,7 @@ export const seedRecords = [
     "serverPath": "",
     "githubUrl": "",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -154,7 +154,7 @@ export const seedRecords = [
     "serverPath": "",
     "githubUrl": "",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -168,7 +168,7 @@ export const seedRecords = [
     "serverPath": "",
     "githubUrl": "",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -220,7 +220,7 @@ export const seedRecords = [
     "linuxPath": "/ds1/workspace/ai/QDCR-Net",
     "githubUrl": "git@github.com:XuelinHu/QDCR-Net.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -233,7 +233,7 @@ export const seedRecords = [
     "linuxPath": "/ds1/workspace/ai/multilingual-railway-llm-edu",
     "githubUrl": "git@github.com:XuelinHu/multilingual-railway-llm-edu.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -246,7 +246,7 @@ export const seedRecords = [
     "linuxPath": "/ds1/workspace/ai/railway-qa-agent",
     "githubUrl": "git@github.com:XuelinHu/railway-qa-agent.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -272,7 +272,7 @@ export const seedRecords = [
     "linuxPath": "/ds1/workspace/ai/resource-constrained-railway-image-captioning",
     "githubUrl": "git@github.com:XuelinHu/resource-constrained-railway-image-captioning.git",
     "history": [],
-    "stageDate": "",
+    "stageDate": "2026-06-01",
     "todo": ""
   },
   {
@@ -295,7 +295,7 @@ export const seedRecords = [
     "platformUrl": "https://new.saikr.com/vse/DFIC2026Robot",
     "officialUrl": "",
     "history": [],
-    "registrationDate": "",
+    "registrationDate": "2026-06-01",
     "endDate": "2026-06-27",
     "todo": ""
   },
@@ -319,7 +319,7 @@ export const seedRecords = [
     "platformUrl": "https://cpipc.acge.org.cn/cw/hp/2c9088a5696cbf370169a3f8101510bd",
     "officialUrl": "",
     "history": [],
-    "registrationDate": "",
+    "registrationDate": "2026-06-01",
     "endDate": "2026-09-01",
     "todo": ""
   }

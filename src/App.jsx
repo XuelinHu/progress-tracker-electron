@@ -23,6 +23,7 @@ import { STATUSES, STATUS_BY_ID } from "./data/statuses.js";
 
 const STORAGE_KEY = "progress-tracker-records-v7";
 const GRAPH_STORAGE_KEY = "progress-tracker-graph-v2";
+const DEFAULT_MISSING_STAGE_DATE = "2026-06-01";
 const STATUS_ORDER = new Map(STATUSES.map((status, index) => [status.id, index]));
 const GRAPH_CATEGORY = {
   id: "graph",
@@ -45,8 +46,13 @@ function createId(prefix = "item") {
 
 function normalizeRecord(record) {
   const rawTodo = Array.isArray(record.todoHistory) ? record.todoHistory : [];
+  const normalizedDate =
+    record.categoryId === "contest"
+      ? { registrationDate: record.registrationDate || DEFAULT_MISSING_STAGE_DATE }
+      : { stageDate: record.stageDate || DEFAULT_MISSING_STAGE_DATE };
   return {
     ...record,
+    ...normalizedDate,
     history: Array.isArray(record.history) ? record.history : [],
     dateHistory:
       record.dateHistory && typeof record.dateHistory === "object"
