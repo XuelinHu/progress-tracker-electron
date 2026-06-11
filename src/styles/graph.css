@@ -399,17 +399,21 @@
 }
 
 .graph-node-status-select {
-  width: 86px;
+  width: 76px;
   max-width: 100%;
-  height: 21px;
+  height: 18px;
   padding: 0 14px 0 3px;
   border: 1px solid;
   border-radius: 3px;
   outline: none;
-  font-size: 9px;
+  font-size: 7px;
   font-weight: 700;
-  line-height: 19px;
+  line-height: 16px;
   cursor: pointer;
+}
+
+.graph-node-status-select option {
+  font-size: 13px;
 }
 
 .graph-node-status-select:focus {
