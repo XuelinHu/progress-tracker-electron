@@ -276,6 +276,19 @@ export const seedRecords = [
     "todo": ""
   },
   {
+    "id": "paper-9",
+    "categoryId": "paper",
+    "status": "进行中",
+    "title": "railway-multi-target-recognition",
+    "description": "铁路多目标识别软件",
+    "windowsPath": "",
+    "linuxPath": "/ds1/workspace/ai/railway-multi-target-recognition",
+    "githubUrl": "",
+    "history": [],
+    "stageDate": "2026-06-01",
+    "todo": ""
+  },
+  {
     "id": "contest-1",
     "categoryId": "contest",
     "status": "进行中",

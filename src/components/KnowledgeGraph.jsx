@@ -20,7 +20,7 @@ import StatusHistoryPopover from "./StatusHistoryPopover.jsx";
 import PortalPopover from "./PortalPopover.jsx";
 import CopyIconButton from "./CopyIconButton.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
-import { STATUSES, STATUS_BY_ID } from "../data/statuses.js";
+import { STATUSES, STATUS_BY_ID, STATUS_PRIORITY } from "../data/statuses.js";
 import "../styles/graph.css";
 
 const DRAG_TYPE = "application/progress-record";
@@ -890,21 +890,30 @@ export default function KnowledgeGraph({
 
   const visibleSourceRecords = useMemo(() => {
     const keyword = sourceSearch.trim().toLowerCase();
-    return records.filter((record) => {
-      const matchesCategory =
-        sourceCategory === "all" || record.categoryId === sourceCategory;
-      if (!matchesCategory) {
-        return false;
-      }
-      if (!keyword) {
-        return true;
-      }
+    return records
+      .filter((record) => {
+        const matchesCategory =
+          sourceCategory === "all" || record.categoryId === sourceCategory;
+        if (!matchesCategory) {
+          return false;
+        }
+        if (!keyword) {
+          return true;
+        }
 
-      return [record.id, record.title, record.description, record.todo, record.status]
-        .join(" ")
-        .toLowerCase()
-        .includes(keyword);
-    });
+        return [record.id, record.title, record.description, record.todo, record.status]
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword);
+      })
+      .sort((left, right) => {
+        const leftPriority = STATUS_PRIORITY.get(left.status) ?? Number.MAX_SAFE_INTEGER;
+        const rightPriority = STATUS_PRIORITY.get(right.status) ?? Number.MAX_SAFE_INTEGER;
+        return (
+          leftPriority - rightPriority ||
+          String(left.title ?? "").localeCompare(String(right.title ?? ""), "zh-Hans-CN")
+        );
+      });
   }, [records, sourceCategory, sourceSearch]);
 
   const selectedNode =

@@ -19,12 +19,11 @@ import CopyIconButton from "./components/CopyIconButton.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
-import { STATUSES, STATUS_BY_ID } from "./data/statuses.js";
+import { STATUSES, STATUS_BY_ID, STATUS_PRIORITY } from "./data/statuses.js";
 
 const STORAGE_KEY = "progress-tracker-records-v7";
 const GRAPH_STORAGE_KEY = "progress-tracker-graph-v2";
 const DEFAULT_MISSING_STAGE_DATE = "2026-06-01";
-const STATUS_ORDER = new Map(STATUSES.map((status, index) => [status.id, index]));
 const GRAPH_CATEGORY = {
   id: "graph",
   name: "知识图谱",
@@ -67,6 +66,14 @@ function normalizeRecord(record) {
   };
 }
 
+function mergeMissingSeedRecords(records) {
+  const existingIds = new Set(records.map((record) => record.id));
+  const missingRecords = seedRecords
+    .filter((record) => !existingIds.has(record.id))
+    .map(normalizeRecord);
+  return [...records, ...missingRecords];
+}
+
 function loadRecords() {
   try {
     const cached = localStorage.getItem(STORAGE_KEY);
@@ -76,13 +83,13 @@ function loadRecords() {
 
     const parsed = JSON.parse(cached);
     if (Array.isArray(parsed)) {
-      return parsed.map(normalizeRecord);
+      return mergeMissingSeedRecords(parsed.map(normalizeRecord));
     }
   } catch {
     localStorage.removeItem(STORAGE_KEY);
   }
 
-  return seedRecords.map(normalizeRecord);
+  return mergeMissingSeedRecords(seedRecords.map(normalizeRecord));
 }
 
 function loadGraph() {
@@ -175,7 +182,7 @@ function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [statusSortDirection, setStatusSortDirection] = useState("none");
+  const [statusSortDirection, setStatusSortDirection] = useState("asc");
   const [initialGraph] = useState(loadGraph);
   const [graphNodes, setGraphNodes] = useState(initialGraph.nodes);
   const [graphEdges, setGraphEdges] = useState(initialGraph.edges);
@@ -222,8 +229,8 @@ function App() {
     }
 
     return [...filteredRecords].sort((left, right) => {
-      const leftOrder = STATUS_ORDER.get(left.status) ?? STATUSES.length;
-      const rightOrder = STATUS_ORDER.get(right.status) ?? STATUSES.length;
+      const leftOrder = STATUS_PRIORITY.get(left.status) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = STATUS_PRIORITY.get(right.status) ?? Number.MAX_SAFE_INTEGER;
       const orderDiff =
         leftOrder - rightOrder ||
         String(left.status ?? "").localeCompare(String(right.status ?? ""), "zh-Hans-CN") ||
@@ -281,7 +288,7 @@ function App() {
       if (category) {
         setActiveCategoryId(category.id);
         setStatusFilter("all");
-        setStatusSortDirection("none");
+        setStatusSortDirection("asc");
       }
     }
 
@@ -584,7 +591,7 @@ function App() {
     setSelectedId(null);
     setSearchTerm("");
     setStatusFilter("all");
-    setStatusSortDirection("none");
+    setStatusSortDirection("asc");
   }
 
   function exportJson() {
@@ -1007,7 +1014,7 @@ function App() {
               onClick={() => {
                 setActiveCategoryId(category.id);
                 setStatusFilter("all");
-                setStatusSortDirection("none");
+                setStatusSortDirection("asc");
               }}
             >
               <span className="shortcut-key">{category.shortcut}</span>
