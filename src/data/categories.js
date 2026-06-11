@@ -26,19 +26,19 @@ const stageDateField = {
 const windowsPathField = {
   key: "windowsPath",
   label: "Windows路径",
-  type: "text",
+  type: "path",
   width: "minmax(280px, 1fr)",
 };
 const linuxPathField = {
   key: "linuxPath",
   label: "Linux路径",
-  type: "text",
+  type: "path",
   width: "minmax(260px, 1fr)",
 };
 const serverPathField = {
   key: "serverPath",
   label: "服务器绝对路径",
-  type: "text",
+  type: "path",
   width: "minmax(280px, 1fr)",
 };
 const githubUrlField = {

@@ -15,6 +15,7 @@ import {
 import DateHistoryField from "./components/DateHistoryField.jsx";
 import StatusHistoryPopover from "./components/StatusHistoryPopover.jsx";
 import PortalPopover from "./components/PortalPopover.jsx";
+import CopyIconButton from "./components/CopyIconButton.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
@@ -789,6 +790,22 @@ function App() {
           >
             <ExternalLink size={13} />
           </button>
+        </div>
+      );
+    }
+
+    if (field.type === "path") {
+      return (
+        <div className="path-cell">
+          <textarea
+            className="cell-input cell-textarea"
+            rows={estimateTextRows(record[field.key])}
+            value={record[field.key] ?? ""}
+            onFocus={() => setSelectedId(record.id)}
+            onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
+            aria-label={`${getRecordTitle(record)} ${field.label}`}
+          />
+          <CopyIconButton value={record[field.key]} label={field.label} />
         </div>
       );
     }

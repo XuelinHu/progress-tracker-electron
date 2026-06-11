@@ -18,6 +18,7 @@ import { ExternalLink, GripVertical, Plus, Search, Trash2 } from "lucide-react";
 import DateHistoryField from "./DateHistoryField.jsx";
 import StatusHistoryPopover from "./StatusHistoryPopover.jsx";
 import PortalPopover from "./PortalPopover.jsx";
+import CopyIconButton from "./CopyIconButton.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 import { STATUSES, STATUS_BY_ID } from "../data/statuses.js";
 import "../styles/graph.css";
@@ -484,6 +485,24 @@ function GraphField({
         >
           <ExternalLink size={15} />
         </button>
+      </div>
+    );
+  }
+
+  if (field.type === "path") {
+    return (
+      <div className="graph-path-field">
+        <input
+          className="graph-form-control"
+          type="text"
+          value={record[field.key] ?? ""}
+          onChange={(event) => onChange(field.key, event.target.value)}
+        />
+        <CopyIconButton
+          value={record[field.key]}
+          label={field.label}
+          className="graph-copy-icon-button"
+        />
       </div>
     );
   }
