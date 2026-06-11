@@ -10,7 +10,7 @@ export const STATUSES = [
   {
     id: "开发完成",
     label: "开发完成",
-    priority: 2,
+    priority: 4,
     color: "#137333",
     bg: "#dcfce7",
     border: "#86efac",
@@ -18,7 +18,7 @@ export const STATUSES = [
   {
     id: "已提交系统",
     label: "已提交系统",
-    priority: 4,
+    priority: 2,
     color: "#4f46e5",
     bg: "#e0e7ff",
     border: "#a5b4fc",
