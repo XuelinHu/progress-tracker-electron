@@ -8,9 +8,11 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Save,
   Share2,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import DateHistoryField from "./components/DateHistoryField.jsx";
 import StatusHistoryPopover from "./components/StatusHistoryPopover.jsx";
@@ -19,10 +21,11 @@ import CopyIconButton from "./components/CopyIconButton.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
-import { STATUSES, STATUS_BY_ID, STATUS_PRIORITY } from "./data/statuses.js";
+import { STATUSES } from "./data/statuses.js";
 
 const STORAGE_KEY = "progress-tracker-records-v7";
 const GRAPH_STORAGE_KEY = "progress-tracker-graph-v2";
+const STATUS_CONFIG_STORAGE_KEY = "progress-tracker-status-config-v1";
 const DEFAULT_MISSING_STAGE_DATE = "2026-06-01";
 const GRAPH_CATEGORY = {
   id: "graph",
@@ -31,7 +34,14 @@ const GRAPH_CATEGORY = {
   accent: "#0891b2",
   tint: "#cffafe",
 };
-const NAVIGATION_ITEMS = [...CATEGORIES, GRAPH_CATEGORY];
+const STATUS_CONFIG_PAGE = {
+  id: "status-config",
+  name: "优先级配置",
+  shortcut: "6",
+  accent: "#2563eb",
+  tint: "#dbeafe",
+};
+const NAVIGATION_ITEMS = [...CATEGORIES, GRAPH_CATEGORY, STATUS_CONFIG_PAGE];
 
 function today(offsetDays = 0) {
   const date = new Date();
@@ -107,6 +117,52 @@ function loadGraph() {
   } catch {
     localStorage.removeItem(GRAPH_STORAGE_KEY);
     return { nodes: [], edges: [] };
+  }
+}
+
+function normalizeStatusConfig(items) {
+  const source = Array.isArray(items) && items.length > 0 ? items : STATUSES;
+  const seenIds = new Set();
+  const normalized = source
+    .map((item, index) => {
+      const label = String(item?.label ?? item?.id ?? "").trim();
+      if (!label) {
+        return null;
+      }
+
+      let id = String(item?.id ?? label).trim() || label;
+      if (seenIds.has(id)) {
+        id = `${id}-${index + 1}`;
+      }
+      seenIds.add(id);
+
+      return {
+        id,
+        label,
+        priority: Number.isFinite(Number(item?.priority))
+          ? Number(item.priority)
+          : (index + 1) * 10,
+        color: item?.color || "#273449",
+        bg: item?.bg || "#eef2ff",
+        border: item?.border || "#c7d2fe",
+      };
+    })
+    .filter(Boolean);
+
+  return normalized.length > 0 ? normalized : STATUSES;
+}
+
+function loadStatusConfig() {
+  try {
+    const cached = localStorage.getItem(STATUS_CONFIG_STORAGE_KEY);
+    if (!cached) {
+      return normalizeStatusConfig(STATUSES);
+    }
+
+    return normalizeStatusConfig(JSON.parse(cached));
+  } catch {
+    localStorage.removeItem(STATUS_CONFIG_STORAGE_KEY);
+    return normalizeStatusConfig(STATUSES);
   }
 }
 
@@ -189,11 +245,27 @@ function App() {
   const fileInputRef = useRef(null);
   const [pageLoadTime, setPageLoadTime] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
+  const [statusOptions, setStatusOptions] = useState(loadStatusConfig);
+  const [statusDraft, setStatusDraft] = useState(() => loadStatusConfig());
+  const [statusConfigMessage, setStatusConfigMessage] = useState("");
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
+  const isStatusConfigView = activeCategoryId === STATUS_CONFIG_PAGE.id;
   const activeCategory = CATEGORY_BY_ID[activeCategoryId] ?? CATEGORIES[0];
-  const activeNavigationItem = isGraphView ? GRAPH_CATEGORY : activeCategory;
+  const activeNavigationItem = isGraphView
+    ? GRAPH_CATEGORY
+    : isStatusConfigView
+      ? STATUS_CONFIG_PAGE
+      : activeCategory;
   const tableTemplate = ["34px", ...activeCategory.fields.map((field) => field.width)].join(" ");
+  const statusById = useMemo(
+    () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
+    [statusOptions],
+  );
+  const statusPriority = useMemo(
+    () => new Map(statusOptions.map((status) => [status.id, status.priority])),
+    [statusOptions],
+  );
 
   const categoryRecords = useMemo(
     () => records.filter((record) => record.categoryId === activeCategoryId),
@@ -229,8 +301,8 @@ function App() {
     }
 
     return [...filteredRecords].sort((left, right) => {
-      const leftOrder = STATUS_PRIORITY.get(left.status) ?? Number.MAX_SAFE_INTEGER;
-      const rightOrder = STATUS_PRIORITY.get(right.status) ?? Number.MAX_SAFE_INTEGER;
+      const leftOrder = statusPriority.get(left.status) ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = statusPriority.get(right.status) ?? Number.MAX_SAFE_INTEGER;
       const orderDiff =
         leftOrder - rightOrder ||
         String(left.status ?? "").localeCompare(String(right.status ?? ""), "zh-Hans-CN") ||
@@ -238,18 +310,35 @@ function App() {
 
       return statusSortDirection === "asc" ? orderDiff : -orderDiff;
     });
-  }, [activeCategory.fields, categoryRecords, searchTerm, statusFilter, statusSortDirection]);
+  }, [
+    activeCategory.fields,
+    categoryRecords,
+    searchTerm,
+    statusFilter,
+    statusSortDirection,
+    statusPriority,
+  ]);
 
   const categoryStats = useMemo(() => {
-    return STATUSES.map((status) => ({
+    return statusOptions.map((status) => ({
       ...status,
       count: categoryRecords.filter((record) => record.status === status.id).length,
     }));
-  }, [categoryRecords]);
+  }, [categoryRecords, statusOptions]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
   }, [records]);
+
+  useEffect(() => {
+    localStorage.setItem(STATUS_CONFIG_STORAGE_KEY, JSON.stringify(statusOptions));
+  }, [statusOptions]);
+
+  useEffect(() => {
+    if (statusFilter !== "all" && !statusOptions.some((status) => status.id === statusFilter)) {
+      setStatusFilter("all");
+    }
+  }, [statusFilter, statusOptions]);
 
   useEffect(() => {
     localStorage.setItem(
@@ -313,8 +402,8 @@ function App() {
         };
         if (patch.status && patch.status !== record.status) {
           const previousStatus =
-            STATUS_BY_ID[record.status]?.label || record.status || "未设置";
-          const nextStatus = STATUS_BY_ID[patch.status]?.label || patch.status;
+            statusById[record.status]?.label || record.status || "未设置";
+          const nextStatus = statusById[patch.status]?.label || patch.status;
           nextRecord.history = [
             ...(record.history ?? []),
             {
@@ -464,7 +553,7 @@ function App() {
 
   function buildRecord(categoryId) {
     const category = CATEGORY_BY_ID[categoryId] ?? CATEGORIES[0];
-    const defaultStatus = STATUSES[0]?.id ?? "进行中";
+    const defaultStatus = statusOptions[0]?.id ?? "进行中";
     return category.fields.reduce(
       (draft, field) => {
         if (field.key === "status") {
@@ -596,8 +685,9 @@ function App() {
 
   function exportJson() {
     const exportData = {
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
+      statusOptions,
       records,
       graph: {
         nodes: graphNodes,
@@ -629,7 +719,7 @@ function App() {
   ];
 
   function resolveStatusLabel(statusId) {
-    return STATUS_BY_ID[statusId]?.label ?? statusId ?? "";
+    return statusById[statusId]?.label ?? statusId ?? "";
   }
 
   function exportAllCsv() {
@@ -699,6 +789,11 @@ function App() {
           graphNodeCount = nodes.length;
           graphEdgeCount = edges.length;
         }
+        if (!Array.isArray(parsed) && Array.isArray(parsed.statusOptions)) {
+          const importedStatuses = normalizeStatusConfig(parsed.statusOptions);
+          setStatusOptions(importedStatuses);
+          setStatusDraft(importedStatuses);
+        }
 
         setImportStatus({
           success: true,
@@ -718,9 +813,169 @@ function App() {
     reader.readAsText(file);
   }
 
+  function updateStatusDraft(statusId, patch) {
+    setStatusDraft((current) =>
+      current.map((status) => (status.id === statusId ? { ...status, ...patch } : status)),
+    );
+  }
+
+  function addStatusDraft() {
+    const nextPriority =
+      Math.max(0, ...statusDraft.map((status) => Number(status.priority) || 0)) + 10;
+    setStatusDraft((current) => [
+      ...current,
+      {
+        id: createId("status"),
+        label: "新状态",
+        priority: nextPriority,
+        color: "#2563eb",
+        bg: "#dbeafe",
+        border: "#93c5fd",
+      },
+    ]);
+    setStatusConfigMessage("");
+  }
+
+  function removeStatusDraft(statusId) {
+    setStatusDraft((current) => {
+      if (current.length <= 1) {
+        return current;
+      }
+      return current.filter((status) => status.id !== statusId);
+    });
+    setStatusConfigMessage("");
+  }
+
+  function resetStatusDraft() {
+    setStatusDraft(normalizeStatusConfig(STATUSES));
+    setStatusConfigMessage("已恢复默认草稿，点击生效后更新下拉选项");
+  }
+
+  function applyStatusDraft() {
+    const nextOptions = normalizeStatusConfig(statusDraft).sort(
+      (left, right) =>
+        left.priority - right.priority ||
+        left.label.localeCompare(right.label, "zh-Hans-CN"),
+    );
+    const nextIds = new Set(nextOptions.map((status) => status.id));
+    const fallbackStatus = nextOptions[0]?.id ?? "";
+
+    setStatusOptions(nextOptions);
+    setStatusDraft(nextOptions);
+    setRecords((current) =>
+      current.map((record) =>
+        nextIds.has(record.status) || !fallbackStatus
+          ? record
+          : { ...record, status: fallbackStatus },
+      ),
+    );
+    setStatusConfigMessage("配置已生效，状态下拉和优先级排序已更新");
+  }
+
+  function renderStatusConfig() {
+    return (
+      <section className="workspace status-config-page">
+          <div className="config-header">
+            <div>
+              <h2>优先级配置</h2>
+              <p>修改状态选项和排序优先级，点击生效后同步到所有状态下拉和排序规则。</p>
+            </div>
+            <div className="config-actions">
+              <button className="icon-button" type="button" onClick={addStatusDraft}>
+                <Plus size={16} />
+                <span>新增状态</span>
+              </button>
+              <button className="icon-button" type="button" onClick={resetStatusDraft}>
+                <RotateCcw size={16} />
+                <span>恢复默认</span>
+              </button>
+              <button className="text-button primary-action" type="button" onClick={applyStatusDraft}>
+                <Save size={16} />
+                <span>生效</span>
+              </button>
+            </div>
+          </div>
+
+          {statusConfigMessage && <div className="config-message">{statusConfigMessage}</div>}
+
+          <div className="status-config-table">
+            <div className="status-config-row status-config-head">
+              <span>状态名称</span>
+              <span>优先级</span>
+              <span>文字</span>
+              <span>背景</span>
+              <span>边框</span>
+              <span>预览</span>
+              <span>操作</span>
+            </div>
+            {statusDraft.map((status) => (
+              <div className="status-config-row" key={status.id}>
+                <input
+                  className="config-input"
+                  value={status.label}
+                  onChange={(event) => updateStatusDraft(status.id, { label: event.target.value })}
+                  aria-label="状态名称"
+                />
+                <input
+                  className="config-input"
+                  type="number"
+                  value={status.priority}
+                  onChange={(event) =>
+                    updateStatusDraft(status.id, { priority: Number(event.target.value) })
+                  }
+                  aria-label={`${status.label} 优先级`}
+                />
+                <input
+                  className="config-color"
+                  type="color"
+                  value={status.color}
+                  onChange={(event) => updateStatusDraft(status.id, { color: event.target.value })}
+                  aria-label={`${status.label} 文字颜色`}
+                />
+                <input
+                  className="config-color"
+                  type="color"
+                  value={status.bg}
+                  onChange={(event) => updateStatusDraft(status.id, { bg: event.target.value })}
+                  aria-label={`${status.label} 背景颜色`}
+                />
+                <input
+                  className="config-color"
+                  type="color"
+                  value={status.border}
+                  onChange={(event) => updateStatusDraft(status.id, { border: event.target.value })}
+                  aria-label={`${status.label} 边框颜色`}
+                />
+                <span
+                  className="status-chip config-preview"
+                  style={{
+                    "--status-bg": status.bg,
+                    "--status-color": status.color,
+                    "--status-border": status.border,
+                  }}
+                >
+                  {status.label || "未命名"}
+                  <strong>{status.priority}</strong>
+                </span>
+                <button
+                  className="icon-button danger-icon"
+                  type="button"
+                  onClick={() => removeStatusDraft(status.id)}
+                  disabled={statusDraft.length <= 1}
+                  title="删除状态"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+      </section>
+    );
+  }
+
   function renderCell(record, field) {
     if (field.type === "status") {
-      const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
+      const status = statusById[record.status] ?? statusOptions[0];
       return (
         <PortalPopover
           className="status-history-field"
@@ -745,7 +1000,7 @@ function App() {
             onChange={(event) => updateRecord(record.id, { status: event.target.value })}
             aria-label={`${getRecordTitle(record)} 状态`}
           >
-            {STATUSES.map((item) => (
+            {statusOptions.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.label}
               </option>
@@ -948,7 +1203,7 @@ function App() {
             <h1>项目进度台账</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 切换类别</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 切换页面</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新
@@ -1045,8 +1300,10 @@ function App() {
             deleteTodoHistoryItem={deleteTodoHistoryItem}
             syncTodoItems={syncTodoItems}
           />
+        ) : isStatusConfigView ? (
+          renderStatusConfig()
         ) : (
-        <section className="workspace">
+          <section className="workspace">
           <div className="toolbar">
             <label className="search-box">
               <Search size={17} />
@@ -1065,7 +1322,7 @@ function App() {
               aria-label="状态筛选"
             >
               <option value="all">全部状态</option>
-              {STATUSES.map((status) => (
+              {statusOptions.map((status) => (
                 <option key={status.id} value={status.id}>
                   {status.label}
                 </option>
