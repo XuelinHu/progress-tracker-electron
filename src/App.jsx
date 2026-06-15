@@ -579,7 +579,7 @@ function App() {
             date: today(),
             status: defaultStatus,
             owner: "",
-            summary: "创建记录",
+            summary: `新建科研元素：${category.name}新记录`,
           },
         ],
       },
