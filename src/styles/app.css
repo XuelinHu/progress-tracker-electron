@@ -749,17 +749,27 @@ button {
 .todo-list {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .todo-item {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   min-height: 24px;
   padding: 2px 3px;
   border-radius: 4px;
   font-size: 12px;
   color: #334155;
+}
+
+.todo-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .todo-item:hover {
@@ -823,6 +833,8 @@ button {
   font-size: 11px !important;
   color: #64748b !important;
   border-color: #e2e8f0 !important;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .todo-new-input:focus {
