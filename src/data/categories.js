@@ -57,9 +57,9 @@ export const CATEGORIES = [
     tint: "#dbeafe",
     fields: [
       statusField,
-      todoField,
       titleField,
       descriptionField,
+      todoField,
       stageDateField,
       windowsPathField,
       serverPathField,
@@ -74,9 +74,9 @@ export const CATEGORIES = [
     tint: "#dcfce7",
     fields: [
       statusField,
-      todoField,
       titleField,
       descriptionField,
+      todoField,
       stageDateField,
       windowsPathField,
       linuxPathField,
@@ -92,9 +92,9 @@ export const CATEGORIES = [
     tint: "#fef3c7",
     fields: [
       statusField,
-      todoField,
       titleField,
       descriptionField,
+      todoField,
       stageDateField,
       windowsPathField,
       linuxPathField,
@@ -109,7 +109,6 @@ export const CATEGORIES = [
     tint: "#ffe4e6",
     fields: [
       statusField,
-      todoField,
       titleField,
       {
         key: "registrationDate",
@@ -117,6 +116,7 @@ export const CATEGORIES = [
         type: "date",
         width: "minmax(230px, 0.8fr)",
       },
+      todoField,
       {
         key: "endDate",
         label: "结束日期",
