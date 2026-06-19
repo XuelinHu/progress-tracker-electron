@@ -124,26 +124,26 @@ export const seedRecords = [
     "description": "中文口语语义评估软件",
     "windowsPath": "D:\\workspace\\ai\\OralSEAChinese",
     "serverPath": "/ds1/workspace/ai/OralSEAChinese",
-  "githubUrl": "git@github.com:XuelinHu/OralSEAChinese.git",
-  "history": [],
-  "stageDate": "2026-06-01",
-  "todo": ""
+    "githubUrl": "git@github.com:XuelinHu/OralSEAChinese.git",
+    "history": [],
+    "stageDate": "2026-06-01",
+    "todo": ""
   },
   {
-  "id": "software-11",
-  "categoryId": "software",
-  "status": "进行中",
-  "title": "UAV-Student-Training-Platform",
-  "description": "无人机学员训练组装平台",
-  "windowsPath": "",
-  "serverPath": "/ds1/workspace/front/UAV-Student-Training-Platform",
-  "githubUrl": "",
-  "history": [],
-  "stageDate": "2026-06-19",
-  "todo": ""
+    "id": "software-11",
+    "categoryId": "software",
+    "status": "进行中",
+    "title": "UAV-Student-Training-Platform",
+    "description": "无人机学员训练组装平台",
+    "windowsPath": "",
+    "serverPath": "/ds1/workspace/front/UAV-Student-Training-Platform",
+    "githubUrl": "",
+    "history": [],
+    "stageDate": "2026-06-19",
+    "todo": ""
   },
   {
-  "id": "patent-1",
+    "id": "patent-1",
     "categoryId": "patent",
     "status": "暂缓",
     "title": "一种卡扣组装式显示器桌边挂载支架",
@@ -348,5 +348,60 @@ export const seedRecords = [
     "registrationDate": "2026-06-01",
     "endDate": "2026-09-01",
     "todo": ""
+  },
+  {
+    "id": "contest-5",
+    "categoryId": "contest",
+    "status": "已提交",
+    "title": "",
+    "platformUrl": "",
+    "officialUrl": "",
+    "history": [],
+    "registrationDate": "",
+    "endDate": ""
+  },
+  {
+    "id": "contest-6",
+    "categoryId": "contest",
+    "status": "已提交",
+    "title": "",
+    "platformUrl": "",
+    "officialUrl": "",
+    "history": [],
+    "registrationDate": "",
+    "endDate": ""
+  },
+  {
+    "id": "contest-7",
+    "categoryId": "contest",
+    "status": "结束",
+    "title": "",
+    "platformUrl": "",
+    "officialUrl": "",
+    "history": [],
+    "registrationDate": "",
+    "endDate": ""
+  },
+  {
+    "id": "contest-8",
+    "categoryId": "contest",
+    "status": "结束",
+    "title": "",
+    "platformUrl": "",
+    "officialUrl": "",
+    "history": [],
+    "registrationDate": "",
+    "endDate": ""
+  },
+  {
+    "id": "contest-9",
+    "categoryId": "contest",
+    "status": "结束",
+    "title": "",
+    "platformUrl": "",
+    "officialUrl": "",
+    "history": [],
+    "registrationDate": "",
+    "endDate": ""
   }
 ];

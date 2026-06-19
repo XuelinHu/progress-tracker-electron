@@ -1198,10 +1198,26 @@ export default function KnowledgeGraph({
             value={graphStatusFilter}
             onChange={(event) => setGraphStatusFilter(event.target.value)}
             aria-label="图谱显示状态"
+            style={
+              graphStatusFilter === "all"
+                ? undefined
+                : {
+                    color: graphStatusById[graphStatusFilter]?.color,
+                    background: graphStatusById[graphStatusFilter]?.bg,
+                    borderColor: graphStatusById[graphStatusFilter]?.border,
+                  }
+            }
           >
             <option value="all">显示全部状态</option>
             {statusOptions.map((status) => (
-              <option key={status.id} value={status.id}>
+              <option
+                key={status.id}
+                value={status.id}
+                style={{
+                  color: status.color,
+                  backgroundColor: status.bg,
+                }}
+              >
                 {status.label}
               </option>
             ))}

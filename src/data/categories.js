@@ -3,25 +3,25 @@ const todoField = {
   key: "todo",
   label: "Todo",
   type: "textarea",
-  width: "minmax(160px, 0.65fr)",
+  width: "minmax(230px, 0.9fr)",
 };
 const titleField = {
   key: "title",
   label: "GitHub项目名称",
   type: "text",
-  width: "minmax(190px, 0.95fr)",
+  width: "minmax(230px, 1fr)",
 };
 const descriptionField = {
   key: "description",
   label: "中文解释",
   type: "textarea",
-  width: "minmax(190px, 0.8fr)",
+  width: "minmax(250px, 1fr)",
 };
 const stageDateField = {
   key: "stageDate",
   label: "阶段日期",
   type: "date",
-  width: "minmax(190px, 0.65fr)",
+  width: "minmax(210px, 0.7fr)",
 };
 const windowsPathField = {
   key: "windowsPath",
