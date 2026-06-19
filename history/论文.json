@@ -315,6 +315,19 @@
     "todo": ""
   },
   {
+    "id": "paper-10",
+    "categoryId": "paper",
+    "status": "进行中",
+    "title": "AEJ_manuscript",
+    "description": "AEJ论文稿件",
+    "windowsPath": "",
+    "linuxPath": "",
+    "githubUrl": "git@github.com:XuelinHu/AEJ_manuscript.git",
+    "history": [],
+    "stageDate": "2026-06-19",
+    "todo": ""
+  },
+  {
     "id": "contest-1",
     "categoryId": "contest",
     "status": "进行中",
