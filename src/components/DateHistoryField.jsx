@@ -132,7 +132,14 @@ export default function DateHistoryField({
                 <div key={entry.id} className="date-history-table">
                   <span>{entry.date || "-"}</span>
                   <span className="history-item-cell">
-                    <span className="history-item-text">{entry.item || "未填写事项"}</span>
+                      <input
+                        className="history-item-input"
+                        value={entry.item || ""}
+                        title={entry.item || "未填写事项"}
+                        onChange={(event) => onHistoryItemChange?.(entry.id, event.target.value)}
+                        onClick={(event) => event.stopPropagation()}
+                        aria-label="编辑历史事项"
+                      />
                     <button
                       className="history-delete-btn"
                       type="button"

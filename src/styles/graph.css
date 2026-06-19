@@ -544,7 +544,32 @@
 .graph-history-summary .history-item-text {
   flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-history-summary .history-item-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #334155;
+  font-size: 11px;
+  line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-history-summary .history-item-input:hover,
+.graph-history-summary .history-item-input:focus {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  outline: none;
 }
 
 .graph-history-summary .history-delete-btn {
@@ -613,7 +638,9 @@
   color: #475569;
   font-size: 11px;
   line-height: 1.35;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .graph-history-row span + span {

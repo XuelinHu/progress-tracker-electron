@@ -558,11 +558,48 @@ function App() {
     );
   }
 
+  function updateStatusHistoryItem(recordId, historyId, summary) {
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        return {
+          ...record,
+          history: (record.history ?? []).map((entry) =>
+            entry.id === historyId ? { ...entry, summary } : entry,
+          ),
+        };
+      }),
+    );
+  }
+
   function deleteTodoHistoryItem(recordId, historyId) {
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
         return { ...record, todoHistory: (record.todoHistory ?? []).filter((e) => e.id !== historyId) };
+      }),
+    );
+  }
+
+  function updateTodoHistoryItem(recordId, historyId, item) {
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        const target = (record.todoHistory ?? []).find((entry) => entry.id === historyId);
+        const oldItem = target?.item ?? "";
+        const todo = oldItem
+          ? (record.todo ?? "")
+              .split(/\r?\n/)
+              .map((line) => (line.trim() === oldItem ? item : line))
+              .join("\n")
+          : record.todo;
+        return {
+          ...record,
+          todo,
+          todoHistory: (record.todoHistory ?? []).map((entry) =>
+            entry.id === historyId ? { ...entry, item } : entry,
+          ),
+        };
       }),
     );
   }
@@ -1068,7 +1105,7 @@ function App() {
                 <RotateCcw size={16} />
                 <span>恢复默认</span>
               </button>
-              <button className="text-button primary-action" type="button" onClick={applyStatusDraft}>
+              <button className="icon-button" type="button" onClick={applyStatusDraft}>
                 <Save size={16} />
                 <span>生效</span>
               </button>
@@ -1221,12 +1258,18 @@ function App() {
         <PortalPopover
           className="status-history-field"
           popover={
-            <StatusHistoryPopover
-              history={record.history}
-              todoHistory={record.todoHistory}
-              onDeleteStatus={(historyId) => deleteStatusHistoryItem(record.id, historyId)}
-              onDeleteTodo={(historyId) => deleteTodoHistoryItem(record.id, historyId)}
-            />
+                      <StatusHistoryPopover
+                        history={record.history}
+                        todoHistory={record.todoHistory}
+                        onDeleteStatus={(historyId) => deleteStatusHistoryItem(record.id, historyId)}
+                        onDeleteTodo={(historyId) => deleteTodoHistoryItem(record.id, historyId)}
+                        onUpdateStatus={(historyId, summary) =>
+                          updateStatusHistoryItem(record.id, historyId, summary)
+                        }
+                        onUpdateTodo={(historyId, item) =>
+                          updateTodoHistoryItem(record.id, historyId, item)
+                        }
+                      />
           }
         >
           <select
@@ -1540,6 +1583,8 @@ function App() {
             deleteDateHistoryItem={deleteDateHistoryItem}
             deleteStatusHistoryItem={deleteStatusHistoryItem}
             deleteTodoHistoryItem={deleteTodoHistoryItem}
+            updateStatusHistoryItem={updateStatusHistoryItem}
+            updateTodoHistoryItem={updateTodoHistoryItem}
             syncTodoItems={syncTodoItems}
           />
         ) : isStatusConfigView ? (

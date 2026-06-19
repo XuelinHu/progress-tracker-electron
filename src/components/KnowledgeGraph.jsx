@@ -79,7 +79,7 @@ function getRecordHistoryGroups(record, category) {
   ];
 }
 
-function DateHistorySummary({ groups, compact = false, onDeleteEntry }) {
+function DateHistorySummary({ groups, compact = false, onDeleteEntry, onUpdateEntry }) {
   const hasEntries = groups.some((group) => group.entries.length > 0);
 
   return (
@@ -100,7 +100,22 @@ function DateHistorySummary({ groups, compact = false, onDeleteEntry }) {
                     <div key={entry.id} className={`graph-history-row history-type-${group.type || "date"}`}>
                       <span>{entry.date || "-"}</span>
                       <span className="history-item-cell">
-                        <span className="history-item-text">{entry.item || "未填写事项"}</span>
+                      {onUpdateEntry ? (
+                        <input
+                          className="history-item-input"
+                          value={entry.item || ""}
+                          title={entry.item || "未填写事项"}
+                          onChange={(event) =>
+                            onUpdateEntry(group.key, entry.id, event.target.value)
+                          }
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label="编辑历史事项"
+                        />
+                      ) : (
+                        <span className="history-item-text" title={entry.item || "未填写事项"}>
+                          {entry.item || "未填写事项"}
+                        </span>
+                      )}
                         {!compact && onDeleteEntry && (
                           <button
                             className="history-delete-btn"
@@ -311,6 +326,8 @@ function GraphField({
   onDeleteDateHistory,
   onDeleteStatusHistory,
   onDeleteTodoHistory,
+  onUpdateStatusHistory,
+  onUpdateTodoHistory,
 }) {
   if (field.type === "status") {
     const status = statusById[record.status] ?? statusOptions[0] ?? STATUSES[0];
@@ -323,6 +340,8 @@ function GraphField({
             todoHistory={record.todoHistory ?? []}
             onDeleteStatus={onDeleteStatusHistory}
             onDeleteTodo={onDeleteTodoHistory}
+            onUpdateStatus={onUpdateStatusHistory}
+            onUpdateTodo={onUpdateTodoHistory}
           />
         }
       >
@@ -933,6 +952,8 @@ export default function KnowledgeGraph({
   deleteDateHistoryItem,
   deleteStatusHistoryItem,
   deleteTodoHistoryItem,
+  updateStatusHistoryItem,
+  updateTodoHistoryItem,
   syncTodoItems,
 }) {
   const [sourceSearch, setSourceSearch] = useState("");
@@ -1299,21 +1320,32 @@ export default function KnowledgeGraph({
                     onDeleteStatusHistory={(historyId) =>
                       deleteStatusHistoryItem(selectedRecord.id, historyId)
                     }
-                    onDeleteTodoHistory={(historyId) =>
-                      deleteTodoHistoryItem(selectedRecord.id, historyId)
-                    }
-                  />
+                  onDeleteTodoHistory={(historyId) =>
+                    deleteTodoHistoryItem(selectedRecord.id, historyId)
+                  }
+                  onUpdateStatusHistory={(historyId, summary) =>
+                    updateStatusHistoryItem(selectedRecord.id, historyId, summary)
+                  }
+                  onUpdateTodoHistory={(historyId, item) =>
+                    updateTodoHistoryItem(selectedRecord.id, historyId, item)
+                  }
+                />
                 </label>
               ))}
             </div>
             <DateHistorySummary
               groups={getRecordHistoryGroups(selectedRecord, selectedCategory)}
-              onDeleteEntry={(groupKey, entryId) => {
-                if (groupKey === "status") deleteStatusHistoryItem(selectedRecord.id, entryId);
-                else if (groupKey === "todo") deleteTodoHistoryItem(selectedRecord.id, entryId);
-                else deleteDateHistoryItem(selectedRecord.id, groupKey, entryId);
-              }}
-            />
+            onDeleteEntry={(groupKey, entryId) => {
+              if (groupKey === "status") deleteStatusHistoryItem(selectedRecord.id, entryId);
+              else if (groupKey === "todo") deleteTodoHistoryItem(selectedRecord.id, entryId);
+              else deleteDateHistoryItem(selectedRecord.id, groupKey, entryId);
+            }}
+            onUpdateEntry={(groupKey, entryId, item) => {
+              if (groupKey === "status") updateStatusHistoryItem(selectedRecord.id, entryId, item);
+              else if (groupKey === "todo") updateTodoHistoryItem(selectedRecord.id, entryId, item);
+              else updateDateHistoryItem(selectedRecord.id, groupKey, entryId, item);
+            }}
+          />
           </>
         )}
 
