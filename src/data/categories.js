@@ -1,27 +1,27 @@
-const statusField = { key: "status", label: "状态", type: "status", width: "132px" };
+const statusField = { key: "status", label: "状态", type: "status", width: "112px" };
 const todoField = {
   key: "todo",
   label: "Todo",
   type: "textarea",
-  width: "minmax(220px, 0.9fr)",
+  width: "minmax(160px, 0.65fr)",
 };
 const titleField = {
   key: "title",
   label: "GitHub项目名称",
   type: "text",
-  width: "minmax(240px, 1.2fr)",
+  width: "minmax(190px, 0.95fr)",
 };
 const descriptionField = {
   key: "description",
   label: "中文解释",
   type: "textarea",
-  width: "minmax(260px, 1fr)",
+  width: "minmax(190px, 0.8fr)",
 };
 const stageDateField = {
   key: "stageDate",
   label: "阶段日期",
   type: "date",
-  width: "minmax(250px, 0.85fr)",
+  width: "minmax(190px, 0.65fr)",
 };
 const windowsPathField = {
   key: "windowsPath",

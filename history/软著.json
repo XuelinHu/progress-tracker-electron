@@ -120,6 +120,19 @@
     "stageDate": "2026-06-01"
   },
   {
+    "id": "software-11",
+    "categoryId": "software",
+    "status": "进行中",
+    "title": "UAV-Student-Training-Platform",
+    "description": "无人机学员训练组装平台",
+    "windowsPath": "",
+    "serverPath": "/ds1/workspace/front/UAV-Student-Training-Platform",
+    "githubUrl": "",
+    "history": [],
+    "stageDate": "2026-06-19",
+    "todo": ""
+  },
+  {
     "id": "paper-1",
     "categoryId": "paper",
     "status": "已提交",

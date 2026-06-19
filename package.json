@@ -1,7 +1,7 @@
 {
   "name": "progress-tracker-electron",
   "version": "0.1.0",
-  "description": "Electron desktop project progress tracker",
+  "description": "Electron desktop research progress management platform",
   "main": "electron/main.cjs",
   "private": true,
   "type": "module",
@@ -38,7 +38,7 @@
   },
   "build": {
     "appId": "com.local.progress-tracker",
-    "productName": "项目进度跟踪桌面端",
+    "productName": "科研进度管理平台",
     "files": [
       "dist/**/*",
       "!dist/**/*.exe",
@@ -61,7 +61,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "项目进度跟踪桌面端"
+      "shortcutName": "科研进度管理平台"
     },
     "portable": {
       "artifactName": "Progress-Tracker-Desktop-Portable-${version}-${arch}.${ext}"

@@ -88,7 +88,7 @@ function createWindow() {
     height: 860,
     minWidth: 1120,
     minHeight: 720,
-    title: "项目进度跟踪",
+    title: "科研进度管理平台",
     backgroundColor: "#f6f7f9",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -105,7 +105,7 @@ app.whenReady().then(() => {
   ipcMain.handle("save-json", async (_event, payload) => {
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
       title: "导出项目进度 JSON",
-      defaultPath: "项目进度跟踪.json",
+      defaultPath: "科研进度管理平台.json",
       filters: [{ name: "JSON 文件", extensions: ["json"] }],
     });
 
@@ -120,7 +120,7 @@ app.whenReady().then(() => {
   ipcMain.handle("save-csv", async (_event, payload) => {
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
       title: "导出当前类别 CSV",
-      defaultPath: "项目进度跟踪.csv",
+      defaultPath: "科研进度管理平台.csv",
       filters: [{ name: "CSV 文件", extensions: ["csv"] }],
     });
 

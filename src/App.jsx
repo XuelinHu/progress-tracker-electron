@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownUp,
+  Copy,
   Download,
   ExternalLink,
   FileDown,
@@ -152,17 +153,25 @@ function normalizeStatusConfig(items) {
   return normalized.length > 0 ? normalized : STATUSES;
 }
 
+function sortStatusConfig(items) {
+  return normalizeStatusConfig(items).sort(
+    (left, right) =>
+      left.priority - right.priority ||
+      left.label.localeCompare(right.label, "zh-Hans-CN"),
+  );
+}
+
 function loadStatusConfig() {
   try {
     const cached = localStorage.getItem(STATUS_CONFIG_STORAGE_KEY);
     if (!cached) {
-      return normalizeStatusConfig(STATUSES);
+      return sortStatusConfig(STATUSES);
     }
 
-    return normalizeStatusConfig(JSON.parse(cached));
+    return sortStatusConfig(JSON.parse(cached));
   } catch {
     localStorage.removeItem(STATUS_CONFIG_STORAGE_KEY);
-    return normalizeStatusConfig(STATUSES);
+    return sortStatusConfig(STATUSES);
   }
 }
 
@@ -257,7 +266,7 @@ function App() {
     : isStatusConfigView
       ? STATUS_CONFIG_PAGE
       : activeCategory;
-  const tableTemplate = ["34px", ...activeCategory.fields.map((field) => field.width)].join(" ");
+  const tableTemplate = ["58px", ...activeCategory.fields.map((field) => field.width)].join(" ");
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
     [statusOptions],
@@ -592,6 +601,50 @@ function App() {
     setSelectedId(record.id);
   }
 
+  function duplicateRecord(sourceRecord) {
+    const nextRecord = {
+      ...structuredClone(sourceRecord),
+      id: createId(sourceRecord.categoryId),
+      title: `${getRecordTitle(sourceRecord)} 副本`,
+      history: [
+        ...(sourceRecord.history ?? []).map((entry) => ({
+          ...entry,
+          id: createId("history"),
+        })),
+        {
+          id: createId("history"),
+          date: today(),
+          status: sourceRecord.status,
+          owner: "",
+          summary: `复制自"${getRecordTitle(sourceRecord)}"`,
+        },
+      ],
+      dateHistory: Object.fromEntries(
+        Object.entries(sourceRecord.dateHistory ?? {}).map(([fieldKey, entries]) => [
+          fieldKey,
+          (entries ?? []).map((entry) => ({ ...entry, id: createId("date-history") })),
+        ]),
+      ),
+      todoHistory: (sourceRecord.todoHistory ?? []).map((entry) => ({
+        ...entry,
+        id: createId("todo-hist"),
+      })),
+    };
+
+    setRecords((current) => {
+      const index = current.findIndex((record) => record.id === sourceRecord.id);
+      if (index < 0) {
+        return [nextRecord, ...current];
+      }
+      return [
+        ...current.slice(0, index + 1),
+        nextRecord,
+        ...current.slice(index + 1),
+      ];
+    });
+    setSelectedId(nextRecord.id);
+  }
+
   function addRecordFromGraph(categoryId, position, sourceNodeId) {
     const record = buildRecord(categoryId);
     const nodeId = `node-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -622,6 +675,12 @@ function App() {
   }
 
   function deleteRecord(recordId) {
+    const record = records.find((item) => item.id === recordId);
+    const title = record ? getRecordTitle(record) : "这条记录";
+    if (!window.confirm(`确认删除"${title}"吗？此操作会同步移除对应的知识图谱节点。`)) {
+      return;
+    }
+
     setRecords((current) => current.filter((record) => record.id !== recordId));
     const removedNodeIds = new Set(
       graphNodes
@@ -695,7 +754,7 @@ function App() {
       },
     };
     downloadBlob(
-      "项目进度台账-全部数据.json",
+      "科研进度管理平台-全部数据.json",
       JSON.stringify(exportData, null, 2),
       "application/json;charset=utf-8",
     );
@@ -745,7 +804,7 @@ function App() {
       .map((row) => row.map(csvCell).join(","))
       .join("\n");
 
-    downloadBlob("项目进度台账-全部类别.csv", "﻿" + csv, "text/csv;charset=utf-8");
+    downloadBlob("科研进度管理平台-全部类别.csv", "﻿" + csv, "text/csv;charset=utf-8");
   }
 
   function exportCategoryCsv() {
@@ -814,25 +873,45 @@ function App() {
   }
 
   function updateStatusDraft(statusId, patch) {
-    setStatusDraft((current) =>
-      current.map((status) => (status.id === statusId ? { ...status, ...patch } : status)),
-    );
+    setStatusDraft((current) => {
+      const next = current.map((status) => (status.id === statusId ? { ...status, ...patch } : status));
+      return Object.prototype.hasOwnProperty.call(patch, "priority")
+        ? sortStatusConfig(next)
+        : next;
+    });
   }
 
   function addStatusDraft() {
     const nextPriority =
       Math.max(0, ...statusDraft.map((status) => Number(status.priority) || 0)) + 10;
-    setStatusDraft((current) => [
-      ...current,
-      {
-        id: createId("status"),
-        label: "新状态",
-        priority: nextPriority,
-        color: "#2563eb",
-        bg: "#dbeafe",
-        border: "#93c5fd",
-      },
-    ]);
+    setStatusDraft((current) =>
+      sortStatusConfig([
+        ...current,
+        {
+          id: createId("status"),
+          label: "新状态",
+          priority: nextPriority,
+          color: "#2563eb",
+          bg: "#dbeafe",
+          border: "#93c5fd",
+        },
+      ]),
+    );
+    setStatusConfigMessage("");
+  }
+
+  function duplicateStatusDraft(status) {
+    setStatusDraft((current) =>
+      sortStatusConfig([
+        ...current,
+        {
+          ...status,
+          id: createId("status"),
+          label: `${status.label} 副本`,
+          priority: Number(status.priority) + 1,
+        },
+      ]),
+    );
     setStatusConfigMessage("");
   }
 
@@ -847,16 +926,12 @@ function App() {
   }
 
   function resetStatusDraft() {
-    setStatusDraft(normalizeStatusConfig(STATUSES));
+    setStatusDraft(sortStatusConfig(STATUSES));
     setStatusConfigMessage("已恢复默认草稿，点击生效后更新下拉选项");
   }
 
   function applyStatusDraft() {
-    const nextOptions = normalizeStatusConfig(statusDraft).sort(
-      (left, right) =>
-        left.priority - right.priority ||
-        left.label.localeCompare(right.label, "zh-Hans-CN"),
-    );
+    const nextOptions = sortStatusConfig(statusDraft);
     const nextIds = new Set(nextOptions.map((status) => status.id));
     const fallbackStatus = nextOptions[0]?.id ?? "";
 
@@ -957,15 +1032,25 @@ function App() {
                   {status.label || "未命名"}
                   <strong>{status.priority}</strong>
                 </span>
-                <button
-                  className="icon-button danger-icon"
-                  type="button"
-                  onClick={() => removeStatusDraft(status.id)}
-                  disabled={statusDraft.length <= 1}
-                  title="删除状态"
-                >
-                  <X size={16} />
-                </button>
+                <div className="status-config-actions-cell">
+                  <button
+                    className="icon-button danger-icon"
+                    type="button"
+                    onClick={() => removeStatusDraft(status.id)}
+                    disabled={statusDraft.length <= 1}
+                    title="删除状态"
+                  >
+                    <X size={16} />
+                  </button>
+                  <button
+                    className="icon-button copy-icon"
+                    type="button"
+                    onClick={() => duplicateStatusDraft(status)}
+                    title="复制状态"
+                  >
+                    <Copy size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1200,7 +1285,7 @@ function App() {
       <header className="topbar">
         <div className="topbar-brand">
           <div>
-            <h1>项目进度台账</h1>
+          <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
               <span>按 1 / 2 / 3 / 4 / 5 / 6 切换页面</span>
@@ -1284,6 +1369,7 @@ function App() {
         {isGraphView ? (
           <KnowledgeGraph
             records={records}
+            statusOptions={statusOptions}
             updateRecord={updateRecord}
             graphNodes={graphNodes}
             graphEdges={graphEdges}
@@ -1400,20 +1486,32 @@ function App() {
                   onClick={() => setSelectedId(record.id)}
                 >
                   <div className="table-cell row-action-cell">
-                    <button
-                      className="row-delete-button"
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        deleteRecord(record.id);
+                <button
+                  className="row-delete-button"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    deleteRecord(record.id);
                       }}
                       title="删除这一行"
                       aria-label={`删除 ${getRecordTitle(record)}`}
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                    <DaysSince dateField={activeCategory.fields.find((f) => f.type === "date")} record={record} />
-                  </div>
+                >
+                  <Trash2 size={12} />
+                </button>
+                <button
+                  className="row-copy-button"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    duplicateRecord(record);
+                  }}
+                  title="复制这一行"
+                  aria-label={`复制 ${getRecordTitle(record)}`}
+                >
+                  <Copy size={12} />
+                </button>
+                <DaysSince dateField={activeCategory.fields.find((f) => f.type === "date")} record={record} />
+              </div>
                   {activeCategory.fields.map((field) => (
                     <div key={field.key} className="table-cell">
                       {renderCell(record, field)}

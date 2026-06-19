@@ -23,7 +23,7 @@ function createWindow() {
     height: 860,
     minWidth: 1080,
     minHeight: 700,
-    title: "项目进度跟踪桌面端",
+    title: "科研进度管理平台",
     backgroundColor: "#f7f8fb",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),

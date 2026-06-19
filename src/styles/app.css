@@ -133,9 +133,9 @@ button {
 
 .category-tabs {
   display: grid;
-  grid-template-columns: repeat(5, minmax(92px, 1fr));
+  grid-template-columns: repeat(6, minmax(82px, 1fr));
   gap: 10px;
-  width: min(700px, 100%);
+  width: min(760px, 100%);
 }
 
 .category-tab {
@@ -436,7 +436,8 @@ button {
 .row-action-cell {
   align-items: center;
   justify-content: center;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   gap: 2px;
   padding: 5px 4px;
 }
@@ -450,6 +451,7 @@ button {
 }
 
 .row-delete-button,
+.row-copy-button,
 .url-open-button {
   display: inline-flex;
   align-items: center;
@@ -459,15 +461,28 @@ button {
   background: transparent;
 }
 
-.row-delete-button {
+.row-delete-button,
+.row-copy-button {
   width: 22px;
   height: 22px;
+}
+
+.row-delete-button {
   color: #b91c1c;
+}
+
+.row-copy-button {
+  color: #2563eb;
 }
 
 .row-delete-button:hover {
   border-color: #fecaca;
   background: #fff1f2;
+}
+
+.row-copy-button:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
 }
 
 .cell-input,
@@ -983,12 +998,12 @@ button {
   display: grid;
   gap: 8px;
   margin-top: 12px;
-  min-width: 760px;
+  min-width: 720px;
 }
 
 .status-config-row {
   display: grid;
-  grid-template-columns: minmax(150px, 1.3fr) 92px 56px 56px 56px minmax(140px, 1fr) 52px;
+  grid-template-columns: minmax(130px, 1.2fr) 72px 44px 44px 44px minmax(118px, 0.85fr) 84px;
   align-items: center;
   gap: 8px;
   padding: 8px;
@@ -1035,6 +1050,18 @@ button {
   width: 36px;
   padding: 0;
   color: #be123c;
+}
+
+.copy-icon {
+  width: 36px;
+  padding: 0;
+  color: #2563eb;
+}
+
+.status-config-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .danger-icon:disabled {

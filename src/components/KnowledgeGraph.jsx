@@ -20,7 +20,7 @@ import StatusHistoryPopover from "./StatusHistoryPopover.jsx";
 import PortalPopover from "./PortalPopover.jsx";
 import CopyIconButton from "./CopyIconButton.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
-import { STATUSES, STATUS_BY_ID, STATUS_PRIORITY } from "../data/statuses.js";
+import { STATUSES } from "../data/statuses.js";
 import "../styles/graph.css";
 
 const DRAG_TYPE = "application/progress-record";
@@ -177,7 +177,7 @@ function RecordNode({ data }) {
             onChange={(event) => h.updateStatus?.(event.target.value)}
             aria-label={`${data.title} 状态`}
           >
-            {STATUSES.map((status) => (
+            {(data.statusOptions ?? STATUSES).map((status) => (
               <option key={status.id} value={status.id}>
                 {status.label}
               </option>
@@ -311,7 +311,7 @@ function GraphField({
   onDeleteTodoHistory,
 }) {
   if (field.type === "status") {
-    const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
+                const status = graphStatusById[record.status] ?? statusOptions[0] ?? STATUSES[0];
     return (
       <PortalPopover
         className="status-history-field"
@@ -519,8 +519,11 @@ function GraphField({
 
 function GraphCanvas({
   records,
+  statusOptions,
   graphNodes,
   graphEdges,
+  graphCategoryFilter,
+  graphStatusFilter,
   setGraphNodes,
   setGraphEdges,
   selectedElement,
@@ -543,13 +546,29 @@ function GraphCanvas({
     () => Object.fromEntries(records.map((record) => [record.id, record])),
     [records],
   );
+  const statusById = useMemo(
+    () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
+    [statusOptions],
+  );
 
   const flowNodes = useMemo(
     () =>
-      graphNodes.map((node) => {
+      graphNodes
+        .filter((node) => {
+          const record = recordById[node.data.recordId];
+          if (!record) {
+            return true;
+          }
+          const matchesCategory =
+            graphCategoryFilter === "all" || record.categoryId === graphCategoryFilter;
+          const matchesStatus =
+            graphStatusFilter === "all" || record.status === graphStatusFilter;
+          return matchesCategory && matchesStatus;
+        })
+        .map((node) => {
         const record = recordById[node.data.recordId];
         const category = CATEGORY_BY_ID[node.data.categoryId] ?? CATEGORIES[0];
-        const status = STATUS_BY_ID[record?.status] ?? STATUSES[0];
+        const status = statusById[record?.status] ?? statusOptions[0] ?? STATUSES[0];
         const dateField = category.fields.find((f) => f.type === "date");
         const dateKey = dateField?.key ?? "";
         return {
@@ -572,6 +591,7 @@ function GraphCanvas({
             dateValue: record?.[dateKey] ?? "",
             dateHistoryEntries: record?.dateHistory?.[dateKey] ?? [],
             recordId: node.data.recordId,
+            statusOptions,
             handlers: {
               addTodo: (text) => {
                 const val = text.trim();
@@ -605,12 +625,32 @@ function GraphCanvas({
           },
         };
       }),
-    [graphNodes, recordById, selectedElement, toggleTodoItem, deleteTodoItem, updateRecord, updateRecordDate, syncTodoItems],
+    [
+      graphNodes,
+      recordById,
+      selectedElement,
+      toggleTodoItem,
+      deleteTodoItem,
+      updateRecord,
+      updateRecordDate,
+      syncTodoItems,
+      statusOptions,
+      statusById,
+      graphCategoryFilter,
+      graphStatusFilter,
+    ],
+  );
+
+  const visibleNodeIds = useMemo(
+    () => new Set(flowNodes.map((node) => node.id)),
+    [flowNodes],
   );
 
   const flowEdges = useMemo(
     () =>
-      graphEdges.map((edge) => ({
+      graphEdges
+        .filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
+        .map((edge) => ({
         ...edge,
         label: edge.data?.label?.trim() || edge.data?.relationType || "前置依赖",
         markerEnd: {
@@ -637,8 +677,21 @@ function GraphCanvas({
         labelBgPadding: [5, 3],
         labelBgBorderRadius: 4,
       })),
-    [graphEdges, selectedElement],
+    [graphEdges, selectedElement, visibleNodeIds],
   );
+
+  useEffect(() => {
+    if (!selectedElement) {
+      return;
+    }
+    if (selectedElement.type === "node" && !visibleNodeIds.has(selectedElement.id)) {
+      setSelectedElement(null);
+      return;
+    }
+    if (selectedElement.type === "edge" && !flowEdges.some((edge) => edge.id === selectedElement.id)) {
+      setSelectedElement(null);
+    }
+  }, [flowEdges, selectedElement, setSelectedElement, visibleNodeIds]);
 
   const addRecordNode = useCallback(
     (recordId, position) => {
@@ -823,7 +876,7 @@ function GraphCanvas({
       <Background color="#cbd5e1" gap={22} size={1} />
       <MiniMap
         nodeColor={(node) =>
-          STATUS_BY_ID[recordById[node.data.recordId]?.status]?.border ?? "#94a3b8"
+          statusById[recordById[node.data.recordId]?.status]?.border ?? "#94a3b8"
         }
         maskColor="rgba(241, 245, 249, 0.78)"
       />
@@ -863,6 +916,7 @@ function GraphCanvas({
 
 export default function KnowledgeGraph({
   records,
+  statusOptions = STATUSES,
   updateRecord,
   graphNodes,
   graphEdges,
@@ -881,11 +935,36 @@ export default function KnowledgeGraph({
 }) {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceCategory, setSourceCategory] = useState("all");
+  const [graphCategoryFilter, setGraphCategoryFilter] = useState("all");
+  const [graphStatusFilter, setGraphStatusFilter] = useState("all");
   const [selectedElement, setSelectedElement] = useState(null);
+  const graphStatusById = useMemo(
+    () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
+    [statusOptions],
+  );
+  const graphStatusPriority = useMemo(
+    () => new Map(statusOptions.map((status) => [status.id, status.priority])),
+    [statusOptions],
+  );
 
   const graphRecordIds = useMemo(
     () => new Set(graphNodes.map((node) => node.data.recordId)),
     [graphNodes],
+  );
+  const visibleGraphNodeCount = useMemo(
+    () =>
+      graphNodes.filter((node) => {
+        const record = records.find((item) => item.id === node.data.recordId);
+        if (!record) {
+          return true;
+        }
+        const matchesCategory =
+          graphCategoryFilter === "all" || record.categoryId === graphCategoryFilter;
+        const matchesStatus =
+          graphStatusFilter === "all" || record.status === graphStatusFilter;
+        return matchesCategory && matchesStatus;
+      }).length,
+    [graphCategoryFilter, graphNodes, graphStatusFilter, records],
   );
 
   const visibleSourceRecords = useMemo(() => {
@@ -907,14 +986,14 @@ export default function KnowledgeGraph({
           .includes(keyword);
       })
       .sort((left, right) => {
-        const leftPriority = STATUS_PRIORITY.get(left.status) ?? Number.MAX_SAFE_INTEGER;
-        const rightPriority = STATUS_PRIORITY.get(right.status) ?? Number.MAX_SAFE_INTEGER;
+        const leftPriority = graphStatusPriority.get(left.status) ?? Number.MAX_SAFE_INTEGER;
+        const rightPriority = graphStatusPriority.get(right.status) ?? Number.MAX_SAFE_INTEGER;
         return (
           leftPriority - rightPriority ||
           String(left.title ?? "").localeCompare(String(right.title ?? ""), "zh-Hans-CN")
         );
       });
-  }, [records, sourceCategory, sourceSearch]);
+  }, [graphStatusPriority, records, sourceCategory, sourceSearch]);
 
   const selectedNode =
     selectedElement?.type === "node"
@@ -956,9 +1035,9 @@ export default function KnowledgeGraph({
   }
 
   function cycleRecordStatus(record) {
-    const currentIndex = STATUSES.findIndex((status) => status.id === record.status);
-    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % STATUSES.length : 0;
-    updateRecord(record.id, { status: STATUSES[nextIndex].id });
+    const currentIndex = statusOptions.findIndex((status) => status.id === record.status);
+    const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % statusOptions.length : 0;
+    updateRecord(record.id, { status: statusOptions[nextIndex]?.id ?? STATUSES[0].id });
   }
 
   function deleteSelectedNode() {
@@ -1047,7 +1126,7 @@ export default function KnowledgeGraph({
         <div className="graph-source-list">
           {visibleSourceRecords.map((record) => {
             const category = CATEGORY_BY_ID[record.categoryId] ?? CATEGORIES[0];
-            const status = STATUS_BY_ID[record.status] ?? STATUSES[0];
+                const status = graphStatusById[record.status] ?? statusOptions[0] ?? STATUSES[0];
             const inGraph = graphRecordIds.has(record.id);
             return (
               <article
@@ -1100,11 +1179,40 @@ export default function KnowledgeGraph({
       </aside>
 
       <div className="graph-canvas-panel">
+        <div className="graph-display-filters">
+          <select
+            value={graphCategoryFilter}
+            onChange={(event) => setGraphCategoryFilter(event.target.value)}
+            aria-label="图谱显示类别"
+          >
+            <option value="all">显示全部类别</option>
+            {CATEGORIES.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={graphStatusFilter}
+            onChange={(event) => setGraphStatusFilter(event.target.value)}
+            aria-label="图谱显示状态"
+          >
+            <option value="all">显示全部状态</option>
+            {statusOptions.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <ReactFlowProvider>
           <GraphCanvas
             records={records}
+            statusOptions={statusOptions}
             graphNodes={graphNodes}
             graphEdges={graphEdges}
+            graphCategoryFilter={graphCategoryFilter}
+            graphStatusFilter={graphStatusFilter}
             setGraphNodes={setGraphNodes}
             setGraphEdges={setGraphEdges}
             selectedElement={selectedElement}
@@ -1120,9 +1228,11 @@ export default function KnowledgeGraph({
             updateRecordDate={updateRecordDate}
           />
         </ReactFlowProvider>
-        {graphNodes.length === 0 && (
+        {(graphNodes.length === 0 || visibleGraphNodeCount === 0) && (
           <div className="graph-empty-hint">
-            从左侧拖入记录，再从节点端口拖线建立依赖关系
+            {graphNodes.length === 0
+              ? "从左侧拖入记录，再从节点端口拖线建立依赖关系"
+              : "当前筛选条件下没有可显示的图谱节点"}
           </div>
         )}
       </div>

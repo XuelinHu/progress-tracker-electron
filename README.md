@@ -1,4 +1,4 @@
-# 项目进度跟踪桌面端
+# 科研进度管理平台
 
 <p align="center">
   <img height="20" alt="Electron 35" src="https://img.shields.io/badge/electron-35-47848F" />
@@ -7,7 +7,7 @@
   <img height="20" alt="TypeScript 5.8.3" src="https://img.shields.io/badge/typescript-5.8.3-3178C6" />
 </p>
 
-这是一个 Electron + Vite + React 的项目进度台账应用，用于按 4 个类别管理软著、专利、论文、比赛进程。
+这是一个 Electron + Vite + React 的科研进度管理平台，用于按 4 个类别管理软著、专利、论文、比赛进程。
 
 ## 功能
 
