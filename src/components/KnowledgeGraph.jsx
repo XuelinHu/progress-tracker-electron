@@ -300,6 +300,8 @@ function normalizeExternalUrl(value) {
 function GraphField({
   field,
   record,
+  statusOptions,
+  statusById,
   onChange,
   onDateChange,
   onHistoryItemChange,
@@ -311,7 +313,7 @@ function GraphField({
   onDeleteTodoHistory,
 }) {
   if (field.type === "status") {
-                const status = graphStatusById[record.status] ?? statusOptions[0] ?? STATUSES[0];
+    const status = statusById[record.status] ?? statusOptions[0] ?? STATUSES[0];
     return (
       <PortalPopover
         className="status-history-field"
@@ -334,7 +336,7 @@ function GraphField({
           value={record.status ?? ""}
           onChange={(event) => onChange(field.key, event.target.value)}
         >
-          {STATUSES.map((item) => (
+          {statusOptions.map((item) => (
             <option key={item.id} value={item.id}>
               {item.label}
             </option>
@@ -1260,10 +1262,12 @@ export default function KnowledgeGraph({
               {selectedCategory.fields.map((field) => (
                 <label key={field.key}>
                   <span>{field.label}</span>
-                  <GraphField
-                    field={field}
-                    record={selectedRecord}
-                    onChange={(key, value) => updateRecord(selectedRecord.id, { [key]: value })}
+                <GraphField
+                  field={field}
+                  record={selectedRecord}
+                  statusOptions={statusOptions}
+                  statusById={graphStatusById}
+                  onChange={(key, value) => updateRecord(selectedRecord.id, { [key]: value })}
                     onDateChange={(key, date, item) =>
                       updateRecordDate(selectedRecord.id, key, date, item)
                     }
