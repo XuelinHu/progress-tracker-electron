@@ -1,0 +1,178 @@
+const fs = require("node:fs/promises");
+const http = require("node:http");
+const path = require("node:path");
+const { URL } = require("node:url");
+
+const rootDir = path.resolve(__dirname, "..");
+const distDir = path.join(rootDir, "dist");
+const backupDir = path.join(rootDir, "backups");
+const port = Number(process.env.PORT || 4003);
+const host = process.env.HOST || "0.0.0.0";
+
+const mimeByExt = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".ico": "image/x-icon",
+  ".txt": "text/plain; charset=utf-8",
+};
+
+function sendJson(res, statusCode, payload) {
+  const body = JSON.stringify(payload);
+  res.writeHead(statusCode, {
+    "content-type": "application/json; charset=utf-8",
+    "content-length": Buffer.byteLength(body),
+  });
+  res.end(body);
+}
+
+function isSafeBackupName(name) {
+  return /^backup-\d{8}-\d{6}(?:-[a-z0-9]+)?\.json$/i.test(name);
+}
+
+async function readBody(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 20 * 1024 * 1024) {
+      throw new Error("备份数据超过 20MB 限制");
+    }
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+function createBackupName() {
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace("T", "-")
+    .slice(0, 15);
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return `backup-${stamp}-${suffix}.json`;
+}
+
+async function listBackups() {
+  await fs.mkdir(backupDir, { recursive: true });
+  const entries = await fs.readdir(backupDir, { withFileTypes: true });
+  const files = await Promise.all(
+    entries
+      .filter((entry) => entry.isFile() && isSafeBackupName(entry.name))
+      .map(async (entry) => {
+        const filePath = path.join(backupDir, entry.name);
+        const stat = await fs.stat(filePath);
+        let summary = null;
+        try {
+          const parsed = JSON.parse(await fs.readFile(filePath, "utf8"));
+          summary = {
+            createdAt: parsed.createdAt || parsed.exportedAt || stat.mtime.toISOString(),
+            recordCount: Array.isArray(parsed.records) ? parsed.records.length : 0,
+            graphNodeCount: Array.isArray(parsed.graph?.nodes) ? parsed.graph.nodes.length : 0,
+            graphEdgeCount: Array.isArray(parsed.graph?.edges) ? parsed.graph.edges.length : 0,
+            statusCount: Array.isArray(parsed.statusOptions) ? parsed.statusOptions.length : 0,
+          };
+        } catch {
+          summary = { createdAt: stat.mtime.toISOString() };
+        }
+        return {
+          name: entry.name,
+          size: stat.size,
+          mtime: stat.mtime.toISOString(),
+          ...summary,
+        };
+      }),
+  );
+  return files.sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
+}
+
+async function handleApi(req, res, pathname) {
+  if (pathname === "/api/backups" && req.method === "GET") {
+    sendJson(res, 200, { ok: true, backups: await listBackups() });
+    return;
+  }
+
+  if (pathname === "/api/backups" && req.method === "POST") {
+    const parsed = JSON.parse(await readBody(req));
+    const payload = {
+      ...parsed,
+      version: parsed.version || 5,
+      createdAt: new Date().toISOString(),
+    };
+    await fs.mkdir(backupDir, { recursive: true });
+    const name = createBackupName();
+    const filePath = path.join(backupDir, name);
+    await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+    const stat = await fs.stat(filePath);
+    sendJson(res, 201, {
+      ok: true,
+      backup: { name, size: stat.size, createdAt: payload.createdAt },
+    });
+    return;
+  }
+
+  const match = pathname.match(/^\/api\/backups\/([^/]+)$/);
+  if (match && req.method === "GET") {
+    const name = decodeURIComponent(match[1]);
+    if (!isSafeBackupName(name)) {
+      sendJson(res, 400, { ok: false, error: "非法备份文件名" });
+      return;
+    }
+    const content = await fs.readFile(path.join(backupDir, name), "utf8");
+    sendJson(res, 200, { ok: true, name, data: JSON.parse(content) });
+    return;
+  }
+
+  sendJson(res, 404, { ok: false, error: "接口不存在" });
+}
+
+async function serveStatic(req, res, pathname) {
+  const requested = pathname === "/" ? "/index.html" : pathname;
+  const resolved = path.resolve(distDir, `.${decodeURIComponent(requested)}`);
+  if (!resolved.startsWith(distDir)) {
+    res.writeHead(403);
+    res.end("Forbidden");
+    return;
+  }
+
+  try {
+    const stat = await fs.stat(resolved);
+    if (!stat.isFile()) {
+      throw new Error("not file");
+    }
+    res.writeHead(200, {
+      "content-type": mimeByExt[path.extname(resolved)] || "application/octet-stream",
+      "content-length": stat.size,
+    });
+    res.end(await fs.readFile(resolved));
+  } catch {
+    const indexPath = path.join(distDir, "index.html");
+    const content = await fs.readFile(indexPath);
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "content-length": content.length,
+    });
+    res.end(content);
+  }
+}
+
+const server = http.createServer(async (req, res) => {
+  try {
+    const url = new URL(req.url, `http://${req.headers.host || "127.0.0.1"}`);
+    if (url.pathname.startsWith("/api/")) {
+      await handleApi(req, res, url.pathname);
+      return;
+    }
+    await serveStatic(req, res, url.pathname);
+  } catch (error) {
+    sendJson(res, 500, { ok: false, error: error.message || "服务器错误" });
+  }
+});
+
+server.listen(port, host, () => {
+  console.log(`科研进度管理平台 preview server listening at http://${host}:${port}`);
+  console.log(`Backups directory: ${backupDir}`);
+});

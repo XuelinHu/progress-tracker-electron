@@ -257,6 +257,9 @@ function App() {
   const [statusOptions, setStatusOptions] = useState(loadStatusConfig);
   const [statusDraft, setStatusDraft] = useState(() => loadStatusConfig());
   const [statusConfigMessage, setStatusConfigMessage] = useState("");
+  const [backupList, setBackupList] = useState([]);
+  const [selectedBackup, setSelectedBackup] = useState("");
+  const [backupBusy, setBackupBusy] = useState(false);
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const isStatusConfigView = activeCategoryId === STATUS_CONFIG_PAGE.id;
@@ -396,6 +399,10 @@ function App() {
 
   useEffect(() => {
     setPageLoadTime(Date.now());
+  }, []);
+
+  useEffect(() => {
+    loadBackupList();
   }, []);
 
   function updateRecord(recordId, patch) {
@@ -742,10 +749,12 @@ function App() {
     setStatusSortDirection("asc");
   }
 
-  function exportJson() {
-    const exportData = {
-      version: 4,
+  function buildFullDataPayload() {
+    return {
+      version: 5,
       exportedAt: new Date().toISOString(),
+      scope: "pages-1-6",
+      includes: ["software", "patent", "paper", "contest", "graph", "status-config"],
       statusOptions,
       records,
       graph: {
@@ -753,9 +762,45 @@ function App() {
         edges: graphEdges,
       },
     };
+  }
+
+  function applyFullDataPayload(parsed) {
+    const nextRecords = Array.isArray(parsed) ? parsed : parsed.records;
+    let recordCount = 0;
+    let graphNodeCount = 0;
+    let graphEdgeCount = 0;
+
+    if (Array.isArray(nextRecords)) {
+      const normalized = nextRecords.map(normalizeRecord);
+      setRecords(normalized);
+      recordCount = normalized.length;
+      setSelectedId(null);
+    }
+
+    if (!Array.isArray(parsed) && parsed.graph) {
+      const nodes = Array.isArray(parsed.graph.nodes) ? parsed.graph.nodes : [];
+      const edges = Array.isArray(parsed.graph.edges) ? parsed.graph.edges : [];
+      setGraphNodes(nodes);
+      setGraphEdges(edges);
+      graphNodeCount = nodes.length;
+      graphEdgeCount = edges.length;
+    }
+
+    if (!Array.isArray(parsed) && Array.isArray(parsed.statusOptions)) {
+      const importedStatuses = sortStatusConfig(parsed.statusOptions);
+      setStatusOptions(importedStatuses);
+      setStatusDraft(importedStatuses);
+    }
+
+    setStatusFilter("all");
+    setStatusSortDirection("asc");
+    return { recordCount, graphNodeCount, graphEdgeCount };
+  }
+
+  function exportJson() {
     downloadBlob(
       "科研进度管理平台-全部数据.json",
-      JSON.stringify(exportData, null, 2),
+      JSON.stringify(buildFullDataPayload(), null, 2),
       "application/json;charset=utf-8",
     );
   }
@@ -829,30 +874,7 @@ function App() {
     reader.onload = () => {
       try {
         const parsed = JSON.parse(String(reader.result));
-        const nextRecords = Array.isArray(parsed) ? parsed : parsed.records;
-        let recordCount = 0;
-        let graphNodeCount = 0;
-        let graphEdgeCount = 0;
-
-        if (Array.isArray(nextRecords)) {
-          const normalized = nextRecords.map(normalizeRecord);
-          setRecords(normalized);
-          recordCount = normalized.length;
-          setSelectedId(null);
-        }
-        if (!Array.isArray(parsed) && parsed.graph) {
-          const nodes = Array.isArray(parsed.graph.nodes) ? parsed.graph.nodes : [];
-          const edges = Array.isArray(parsed.graph.edges) ? parsed.graph.edges : [];
-          setGraphNodes(nodes);
-          setGraphEdges(edges);
-          graphNodeCount = nodes.length;
-          graphEdgeCount = edges.length;
-        }
-        if (!Array.isArray(parsed) && Array.isArray(parsed.statusOptions)) {
-          const importedStatuses = normalizeStatusConfig(parsed.statusOptions);
-          setStatusOptions(importedStatuses);
-          setStatusDraft(importedStatuses);
-        }
+        const { recordCount, graphNodeCount, graphEdgeCount } = applyFullDataPayload(parsed);
 
         setImportStatus({
           success: true,
@@ -870,6 +892,88 @@ function App() {
       }
     };
     reader.readAsText(file);
+  }
+
+  async function loadBackupList() {
+    try {
+      const response = await fetch("/api/backups");
+      if (!response.ok) {
+        throw new Error("备份服务不可用");
+      }
+      const data = await response.json();
+      const backups = Array.isArray(data.backups) ? data.backups : [];
+      setBackupList(backups);
+      setSelectedBackup((current) =>
+        current && backups.some((backup) => backup.name === current)
+          ? current
+          : backups[0]?.name ?? "",
+      );
+      return backups;
+    } catch {
+      setBackupList([]);
+      setSelectedBackup("");
+      return [];
+    }
+  }
+
+  async function createServerBackup() {
+    setBackupBusy(true);
+    setStatusConfigMessage("");
+    try {
+      const response = await fetch("/api/backups", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildFullDataPayload()),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "服务器本地备份失败");
+      }
+      const backups = await loadBackupList();
+      setSelectedBackup(data.backup?.name || backups[0]?.name || "");
+      setStatusConfigMessage("已创建服务器本地备份，包含 1-6 页面全部数据");
+    } catch (error) {
+      setStatusConfigMessage(error.message || "服务器本地备份失败");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  async function restoreServerBackup() {
+    if (!selectedBackup) {
+      setStatusConfigMessage("请先选择要恢复的备份");
+      return;
+    }
+    if (!window.confirm("确认恢复所选备份吗？当前 1-6 页面数据会被备份内容覆盖。")) {
+      return;
+    }
+
+    setBackupBusy(true);
+    setStatusConfigMessage("");
+    try {
+      const response = await fetch(`/api/backups/${encodeURIComponent(selectedBackup)}`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok || !data.data) {
+        throw new Error(data.error || "读取备份失败");
+      }
+      const { recordCount, graphNodeCount, graphEdgeCount } = applyFullDataPayload(data.data);
+      setStatusConfigMessage(
+        `已恢复备份：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
+      );
+    } catch (error) {
+      setStatusConfigMessage(error.message || "恢复备份失败");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
+  function formatBackupLabel(backup) {
+    const created = backup.createdAt || backup.mtime;
+    const timeText = created ? new Date(created).toLocaleString() : backup.name;
+    const recordCount = Number.isFinite(Number(backup.recordCount))
+      ? `${backup.recordCount}条`
+      : "未知条数";
+    return `${timeText} · ${recordCount}`;
   }
 
   function updateStatusDraft(statusId, patch) {
@@ -968,10 +1072,62 @@ function App() {
                 <Save size={16} />
                 <span>生效</span>
               </button>
-            </div>
-          </div>
+        </div>
+      </div>
 
-          {statusConfigMessage && <div className="config-message">{statusConfigMessage}</div>}
+      <div className="backup-panel">
+        <div>
+          <strong>服务器本地备份</strong>
+          <span>备份 1-6 页面：软著、专利、论文、比赛、知识图谱、优先级配置。</span>
+        </div>
+        <div className="backup-actions">
+          <button
+            className="icon-button"
+            type="button"
+            onClick={createServerBackup}
+            disabled={backupBusy}
+          >
+            <Save size={16} />
+            <span>一键备份</span>
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={loadBackupList}
+            disabled={backupBusy}
+          >
+            <RotateCcw size={16} />
+            <span>刷新备份</span>
+          </button>
+          <select
+            className="backup-select"
+            value={selectedBackup}
+            onChange={(event) => setSelectedBackup(event.target.value)}
+            disabled={backupBusy || backupList.length === 0}
+            aria-label="选择服务器本地备份"
+          >
+            {backupList.length === 0 ? (
+              <option value="">暂无服务器本地备份</option>
+            ) : (
+              backupList.map((backup) => (
+                <option key={backup.name} value={backup.name}>
+                  {formatBackupLabel(backup)}
+                </option>
+              ))
+            )}
+          </select>
+          <button
+            className="text-button"
+            type="button"
+            onClick={restoreServerBackup}
+            disabled={backupBusy || !selectedBackup}
+          >
+            恢复备份
+          </button>
+        </div>
+      </div>
+
+      {statusConfigMessage && <div className="config-message">{statusConfigMessage}</div>}
 
           <div className="status-config-table">
             <div className="status-config-row status-config-head">

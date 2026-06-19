@@ -10,7 +10,7 @@
     "start": "concurrently -k \"vite --host 0.0.0.0 --port 4003\" \"wait-on tcp:4003 && electron --no-sandbox .\"",
     "check": "vite build",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 4003",
+    "preview": "node scripts/preview-server.cjs",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "android:sync": "vite build && npx cap sync android",
