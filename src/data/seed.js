@@ -143,6 +143,19 @@ export const seedRecords = [
     "todo": ""
   },
   {
+    "id": "software-12",
+    "categoryId": "software",
+    "status": "进行中",
+    "title": "flutter-local-doc-scanner",
+    "description": "基于flu的本地安卓文档扫描",
+    "windowsPath": "",
+    "serverPath": "/ds1/workspace/front/flutter-local-doc-scanner",
+    "githubUrl": "",
+    "history": [],
+    "stageDate": "2026-06-19",
+    "todo": ""
+  },
+  {
     "id": "patent-1",
     "categoryId": "patent",
     "status": "暂缓",
