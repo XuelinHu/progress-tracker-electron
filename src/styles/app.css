@@ -382,6 +382,13 @@ button {
   white-space: nowrap;
 }
 
+.table-head.field-title,
+.table-head.field-description {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
 .action-head {
   justify-content: center;
   padding: 0;
@@ -500,6 +507,15 @@ button {
 .cell-input {
   min-height: 32px;
   padding: 0 6px;
+}
+
+.field-title .cell-input,
+.field-description .cell-input {
+  height: auto;
+  min-height: 42px;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .date-history-field {

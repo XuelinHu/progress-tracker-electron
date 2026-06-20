@@ -1655,7 +1655,7 @@ function App() {
             <div className="table-grid header-row" style={{ gridTemplateColumns: tableTemplate }}>
               <div className="table-head action-head" aria-hidden="true" />
               {activeCategory.fields.map((field, index) => (
-                <div key={field.key} className="table-head">
+                <div key={field.key} className={`table-head field-${field.key}`}>
                   {field.type === "status" ? (
                     <button
                       className={`head-sort-button ${statusSortDirection !== "none" ? "active" : ""}`}
@@ -1713,8 +1713,8 @@ function App() {
                 </button>
                 <DaysSince dateField={activeCategory.fields.find((f) => f.type === "date")} record={record} />
               </div>
-                  {activeCategory.fields.map((field) => (
-                    <div key={field.key} className="table-cell">
+                {activeCategory.fields.map((field) => (
+                  <div key={field.key} className={`table-cell field-${field.key}`}>
                       {renderCell(record, field)}
                     </div>
                   ))}

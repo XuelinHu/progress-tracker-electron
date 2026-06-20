@@ -9,13 +9,13 @@ const titleField = {
   key: "title",
   label: "GitHub项目名称",
   type: "text",
-  width: "minmax(230px, 1fr)",
+  width: "minmax(115px, 0.5fr)",
 };
 const descriptionField = {
   key: "description",
   label: "中文解释",
   type: "textarea",
-  width: "minmax(250px, 1fr)",
+  width: "minmax(125px, 0.5fr)",
 };
 const stageDateField = {
   key: "stageDate",
