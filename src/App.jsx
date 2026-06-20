@@ -28,6 +28,13 @@ const STORAGE_KEY = "progress-tracker-records-v7";
 const GRAPH_STORAGE_KEY = "progress-tracker-graph-v2";
 const STATUS_CONFIG_STORAGE_KEY = "progress-tracker-status-config-v1";
 const DEFAULT_MISSING_STAGE_DATE = "2026-06-01";
+const EMPTY_CONTEST_PLACEHOLDER_IDS = new Set([
+  "contest-5",
+  "contest-6",
+  "contest-7",
+  "contest-8",
+  "contest-9",
+]);
 const GRAPH_CATEGORY = {
   id: "graph",
   name: "知识图谱",
@@ -77,19 +84,52 @@ function normalizeRecord(record) {
   };
 }
 
+function hasText(value) {
+  return String(value ?? "").trim().length > 0;
+}
+
+function hasDateHistory(record) {
+  return Object.values(record.dateHistory ?? {}).some(
+    (entries) => Array.isArray(entries) && entries.length > 0,
+  );
+}
+
+function isEmptyContestPlaceholder(record) {
+  if (record.categoryId !== "contest" || !EMPTY_CONTEST_PLACEHOLDER_IDS.has(record.id)) {
+    return false;
+  }
+
+  return (
+    !hasText(record.title) &&
+    !hasText(record.platformUrl) &&
+    !hasText(record.officialUrl) &&
+    !hasText(record.registrationDate) &&
+    !hasText(record.endDate) &&
+    !hasText(record.todo) &&
+    !(Array.isArray(record.history) && record.history.length > 0) &&
+    !(Array.isArray(record.todoHistory) && record.todoHistory.length > 0) &&
+    !hasDateHistory(record)
+  );
+}
+
+function removeEmptyContestPlaceholders(records) {
+  return records.filter((record) => !isEmptyContestPlaceholder(record));
+}
+
 function mergeMissingSeedRecords(records) {
-  const existingIds = new Set(records.map((record) => record.id));
+  const cleanedRecords = removeEmptyContestPlaceholders(records);
+  const existingIds = new Set(cleanedRecords.map((record) => record.id));
   const missingRecords = seedRecords
     .filter((record) => !existingIds.has(record.id))
     .map(normalizeRecord);
-  return [...records, ...missingRecords];
+  return [...cleanedRecords, ...removeEmptyContestPlaceholders(missingRecords)];
 }
 
 function loadRecords() {
   try {
     const cached = localStorage.getItem(STORAGE_KEY);
     if (!cached) {
-      return seedRecords;
+      return removeEmptyContestPlaceholders(seedRecords.map(normalizeRecord));
     }
 
     const parsed = JSON.parse(cached);
