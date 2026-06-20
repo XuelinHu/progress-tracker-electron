@@ -1065,9 +1065,14 @@ button {
   display: inline;
 }
 
-.backup-select {
+.backup-dropdown {
+  position: relative;
   width: min(360px, 38vw);
   min-width: 180px;
+}
+
+.backup-select {
+  width: 100%;
   min-height: 32px;
   padding: 0 8px;
   border: 1px solid #cfd8e6;
@@ -1075,6 +1080,96 @@ button {
   background: #ffffff;
   color: #273449;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-select::-webkit-details-marker {
+  display: none;
+}
+
+.backup-select.empty {
+  color: #94a3b8;
+}
+
+.backup-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  width: min(420px, 80vw);
+  max-height: 260px;
+  overflow: auto;
+  padding: 5px;
+  border: 1px solid #cfd8e6;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+}
+
+.backup-menu-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+}
+
+.backup-menu-item.selected {
+  background: #eef6ff;
+}
+
+.backup-option-button {
+  min-width: 0;
+  height: 30px;
+  padding: 0 7px;
+  border: 0;
+  background: transparent;
+  color: #273449;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-option-button:hover {
+  color: #1d4ed8;
+}
+
+.backup-delete-button {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+}
+
+.backup-delete-button:hover:not(:disabled) {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
+.backup-delete-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.backup-empty {
+  padding: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: center;
 }
 
 .primary-action {

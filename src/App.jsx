@@ -1047,6 +1047,35 @@ function App() {
     }
   }
 
+  async function deleteServerBackup(name) {
+    if (!name) {
+      return;
+    }
+    const backup = backupList.find((item) => item.name === name);
+    const label = backup ? formatBackupLabel(backup) : name;
+    if (!window.confirm(`确认删除备份"${label}"吗？删除后无法恢复。`)) {
+      return;
+    }
+
+    setBackupBusy(true);
+    setStatusConfigMessage("");
+    try {
+      const response = await fetch(`/api/backups/${encodeURIComponent(name)}`, {
+        method: "DELETE",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "删除备份失败");
+      }
+      await loadBackupList();
+      setStatusConfigMessage("已删除所选服务器本地备份");
+    } catch (error) {
+      setStatusConfigMessage(error.message || "删除备份失败");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
   function formatBackupLabel(backup) {
     const created = backup.createdAt || backup.mtime;
     const timeText = created ? new Date(created).toLocaleString() : backup.name;
@@ -1132,6 +1161,13 @@ function App() {
   }
 
   function renderStatusConfig() {
+    const selectedBackupInfo = backupList.find((backup) => backup.name === selectedBackup);
+    const selectedBackupLabel = selectedBackupInfo
+      ? formatBackupLabel(selectedBackupInfo)
+      : backupList.length === 0
+        ? "暂无服务器本地备份"
+        : "请选择服务器本地备份";
+
     return (
       <section className="workspace status-config-page">
           <div className="config-header">
@@ -1179,25 +1215,53 @@ function App() {
             <RotateCcw size={16} />
             <span>刷新备份</span>
           </button>
-          <select
-            className="backup-select"
-            value={selectedBackup}
-            onChange={(event) => setSelectedBackup(event.target.value)}
-            disabled={backupBusy || backupList.length === 0}
-            aria-label="选择服务器本地备份"
-          >
-            {backupList.length === 0 ? (
-              <option value="">暂无服务器本地备份</option>
-            ) : (
-              backupList.map((backup) => (
-                <option key={backup.name} value={backup.name}>
-                  {formatBackupLabel(backup)}
-                </option>
-              ))
-            )}
-          </select>
-          <button
-            className="text-button"
+            <details className="backup-dropdown">
+              <summary
+                className={`backup-select ${backupList.length === 0 ? "empty" : ""}`}
+                aria-label="选择服务器本地备份"
+              >
+                {selectedBackupLabel}
+              </summary>
+              <div className="backup-menu">
+                {backupList.length === 0 ? (
+                  <div className="backup-empty">暂无服务器本地备份</div>
+                ) : (
+                  backupList.map((backup) => (
+                    <div
+                      key={backup.name}
+                      className={`backup-menu-item ${backup.name === selectedBackup ? "selected" : ""}`}
+                    >
+                      <button
+                        className="backup-option-button"
+                        type="button"
+                        onClick={(event) => {
+                          setSelectedBackup(backup.name);
+                          event.currentTarget.closest("details")?.removeAttribute("open");
+                        }}
+                        title={backup.name}
+                      >
+                        {formatBackupLabel(backup)}
+                      </button>
+                      <button
+                        className="backup-delete-button"
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          deleteServerBackup(backup.name);
+                        }}
+                        disabled={backupBusy}
+                        title="删除这个备份"
+                        aria-label={`删除备份 ${formatBackupLabel(backup)}`}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </details>
+            <button
+              className="text-button"
             type="button"
             onClick={restoreServerBackup}
             disabled={backupBusy || !selectedBackup}

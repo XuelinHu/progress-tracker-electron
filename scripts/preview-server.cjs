@@ -126,6 +126,25 @@ async function handleApi(req, res, pathname) {
     return;
   }
 
+  if (match && req.method === "DELETE") {
+    const name = decodeURIComponent(match[1]);
+    if (!isSafeBackupName(name)) {
+      sendJson(res, 400, { ok: false, error: "非法备份文件名" });
+      return;
+    }
+    try {
+      await fs.unlink(path.join(backupDir, name));
+    } catch (error) {
+      if (error?.code === "ENOENT") {
+        sendJson(res, 404, { ok: false, error: "备份不存在或已被删除" });
+        return;
+      }
+      throw error;
+    }
+    sendJson(res, 200, { ok: true, name });
+    return;
+  }
+
   sendJson(res, 404, { ok: false, error: "接口不存在" });
 }
 
