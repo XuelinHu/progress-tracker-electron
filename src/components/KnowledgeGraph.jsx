@@ -34,6 +34,18 @@ function recordTitle(record) {
   return record?.title?.trim() || "未命名记录";
 }
 
+function estimateTextRows(value, fieldKey = "") {
+  const text = String(value ?? "");
+  const charsPerLine =
+    fieldKey === "title" ? 16 : fieldKey === "description" ? 18 : 42;
+  return Math.max(
+    2,
+    text
+      .split(/\r\n|\r|\n/)
+      .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0),
+  );
+}
+
 function getDateHistoryGroups(record, category) {
   if (!record || !category) {
     return [];
@@ -462,7 +474,8 @@ function GraphField({
     }
     return (
       <textarea
-        className="graph-form-control graph-textarea"
+        className={`graph-form-control graph-textarea field-${field.key}`}
+        rows={estimateTextRows(record[field.key], field.key)}
         value={record[field.key] ?? ""}
         onChange={(event) => onChange(field.key, event.target.value)}
       />
@@ -525,6 +538,17 @@ function GraphField({
           className="graph-copy-icon-button"
         />
       </div>
+    );
+  }
+
+  if (field.key === "title" || field.key === "description") {
+    return (
+      <textarea
+        className={`graph-form-control graph-textarea field-${field.key}`}
+        rows={estimateTextRows(record[field.key], field.key)}
+        value={record[field.key] ?? ""}
+        onChange={(event) => onChange(field.key, event.target.value)}
+      />
     );
   }
 
@@ -1296,8 +1320,8 @@ export default function KnowledgeGraph({
             </div>
 
             <div className="graph-detail-form">
-              {selectedCategory.fields.map((field) => (
-                <label key={field.key}>
+                {selectedCategory.fields.map((field) => (
+                  <label key={field.key} className={`field-${field.key}`}>
                   <span>{field.label}</span>
                 <GraphField
                   field={field}

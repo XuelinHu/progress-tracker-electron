@@ -212,11 +212,14 @@ function normalizeExternalUrl(value) {
   }
 }
 
-function estimateTextRows(value) {
+function estimateTextRows(value, fieldKey = "") {
   const text = String(value ?? "");
-  const explicitRows = text.split(/\r\n|\r|\n/).length;
-  const inferredRows = Math.ceil(text.length / 42);
-  return Math.min(5, Math.max(2, explicitRows, inferredRows));
+  const charsPerLine =
+    fieldKey === "title" ? 16 : fieldKey === "description" ? 18 : 42;
+  const inferredRows = text
+    .split(/\r\n|\r|\n/)
+    .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
+  return Math.max(2, inferredRows);
 }
 
 function daysFromToday(dateStr) {
@@ -1323,7 +1326,7 @@ function App() {
         <div className="url-cell">
           <textarea
             className="cell-input cell-textarea"
-            rows={estimateTextRows(record[field.key])}
+                rows={estimateTextRows(record[field.key], field.key)}
             value={record[field.key] ?? ""}
             onFocus={() => setSelectedId(record.id)}
             onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
@@ -1351,7 +1354,7 @@ function App() {
         <div className="path-cell">
           <textarea
             className="cell-input cell-textarea"
-            rows={estimateTextRows(record[field.key])}
+                rows={estimateTextRows(record[field.key], field.key)}
             value={record[field.key] ?? ""}
             onFocus={() => setSelectedId(record.id)}
             onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
@@ -1463,7 +1466,7 @@ function App() {
     return (
       <textarea
         className="cell-input cell-textarea"
-        rows={estimateTextRows(record[field.key])}
+        rows={estimateTextRows(record[field.key], field.key)}
         value={record[field.key] ?? ""}
         onFocus={() => setSelectedId(record.id)}
         onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}

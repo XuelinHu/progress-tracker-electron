@@ -823,6 +823,13 @@
   min-height: 76px;
   resize: vertical;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.graph-detail-form .field-title .graph-textarea,
+.graph-detail-form .field-description .graph-textarea {
+  min-height: 50px;
 }
 
 .relation-description {
