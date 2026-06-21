@@ -4,6 +4,7 @@ dist-electron/
 build/
 backups/
 .playwright-mcp/
+.serena/
 *.log
 *.png
 *.xlsx
