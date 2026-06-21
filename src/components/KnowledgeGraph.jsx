@@ -185,6 +185,16 @@ function RecordNode({ data }) {
     <>
       <Handle type="target" position={Position.Left} />
       <div className="graph-node-content">
+        <div
+          className="graph-node-category-marker"
+          style={{
+            "--category-accent": data.categoryAccent,
+            "--category-tint": data.categoryTint,
+          }}
+          title={`类别：${data.categoryName}`}
+        >
+          <span aria-hidden="true" />
+        </div>
         <div className="graph-node-meta">
           <span
             className="graph-node-category"
