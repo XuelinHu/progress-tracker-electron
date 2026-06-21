@@ -27,7 +27,6 @@ import { STATUSES } from "./data/statuses.js";
 const STORAGE_KEY = "progress-tracker-records-v7";
 const GRAPH_STORAGE_KEY = "progress-tracker-graph-v2";
 const STATUS_CONFIG_STORAGE_KEY = "progress-tracker-status-config-v1";
-const DEFAULT_MISSING_STAGE_DATE = "2026-06-01";
 const EMPTY_CONTEST_PLACEHOLDER_IDS = new Set([
   "contest-5",
   "contest-6",
@@ -54,7 +53,10 @@ const NAVIGATION_ITEMS = [...CATEGORIES, GRAPH_CATEGORY, STATUS_CONFIG_PAGE];
 function today(offsetDays = 0) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function createId(prefix = "item") {
@@ -65,8 +67,8 @@ function normalizeRecord(record) {
   const rawTodo = Array.isArray(record.todoHistory) ? record.todoHistory : [];
   const normalizedDate =
     record.categoryId === "contest"
-      ? { registrationDate: record.registrationDate || DEFAULT_MISSING_STAGE_DATE }
-      : { stageDate: record.stageDate || DEFAULT_MISSING_STAGE_DATE };
+      ? { registrationDate: record.registrationDate || today() }
+      : { stageDate: record.stageDate || today() };
   return {
     ...record,
     ...normalizedDate,
@@ -77,7 +79,7 @@ function normalizeRecord(record) {
         : {},
     todoHistory: rawTodo.map((e) => ({
       id: e.id,
-      addedDate: e.addedDate || "",
+      addedDate: e.addedDate || e.date || today(),
       item: e.item || "",
       doneDate: e.doneDate || (!e.addedDate && e.date ? e.date : null),
     })),

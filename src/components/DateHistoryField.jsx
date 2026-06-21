@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 
+function today() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function DateHistoryField({
   value,
   history = [],
@@ -26,7 +34,7 @@ export default function DateHistoryField({
   }, [resetKey, value]);
 
   function handleConfirm() {
-    const date = draftDate.trim() || new Date().toISOString().slice(0, 10);
+    const date = draftDate.trim() || today();
     onDateChange(date, item.trim());
     setItem("");
     setDraftDate(date);

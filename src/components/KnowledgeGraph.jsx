@@ -30,6 +30,14 @@ function createGraphId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
+function today() {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function recordTitle(record) {
   return record?.title?.trim() || "未命名记录";
 }
@@ -155,7 +163,7 @@ function RecordNode({ data }) {
   const todoLines = (data.todoText ?? "").split(/\r?\n/).filter((l) => l.trim());
   const todoHistByItem = new Map((data.todoHistory ?? []).map((e) => [e.item, e]));
   const [todoDraft, setTodoDraft] = useState("");
-  const [dateVal, setDateVal] = useState(data.dateValue ?? "");
+  const [dateVal, setDateVal] = useState(() => today());
   const [dateItem, setDateItem] = useState("");
 
   function handleTodoKey(e) {
@@ -169,7 +177,7 @@ function RecordNode({ data }) {
   }
 
   function handleDateConfirm() {
-    const d = dateVal.trim() || new Date().toISOString().slice(0, 10);
+    const d = dateVal.trim() || today();
     h.addDate?.(d, dateItem.trim());
     setDateItem("");
   }
