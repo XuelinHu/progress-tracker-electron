@@ -235,7 +235,7 @@ function RecordNode({ data }) {
                   type="checkbox"
                   onChange={() => h.toggleTodo?.(line)}
                 />
-                <span>{line}</span>
+                <span className="graph-node-todo-text">{line}</span>
                 <button
                   className="graph-node-todo-del"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); h.deleteTodo?.(line); }}
@@ -279,7 +279,7 @@ function RecordNode({ data }) {
                       checked={true}
                       onChange={() => h.toggleTodo?.(line)}
                     />
-                    <span>{line}</span>
+                    <span className="graph-node-todo-text">{line}</span>
                     <span className="graph-node-todo-done-date">{hist.doneDate}</span>
                   </label>
                 );
@@ -672,6 +672,7 @@ function GraphCanvas({
             background: `color-mix(in srgb, ${status.bg} 62%, #ffffff)`,
             borderRadius: 5,
             width: 180,
+            height: "auto",
             padding: 6,
             boxShadow:
               selectedElement?.type === "node" && selectedElement.id === node.id

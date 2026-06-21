@@ -241,11 +241,18 @@
   pointer-events: none;
 }
 
+.react-flow__node-record {
+  height: auto !important;
+  min-height: fit-content;
+}
+
 .graph-node-content {
   position: relative;
   display: grid;
   gap: 3px;
+  width: 100%;
   min-width: 0;
+  overflow: visible;
 }
 
 .graph-node-category-marker {
@@ -286,10 +293,12 @@
 }
 
 .graph-node-content strong {
+  display: block;
   color: #1e293b;
   font-size: 8px;
   line-height: 1.25;
   overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .graph-node-todo {
@@ -303,9 +312,10 @@
 
 .graph-node-todo-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 2px;
   font-size: 7px;
+  line-height: 1.25;
   color: #475569;
 }
 
@@ -349,21 +359,26 @@
 }
 
 .graph-node-todo-item input[type="checkbox"] {
+  flex: 0 0 auto;
   width: 9px;
   height: 9px;
-  margin: 0;
+  margin-top: 1px;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   accent-color: #16a34a;
 }
 
-.graph-node-todo-item span {
+.graph-node-todo-text {
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .graph-node-todo-del {
+  flex: 0 0 auto;
   width: 12px;
   height: 12px;
   display: none;
