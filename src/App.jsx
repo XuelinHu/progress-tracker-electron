@@ -1044,6 +1044,29 @@ function App() {
     }
   }
 
+  async function restoreDavBackup() {
+    if (!window.confirm("确认从云端恢复最新数据吗？云端数据将覆盖当前浏览器本地数据。")) {
+      return;
+    }
+    setBackupBusy(true);
+    setStatusConfigMessage("");
+    try {
+      const response = await fetch("/api/dav/latest");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok || !data.latest?.data) {
+        throw new Error(data.error || "读取云端数据失败");
+      }
+      const { recordCount, graphNodeCount, graphEdgeCount } = applyFullDataPayload(data.latest.data);
+      setStatusConfigMessage(
+        `已按云端优先恢复：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
+      );
+    } catch (error) {
+      setStatusConfigMessage(error.message || "从云端恢复失败");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
   async function restoreServerBackup() {
     if (!selectedBackup) {
       setStatusConfigMessage("请先选择要恢复的备份");
@@ -1240,6 +1263,16 @@ function App() {
           >
             <Upload size={16} />
             <span>同步云端</span>
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={restoreDavBackup}
+            disabled={backupBusy}
+            title="从 WebDAV 云端最新版本恢复到当前浏览器，本地数据会被覆盖"
+          >
+            <Download size={16} />
+            <span>云端恢复</span>
           </button>
           <button
             className="icon-button"

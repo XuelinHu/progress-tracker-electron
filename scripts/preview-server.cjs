@@ -161,6 +161,17 @@ async function syncPayloadToDav(payload) {
   };
 }
 
+async function loadLatestPayloadFromDav() {
+  const config = getDavConfig();
+  const response = await davRequest(config, "GET", [config.project, "latest.json"]);
+  const text = await response.text();
+  return {
+    project: config.project,
+    latestName: "latest.json",
+    data: JSON.parse(text),
+  };
+}
+
 async function listBackups() {
   await fs.mkdir(backupDir, { recursive: true });
   const entries = await fs.readdir(backupDir, { withFileTypes: true });
@@ -223,6 +234,12 @@ async function handleApi(req, res, pathname) {
     const parsed = JSON.parse(await readBody(req));
     const result = await syncPayloadToDav(parsed);
     sendJson(res, 201, { ok: true, sync: result });
+    return;
+  }
+
+  if (pathname === "/api/dav/latest" && req.method === "GET") {
+    const result = await loadLatestPayloadFromDav();
+    sendJson(res, 200, { ok: true, latest: result });
     return;
   }
 
