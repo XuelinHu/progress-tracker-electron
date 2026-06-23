@@ -1021,6 +1021,29 @@ function App() {
     }
   }
 
+  async function syncDavBackup() {
+    setBackupBusy(true);
+    setStatusConfigMessage("");
+    try {
+      const response = await fetch("/api/dav/sync", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(buildFullDataPayload()),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "WebDAV 同步失败");
+      }
+      setStatusConfigMessage(
+        `已同步到云端：${data.sync?.project || "progress-tracker"}/${data.sync?.latestName || "latest.json"}`,
+      );
+    } catch (error) {
+      setStatusConfigMessage(error.message || "WebDAV 同步失败");
+    } finally {
+      setBackupBusy(false);
+    }
+  }
+
   async function restoreServerBackup() {
     if (!selectedBackup) {
       setStatusConfigMessage("请先选择要恢复的备份");
@@ -1207,6 +1230,16 @@ function App() {
           >
             <Save size={16} />
             <span>一键备份</span>
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={syncDavBackup}
+            disabled={backupBusy}
+            title="将当前浏览器中的最新数据同步到 WebDAV 云端"
+          >
+            <Upload size={16} />
+            <span>同步云端</span>
           </button>
           <button
             className="icon-button"
