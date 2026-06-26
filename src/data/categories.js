@@ -137,6 +137,42 @@ export const CATEGORIES = [
       },
     ],
   },
+  {
+    id: "project",
+    name: "项目",
+    shortcut: "6",
+    accent: "#7c3aed",
+    tint: "#f3e8ff",
+    fields: [
+      statusField,
+      titleField,
+      {
+        key: "registrationDate",
+        label: "报名日期",
+        type: "date",
+        width: "minmax(230px, 0.8fr)",
+      },
+      todoField,
+      {
+        key: "endDate",
+        label: "结束日期",
+        type: "date",
+        width: "minmax(230px, 0.8fr)",
+      },
+      {
+        key: "platformUrl",
+        label: "平台网址",
+        type: "url",
+        width: "minmax(300px, 1fr)",
+      },
+      {
+        key: "officialUrl",
+        label: "官网",
+        type: "url",
+        width: "minmax(300px, 1fr)",
+      },
+    ],
+  },
 ];
 
 export const CATEGORY_BY_ID = Object.fromEntries(

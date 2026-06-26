@@ -44,11 +44,17 @@ const GRAPH_CATEGORY = {
 const STATUS_CONFIG_PAGE = {
   id: "status-config",
   name: "优先级配置",
-  shortcut: "6",
+  shortcut: "7",
   accent: "#2563eb",
   tint: "#dbeafe",
 };
-const NAVIGATION_ITEMS = [...CATEGORIES, GRAPH_CATEGORY, STATUS_CONFIG_PAGE];
+const PROJECT_CATEGORY_ID = "project";
+const NAVIGATION_ITEMS = [
+  ...CATEGORIES.filter((category) => category.id !== PROJECT_CATEGORY_ID),
+  GRAPH_CATEGORY,
+  CATEGORY_BY_ID[PROJECT_CATEGORY_ID],
+  STATUS_CONFIG_PAGE,
+].filter(Boolean);
 
 function today(offsetDays = 0) {
   const date = new Date();
@@ -66,7 +72,7 @@ function createId(prefix = "item") {
 function normalizeRecord(record) {
   const rawTodo = Array.isArray(record.todoHistory) ? record.todoHistory : [];
   const normalizedDate =
-    record.categoryId === "contest"
+    record.categoryId === "contest" || record.categoryId === PROJECT_CATEGORY_ID
       ? { registrationDate: record.registrationDate || today() }
       : { stageDate: record.stageDate || today() };
   return {
@@ -835,7 +841,7 @@ function App() {
     return {
       version: 5,
       exportedAt: new Date().toISOString(),
-      scope: "pages-1-6",
+      scope: "pages-1-7",
       includes: ["software", "patent", "paper", "contest", "graph", "status-config"],
       statusOptions,
       records,
@@ -1013,7 +1019,7 @@ function App() {
       }
       const backups = await loadBackupList();
       setSelectedBackup(data.backup?.name || backups[0]?.name || "");
-      setStatusConfigMessage("已创建服务器本地备份，包含 1-6 页面全部数据");
+      setStatusConfigMessage("已创建服务器本地备份，包含 1-7 页面全部数据");
     } catch (error) {
       setStatusConfigMessage(error.message || "服务器本地备份失败");
     } finally {
@@ -1072,7 +1078,7 @@ function App() {
       setStatusConfigMessage("请先选择要恢复的备份");
       return;
     }
-    if (!window.confirm("确认恢复所选备份吗？当前 1-6 页面数据会被备份内容覆盖。")) {
+    if (!window.confirm("确认恢复所选备份吗？当前 1-7 页面数据会被备份内容覆盖。")) {
       return;
     }
 
@@ -1242,7 +1248,7 @@ function App() {
       <div className="backup-panel">
         <div>
           <strong>服务器本地备份</strong>
-          <span>备份 1-6 页面：软著、专利、论文、比赛、知识图谱、优先级配置。</span>
+          <span>备份 1-7 页面：软著、专利、论文、比赛、知识图谱、项目、优先级配置。</span>
         </div>
         <div className="backup-actions">
           <button
@@ -1662,7 +1668,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 切换页面</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 切换页面</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新
@@ -1676,7 +1682,7 @@ function App() {
               className="icon-button"
               type="button"
               onClick={exportJson}
-              title="一键导出五个栏目的全部数据（含历史记录和知识图谱）"
+              title="一键导出七个页面的全部数据（含历史记录和知识图谱）"
             >
               <Download size={17} />
               <span>一键导出 JSON</span>
@@ -1685,7 +1691,7 @@ function App() {
               className="icon-button"
               type="button"
               onClick={exportAllCsv}
-              title="一键导出四个栏目的全部记录为 CSV"
+              title="一键导出五个数据栏目的全部记录为 CSV"
             >
               <FileDown size={17} />
               <span>导出全部 CSV</span>
@@ -1694,7 +1700,7 @@ function App() {
               className="icon-button"
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              title="一键导入五个栏目的全部数据"
+              title="一键导入七个页面的全部数据"
             >
               <Upload size={17} />
               <span>导入 JSON</span>
