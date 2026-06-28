@@ -110,3 +110,7 @@ rtk pip list            rtk pnpm install        rtk npm run <script>
 - For debugging, use raw command without rtk prefix
 - `rtk proxy <cmd>` runs command without filtering but tracks usage
 <!-- /headroom:rtk-instructions -->
+
+## GitHub Commit Language
+
+- Use English for all GitHub commit messages and pull/push related commit notes.
