@@ -52,8 +52,8 @@ export default function CopyIconButton({ value, label, className = "" }) {
       disabled={disabled}
       onPointerDown={(event) => event.stopPropagation()}
       onClick={handleCopy}
-      title={disabled ? "没有可复制的路径" : copied ? "已复制" : `复制${label || "路径"}`}
-      aria-label={disabled ? `${label || "路径"}为空` : `复制${label || "路径"}`}
+      title={disabled ? "没有可复制的内容" : copied ? "已复制" : `复制${label || "文本"}`}
+      aria-label={disabled ? `${label || "文本"}为空` : `复制${label || "文本"}`}
     >
       {copied ? <Check size={10} /> : <Copy size={10} />}
     </button>

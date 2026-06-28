@@ -19,6 +19,7 @@ import DateHistoryField from "./DateHistoryField.jsx";
 import StatusHistoryPopover from "./StatusHistoryPopover.jsx";
 import PortalPopover from "./PortalPopover.jsx";
 import CopyIconButton from "./CopyIconButton.jsx";
+import CopyableControl from "./CopyableControl.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 import { STATUSES } from "../data/statuses.js";
 import "../styles/graph.css";
@@ -239,6 +240,11 @@ function RecordNode({ data }) {
             if (done) return null;
             return (
               <label key={idx} className="graph-node-todo-item">
+                <CopyIconButton
+                  value={line}
+                  label="Todo"
+                  className="graph-node-todo-copy-button"
+                />
                 <input
                   type="checkbox"
                   onChange={() => h.toggleTodo?.(line)}
@@ -251,13 +257,20 @@ function RecordNode({ data }) {
               </label>
             );
           })}
-          <input
-            className="graph-node-input"
-            placeholder="+待办"
-            value={todoDraft}
-            onChange={(e) => setTodoDraft(e.target.value)}
-            onKeyDown={handleTodoKey}
-          />
+          <CopyableControl
+            value={data.todoText}
+            label={`${data.title} Todo`}
+            className="graph-node-copyable nodrag nopan"
+            buttonClassName="graph-node-copy-button"
+          >
+            <input
+              className="graph-node-input"
+              placeholder="+待办"
+              value={todoDraft}
+              onChange={(e) => setTodoDraft(e.target.value)}
+              onKeyDown={handleTodoKey}
+            />
+          </CopyableControl>
           {todoLines.some((l) => (todoHistByItem.get(l)?.doneDate != null)) && (
             <div
               className="graph-node-todo-done-popover"
@@ -282,6 +295,11 @@ function RecordNode({ data }) {
                 if (hist?.doneDate == null) return null;
                 return (
                   <label key={idx} className="graph-node-todo-item done">
+                    <CopyIconButton
+                      value={line}
+                      label="Todo"
+                      className="graph-node-todo-copy-button"
+                    />
                     <input
                       type="checkbox"
                       checked={true}
@@ -304,13 +322,20 @@ function RecordNode({ data }) {
             value={dateVal}
             onChange={(e) => setDateVal(e.target.value)}
           />
-          <input
-            className="graph-node-input"
-            placeholder="事项"
+          <CopyableControl
             value={dateItem}
-            onChange={(e) => setDateItem(e.target.value)}
-            onKeyDown={handleDateKey}
-          />
+            label="事项"
+            className="graph-node-copyable nodrag nopan"
+            buttonClassName="graph-node-copy-button"
+          >
+            <input
+              className="graph-node-input"
+              placeholder="事项"
+              value={dateItem}
+              onChange={(e) => setDateItem(e.target.value)}
+              onKeyDown={handleDateKey}
+            />
+          </CopyableControl>
           <button className="graph-node-confirm" onClick={handleDateConfirm}>✓</button>
         </div>
 
@@ -430,6 +455,11 @@ function GraphField({
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onDeleteTodo) onDeleteTodo(field.key, trimmed); }}
                     title="删除此项"
                   >×</button>
+                  <CopyIconButton
+                    value={trimmed}
+                    label="Todo"
+                    className="todo-copy-button"
+                  />
                   <input
                     type="checkbox"
                     className="todo-checkbox"
@@ -468,6 +498,11 @@ function GraphField({
                 const hist = histByItem.get(trimmed);
                 return (
                   <label key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
+                    <CopyIconButton
+                      value={trimmed}
+                      label="Todo"
+                      className="todo-copy-button"
+                    />
                     <input
                       type="checkbox"
                       className="todo-checkbox"
@@ -481,22 +516,34 @@ function GraphField({
               })}
             </div>
           )}
-          <textarea
-            className="graph-form-control graph-textarea todo-new-input"
-            rows={1}
-            onKeyDown={handleTodoKeydown}
-            placeholder="输入待办，回车添加"
-          />
+          <CopyableControl
+            value={todoText}
+            label={`${recordTitle(record)} Todo`}
+            className="graph-copyable-control"
+          >
+            <textarea
+              className="graph-form-control graph-textarea todo-new-input"
+              rows={1}
+              onKeyDown={handleTodoKeydown}
+              placeholder="输入待办，回车添加"
+            />
+          </CopyableControl>
         </div>
       );
     }
     return (
-      <textarea
-        className={`graph-form-control graph-textarea field-${field.key}`}
-        rows={estimateTextRows(record[field.key], field.key)}
-        value={record[field.key] ?? ""}
-        onChange={(event) => onChange(field.key, event.target.value)}
-      />
+      <CopyableControl
+        value={record[field.key]}
+        label={field.label}
+        className="graph-copyable-control"
+      >
+        <textarea
+          className={`graph-form-control graph-textarea field-${field.key}`}
+          rows={estimateTextRows(record[field.key], field.key)}
+          value={record[field.key] ?? ""}
+          onChange={(event) => onChange(field.key, event.target.value)}
+        />
+      </CopyableControl>
     );
   }
 
@@ -522,12 +569,18 @@ function GraphField({
     const url = normalizeExternalUrl(record[field.key]);
     return (
       <div className="graph-url-field">
-        <input
-          className="graph-form-control"
-          type="text"
-          value={record[field.key] ?? ""}
-          onChange={(event) => onChange(field.key, event.target.value)}
-        />
+        <CopyableControl
+          value={record[field.key]}
+          label={field.label}
+          className="graph-copyable-control"
+        >
+          <input
+            className="graph-form-control"
+            type="text"
+            value={record[field.key] ?? ""}
+            onChange={(event) => onChange(field.key, event.target.value)}
+          />
+        </CopyableControl>
         <button
           className="graph-icon-button"
           type="button"
@@ -544,39 +597,53 @@ function GraphField({
   if (field.type === "path") {
     return (
       <div className="graph-path-field">
-        <input
-          className="graph-form-control"
-          type="text"
-          value={record[field.key] ?? ""}
-          onChange={(event) => onChange(field.key, event.target.value)}
-        />
-        <CopyIconButton
+        <CopyableControl
           value={record[field.key]}
           label={field.label}
-          className="graph-copy-icon-button"
-        />
+          className="graph-copyable-control"
+          buttonClassName="graph-copy-icon-button"
+        >
+          <input
+            className="graph-form-control"
+            type="text"
+            value={record[field.key] ?? ""}
+            onChange={(event) => onChange(field.key, event.target.value)}
+          />
+        </CopyableControl>
       </div>
     );
   }
 
   if (field.key === "title" || field.key === "description") {
     return (
-      <textarea
-        className={`graph-form-control graph-textarea field-${field.key}`}
-        rows={estimateTextRows(record[field.key], field.key)}
-        value={record[field.key] ?? ""}
-        onChange={(event) => onChange(field.key, event.target.value)}
-      />
+      <CopyableControl
+        value={record[field.key]}
+        label={field.label}
+        className="graph-copyable-control"
+      >
+        <textarea
+          className={`graph-form-control graph-textarea field-${field.key}`}
+          rows={estimateTextRows(record[field.key], field.key)}
+          value={record[field.key] ?? ""}
+          onChange={(event) => onChange(field.key, event.target.value)}
+        />
+      </CopyableControl>
     );
   }
 
   return (
-    <input
-      className="graph-form-control"
-      type={field.type === "date" ? "date" : "text"}
-      value={record[field.key] ?? ""}
-      onChange={(event) => onChange(field.key, event.target.value)}
-    />
+    <CopyableControl
+      value={record[field.key]}
+      label={field.label}
+      className="graph-copyable-control"
+    >
+      <input
+        className="graph-form-control"
+        type={field.type === "date" ? "date" : "text"}
+        value={record[field.key] ?? ""}
+        onChange={(event) => onChange(field.key, event.target.value)}
+      />
+    </CopyableControl>
   );
 }
 
@@ -679,7 +746,7 @@ function GraphCanvas({
             borderColor: status.border,
             background: `color-mix(in srgb, ${status.bg} 62%, #ffffff)`,
             borderRadius: 5,
-            width: 180,
+            width: 230,
             height: "auto",
             padding: 6,
             boxShadow:
@@ -1432,24 +1499,36 @@ export default function KnowledgeGraph({
 
               <label>
                 <span>连线名称</span>
-                <input
-                  className="graph-form-control"
-                  type="text"
+                <CopyableControl
                   value={selectedEdge.data?.label ?? ""}
-                  onChange={(event) => updateSelectedEdge({ label: event.target.value })}
-                  placeholder="默认显示关系类型"
-                />
+                  label="连线名称"
+                  className="graph-copyable-control"
+                >
+                  <input
+                    className="graph-form-control"
+                    type="text"
+                    value={selectedEdge.data?.label ?? ""}
+                    onChange={(event) => updateSelectedEdge({ label: event.target.value })}
+                    placeholder="默认显示关系类型"
+                  />
+                </CopyableControl>
               </label>
 
               <label>
                 <span>关系说明</span>
-                <textarea
-                  className="graph-form-control graph-textarea relation-description"
+                <CopyableControl
                   value={selectedEdge.data?.description ?? ""}
-                  onChange={(event) =>
-                    updateSelectedEdge({ description: event.target.value })
-                  }
-                />
+                  label="关系说明"
+                  className="graph-copyable-control"
+                >
+                  <textarea
+                    className="graph-form-control graph-textarea relation-description"
+                    value={selectedEdge.data?.description ?? ""}
+                    onChange={(event) =>
+                      updateSelectedEdge({ description: event.target.value })
+                    }
+                  />
+                </CopyableControl>
               </label>
             </div>
           </>

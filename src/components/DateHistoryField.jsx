@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import CopyableControl from "./CopyableControl.jsx";
 
 function today() {
   const date = new Date();
@@ -86,16 +87,18 @@ export default function DateHistoryField({
           onChange={(e) => setDraftDate(e.target.value)}
           aria-label={label}
         />
-        <input
-          className={itemClassName}
-          type="text"
-          value={item}
-          onFocus={onFocus}
-          onChange={(e) => setItem(e.target.value)}
-          onKeyDown={handleItemKeydown}
-          placeholder="填写本次事项"
-          aria-label={`${label}事项`}
-        />
+        <CopyableControl value={item} label={`${label}事项`} className="date-item-copyable">
+          <input
+            className={itemClassName}
+            type="text"
+            value={item}
+            onFocus={onFocus}
+            onChange={(e) => setItem(e.target.value)}
+            onKeyDown={handleItemKeydown}
+            placeholder="填写本次事项"
+            aria-label={`${label}事项`}
+          />
+        </CopyableControl>
         <button
           className="date-confirm-btn"
           type="button"
@@ -140,14 +143,20 @@ export default function DateHistoryField({
                 <div key={entry.id} className="date-history-table">
                   <span>{entry.date || "-"}</span>
                   <span className="history-item-cell">
-                      <input
-                        className="history-item-input"
+                      <CopyableControl
                         value={entry.item || ""}
-                        title={entry.item || "未填写事项"}
-                        onChange={(event) => onHistoryItemChange?.(entry.id, event.target.value)}
-                        onClick={(event) => event.stopPropagation()}
-                        aria-label="编辑历史事项"
-                      />
+                        label="历史事项"
+                        className="history-item-copyable"
+                      >
+                        <input
+                          className="history-item-input"
+                          value={entry.item || ""}
+                          title={entry.item || "未填写事项"}
+                          onChange={(event) => onHistoryItemChange?.(entry.id, event.target.value)}
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label="编辑历史事项"
+                        />
+                      </CopyableControl>
                     <button
                       className="history-delete-btn"
                       type="button"

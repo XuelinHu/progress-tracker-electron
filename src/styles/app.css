@@ -418,7 +418,7 @@ button {
 .data-row {
   position: relative;
   min-height: 52px;
-  border-bottom: 1px solid #edf1f6;
+  border-bottom: 2px solid #dbe3ee;
   background: #ffffff;
 }
 
@@ -544,8 +544,8 @@ button {
 
 .date-confirm-btn {
   flex: 0 0 auto;
-  width: 26px;
-  height: 30px;
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -553,7 +553,7 @@ button {
   border-radius: 5px;
   background: #f0fdf4;
   color: #16a34a;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   padding: 0;
@@ -707,21 +707,18 @@ button {
   border: none;
   border-radius: 3px;
   background: transparent;
-  color: #94a3b8;
+  background: #fff1f2;
+  color: #dc2626;
   cursor: pointer;
   padding: 0;
   font-size: 12px;
   line-height: 1;
-  opacity: 0;
-}
-
-.date-history-table:hover .history-delete-btn {
   opacity: 1;
 }
 
 .history-delete-btn:hover {
-  background: #fee2e2;
-  color: #dc2626;
+  background: #fecaca;
+  color: #b91c1c;
 }
 
 /* history entry type colors */
@@ -834,10 +831,6 @@ button {
   background: #f1f5f9;
 }
 
-.todo-item:hover .todo-delete-btn {
-  opacity: 1;
-}
-
 .todo-item.done .todo-text {
   color: #16a34a;
   text-decoration: line-through;
@@ -852,18 +845,18 @@ button {
   justify-content: center;
   border: none;
   border-radius: 3px;
-  background: transparent;
-  color: #94a3b8;
+  background: #fff1f2;
+  color: #dc2626;
   cursor: pointer;
-  opacity: 0;
+  opacity: 1;
   padding: 0;
   font-size: 12px;
   line-height: 1;
 }
 
 .todo-delete-btn:hover {
-  background: #fee2e2;
-  color: #dc2626;
+  background: #fecaca;
+  color: #b91c1c;
   opacity: 1;
 }
 
@@ -884,6 +877,18 @@ button {
   flex: 0 0 auto;
   accent-color: #16a34a;
   cursor: pointer;
+}
+
+.todo-copy-button {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.todo-copy-button svg {
+  width: 8px;
+  height: 8px;
 }
 
 .todo-new-input {
@@ -914,10 +919,6 @@ button {
   min-width: 0;
 }
 
-.path-cell .cell-textarea {
-  padding-right: 24px;
-}
-
 .copy-icon-button {
   display: inline-flex;
   align-items: center;
@@ -946,6 +947,41 @@ button {
 .copy-icon-button:disabled {
   opacity: 0.35;
   cursor: default;
+}
+
+.copyable-control {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 4px;
+  align-items: start;
+}
+
+.cell-copyable-control > .copy-icon-button {
+  margin-top: 6px;
+}
+
+.date-item-copyable {
+  flex: 1 1 auto;
+  min-width: 0;
+  grid-template-columns: 20px minmax(0, 1fr);
+}
+
+.date-item-copyable > .copy-icon-button {
+  margin-top: 6px;
+}
+
+.history-item-copyable {
+  flex: 1 1 auto;
+  min-width: 0;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+}
+
+.history-item-copyable > .copy-icon-button {
+  width: 16px;
+  height: 16px;
 }
 
 .url-open-button {

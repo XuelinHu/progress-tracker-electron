@@ -19,14 +19,12 @@ import DateHistoryField from "./components/DateHistoryField.jsx";
 import StatusHistoryPopover from "./components/StatusHistoryPopover.jsx";
 import PortalPopover from "./components/PortalPopover.jsx";
 import CopyIconButton from "./components/CopyIconButton.jsx";
+import CopyableControl from "./components/CopyableControl.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
 import { STATUSES } from "./data/statuses.js";
 
-const STORAGE_KEY = "progress-tracker-records-v7";
-const GRAPH_STORAGE_KEY = "progress-tracker-graph-v2";
-const STATUS_CONFIG_STORAGE_KEY = "progress-tracker-status-config-v1";
 const EMPTY_CONTEST_PLACEHOLDER_IDS = new Set([
   "contest-5",
   "contest-6",
@@ -134,39 +132,11 @@ function mergeMissingSeedRecords(records) {
 }
 
 function loadRecords() {
-  try {
-    const cached = localStorage.getItem(STORAGE_KEY);
-    if (!cached) {
-      return removeEmptyContestPlaceholders(seedRecords.map(normalizeRecord));
-    }
-
-    const parsed = JSON.parse(cached);
-    if (Array.isArray(parsed)) {
-      return mergeMissingSeedRecords(parsed.map(normalizeRecord));
-    }
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-
   return mergeMissingSeedRecords(seedRecords.map(normalizeRecord));
 }
 
 function loadGraph() {
-  try {
-    const cached = localStorage.getItem(GRAPH_STORAGE_KEY);
-    if (!cached) {
-      return { nodes: [], edges: [] };
-    }
-
-    const parsed = JSON.parse(cached);
-    return {
-      nodes: Array.isArray(parsed?.nodes) ? parsed.nodes : [],
-      edges: Array.isArray(parsed?.edges) ? parsed.edges : [],
-    };
-  } catch {
-    localStorage.removeItem(GRAPH_STORAGE_KEY);
-    return { nodes: [], edges: [] };
-  }
+  return { nodes: [], edges: [] };
 }
 
 function normalizeStatusConfig(items) {
@@ -210,17 +180,7 @@ function sortStatusConfig(items) {
 }
 
 function loadStatusConfig() {
-  try {
-    const cached = localStorage.getItem(STATUS_CONFIG_STORAGE_KEY);
-    if (!cached) {
-      return sortStatusConfig(STATUSES);
-    }
-
-    return sortStatusConfig(JSON.parse(cached));
-  } catch {
-    localStorage.removeItem(STATUS_CONFIG_STORAGE_KEY);
-    return sortStatusConfig(STATUSES);
-  }
+  return sortStatusConfig(STATUSES);
 }
 
 function downloadBlob(filename, content, type) {
@@ -311,6 +271,9 @@ function App() {
   const [backupList, setBackupList] = useState([]);
   const [selectedBackup, setSelectedBackup] = useState("");
   const [backupBusy, setBackupBusy] = useState(false);
+  const [serverStateReady, setServerStateReady] = useState(false);
+  const [serverSaveError, setServerSaveError] = useState("");
+  const saveTimerRef = useRef(null);
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const isStatusConfigView = activeCategoryId === STATUS_CONFIG_PAGE.id;
@@ -390,28 +353,68 @@ function App() {
   }, [categoryRecords, statusOptions]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-  }, [records]);
+    let cancelled = false;
+
+    async function loadServerState() {
+      try {
+        const response = await fetch("/api/state");
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "读取数据库状态失败");
+        }
+        if (!cancelled && data.state) {
+          applyFullDataPayload(data.state);
+        }
+        if (!cancelled) {
+          setServerSaveError("");
+          setServerStateReady(true);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setServerSaveError(error.message || "读取数据库状态失败");
+          setServerStateReady(true);
+        }
+      }
+    }
+
+    loadServerState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    localStorage.setItem(STATUS_CONFIG_STORAGE_KEY, JSON.stringify(statusOptions));
-  }, [statusOptions]);
+    if (!serverStateReady) {
+      return undefined;
+    }
+
+    window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/state", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(buildFullDataPayload()),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || "写入数据库状态失败");
+        }
+        setServerSaveError("");
+      } catch (error) {
+        setServerSaveError(error.message || "写入数据库状态失败");
+      }
+    }, 450);
+
+    return () => window.clearTimeout(saveTimerRef.current);
+  }, [graphEdges, graphNodes, records, serverStateReady, statusOptions]);
 
   useEffect(() => {
     if (statusFilter !== "all" && !statusOptions.some((status) => status.id === statusFilter)) {
       setStatusFilter("all");
     }
   }, [statusFilter, statusOptions]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      GRAPH_STORAGE_KEY,
-      JSON.stringify({
-        nodes: graphNodes,
-        edges: graphEdges,
-      }),
-    );
-  }, [graphEdges, graphNodes]);
 
   useEffect(() => {
     if (categoryRecords.length === 0) {
@@ -952,6 +955,11 @@ function App() {
     downloadBlob(`${activeCategory.name}进度台账.csv`, "﻿" + csv, "text/csv;charset=utf-8");
   }
 
+  function showOperationStatus(success, message, timeout = 4000) {
+    setImportStatus({ success, message });
+    window.setTimeout(() => setImportStatus(null), timeout);
+  }
+
   function importJson(event) {
     const file = event.target.files?.[0];
     if (!file) {
@@ -964,17 +972,12 @@ function App() {
         const parsed = JSON.parse(String(reader.result));
         const { recordCount, graphNodeCount, graphEdgeCount } = applyFullDataPayload(parsed);
 
-        setImportStatus({
-          success: true,
-          message: `导入成功：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
-        });
-        setTimeout(() => setImportStatus(null), 4000);
+        showOperationStatus(
+          true,
+          `导入成功：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
+        );
       } catch (err) {
-        setImportStatus({
-          success: false,
-          message: `导入失败：${err.message || "文件格式错误"}`,
-        });
-        setTimeout(() => setImportStatus(null), 5000);
+        showOperationStatus(false, `导入失败：${err.message || "文件格式错误"}`, 5000);
       } finally {
         event.target.value = "";
       }
@@ -1043,15 +1046,17 @@ function App() {
       setStatusConfigMessage(
         `已同步到云端：${data.sync?.project || "progress-tracker"}/${data.sync?.latestName || "latest.json"}`,
       );
+      showOperationStatus(true, "已同步到云端");
     } catch (error) {
       setStatusConfigMessage(error.message || "WebDAV 同步失败");
+      showOperationStatus(false, error.message || "WebDAV 同步失败", 5000);
     } finally {
       setBackupBusy(false);
     }
   }
 
   async function restoreDavBackup() {
-    if (!window.confirm("确认从云端恢复最新数据吗？云端数据将覆盖当前浏览器本地数据。")) {
+    if (!window.confirm("确认从云端同步最新数据到本地吗？云端数据将覆盖当前数据库数据。")) {
       return;
     }
     setBackupBusy(true);
@@ -1066,8 +1071,13 @@ function App() {
       setStatusConfigMessage(
         `已按云端优先恢复：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
       );
+      showOperationStatus(
+        true,
+        `云端同步本地成功：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
+      );
     } catch (error) {
       setStatusConfigMessage(error.message || "从云端恢复失败");
+      showOperationStatus(false, error.message || "从云端恢复失败", 5000);
     } finally {
       setBackupBusy(false);
     }
@@ -1259,26 +1269,6 @@ function App() {
           >
             <Save size={16} />
             <span>一键备份</span>
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            onClick={syncDavBackup}
-            disabled={backupBusy}
-            title="将当前浏览器中的最新数据同步到 WebDAV 云端"
-          >
-            <Upload size={16} />
-            <span>同步云端</span>
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            onClick={restoreDavBackup}
-            disabled={backupBusy}
-            title="从 WebDAV 云端最新版本恢复到当前浏览器，本地数据会被覆盖"
-          >
-            <Download size={16} />
-            <span>云端恢复</span>
           </button>
           <button
             className="icon-button"
@@ -1502,14 +1492,20 @@ function App() {
       const externalUrl = normalizeExternalUrl(record[field.key]);
       return (
         <div className="url-cell">
-          <textarea
-            className="cell-input cell-textarea"
-                rows={estimateTextRows(record[field.key], field.key)}
-            value={record[field.key] ?? ""}
-            onFocus={() => setSelectedId(record.id)}
-            onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
-            aria-label={`${getRecordTitle(record)} ${field.label}`}
-          />
+          <CopyableControl
+            value={record[field.key]}
+            label={field.label}
+            className="cell-copyable-control"
+          >
+            <textarea
+              className="cell-input cell-textarea"
+                  rows={estimateTextRows(record[field.key], field.key)}
+              value={record[field.key] ?? ""}
+              onFocus={() => setSelectedId(record.id)}
+              onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
+              aria-label={`${getRecordTitle(record)} ${field.label}`}
+            />
+          </CopyableControl>
           <button
             className="url-open-button"
             type="button"
@@ -1530,15 +1526,20 @@ function App() {
     if (field.type === "path") {
       return (
         <div className="path-cell">
-          <textarea
-            className="cell-input cell-textarea"
-                rows={estimateTextRows(record[field.key], field.key)}
-            value={record[field.key] ?? ""}
-            onFocus={() => setSelectedId(record.id)}
-            onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
-            aria-label={`${getRecordTitle(record)} ${field.label}`}
-          />
-          <CopyIconButton value={record[field.key]} label={field.label} />
+          <CopyableControl
+            value={record[field.key]}
+            label={field.label}
+            className="cell-copyable-control"
+          >
+            <textarea
+              className="cell-input cell-textarea"
+                  rows={estimateTextRows(record[field.key], field.key)}
+              value={record[field.key] ?? ""}
+              onFocus={() => setSelectedId(record.id)}
+              onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
+              aria-label={`${getRecordTitle(record)} ${field.label}`}
+            />
+          </CopyableControl>
         </div>
       );
     }
@@ -1578,6 +1579,11 @@ function App() {
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteTodoItem(record.id, trimmed); }}
                     title="删除此项"
                   >×</button>
+                  <CopyIconButton
+                    value={trimmed}
+                    label="Todo"
+                    className="todo-copy-button"
+                  />
                   <input
                     type="checkbox"
                     className="todo-checkbox"
@@ -1616,6 +1622,11 @@ function App() {
                 const hist = histByItem.get(trimmed);
                 return (
                   <label key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
+                    <CopyIconButton
+                      value={trimmed}
+                      label="Todo"
+                      className="todo-copy-button"
+                    />
                     <input
                       type="checkbox"
                       className="todo-checkbox"
@@ -1629,27 +1640,39 @@ function App() {
               })}
             </div>
           )}
-          <textarea
-            className="cell-input cell-textarea todo-new-input"
-            rows={1}
-            onFocus={() => setSelectedId(record.id)}
-            onKeyDown={handleTodoKeydown}
-            placeholder="输入待办，回车添加"
-            aria-label={`${getRecordTitle(record)} 新增待办`}
-          />
+          <CopyableControl
+            value={todoText}
+            label={`${getRecordTitle(record)} Todo`}
+            className="cell-copyable-control todo-copyable-control"
+          >
+            <textarea
+              className="cell-input cell-textarea todo-new-input"
+              rows={1}
+              onFocus={() => setSelectedId(record.id)}
+              onKeyDown={handleTodoKeydown}
+              placeholder="输入待办，回车添加"
+              aria-label={`${getRecordTitle(record)} 新增待办`}
+            />
+          </CopyableControl>
         </div>
       );
     }
 
     return (
-      <textarea
-        className="cell-input cell-textarea"
-        rows={estimateTextRows(record[field.key], field.key)}
-        value={record[field.key] ?? ""}
-        onFocus={() => setSelectedId(record.id)}
-        onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
-        aria-label={`${getRecordTitle(record)} ${field.label}`}
-      />
+      <CopyableControl
+        value={record[field.key]}
+        label={field.label}
+        className="cell-copyable-control"
+      >
+        <textarea
+          className="cell-input cell-textarea"
+          rows={estimateTextRows(record[field.key], field.key)}
+          value={record[field.key] ?? ""}
+          onFocus={() => setSelectedId(record.id)}
+          onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
+          aria-label={`${getRecordTitle(record)} ${field.label}`}
+        />
+      </CopyableControl>
     );
   }
 
@@ -1705,6 +1728,26 @@ function App() {
               <Upload size={17} />
               <span>导入 JSON</span>
             </button>
+            <button
+              className="icon-button"
+              type="button"
+              onClick={syncDavBackup}
+              disabled={backupBusy}
+              title="将当前数据库中的最新数据同步到 WebDAV 云端"
+            >
+              <Upload size={17} />
+              <span>同步云端</span>
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              onClick={restoreDavBackup}
+              disabled={backupBusy}
+              title="从 WebDAV 云端最新版本同步到本地数据库"
+            >
+              <Download size={17} />
+              <span>云端同步本地</span>
+            </button>
             <input
               ref={fileInputRef}
               className="hidden-input"
@@ -1715,9 +1758,9 @@ function App() {
           </div>
         </div>
 
-        {importStatus && (
-          <div className={`import-toast ${importStatus.success ? "success" : "error"}`}>
-            {importStatus.message}
+        {(importStatus || serverSaveError) && (
+          <div className={`import-toast ${importStatus?.success ? "success" : "error"}`}>
+            {importStatus?.message || `数据库保存失败：${serverSaveError}`}
           </div>
         )}
 

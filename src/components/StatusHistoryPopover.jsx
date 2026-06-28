@@ -1,3 +1,5 @@
+import CopyableControl from "./CopyableControl.jsx";
+
 export default function StatusHistoryPopover({
   history = [],
   todoHistory = [],
@@ -39,20 +41,26 @@ export default function StatusHistoryPopover({
           <div key={entry.id} className={`date-history-table history-type-${entry.type}`}>
           <span>{entry.date || "-"}</span>
           <span className="history-item-cell">
-            <input
-              className="history-item-input"
+            <CopyableControl
               value={entry.text}
-              title={entry.text}
-              onChange={(event) => {
-                if (entry.type === "status") onUpdateStatus?.(entry.id, event.target.value);
-                if (entry.type === "todo") {
-                  const next = event.target.value.replace(/^完成:\s*/, "");
-                  onUpdateTodo?.(entry.id, next);
-                }
-              }}
-              onClick={(event) => event.stopPropagation()}
-              aria-label="编辑历史事项"
-            />
+              label="历史事项"
+              className="history-item-copyable"
+            >
+              <input
+                className="history-item-input"
+                value={entry.text}
+                title={entry.text}
+                onChange={(event) => {
+                  if (entry.type === "status") onUpdateStatus?.(entry.id, event.target.value);
+                  if (entry.type === "todo") {
+                    const next = event.target.value.replace(/^完成:\s*/, "");
+                    onUpdateTodo?.(entry.id, next);
+                  }
+                }}
+                onClick={(event) => event.stopPropagation()}
+                aria-label="编辑历史事项"
+              />
+            </CopyableControl>
             <button
               className="history-delete-btn"
                 type="button"

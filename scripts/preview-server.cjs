@@ -3,6 +3,7 @@ const fsSync = require("node:fs");
 const http = require("node:http");
 const path = require("node:path");
 const { URL } = require("node:url");
+const { Pool } = require("pg");
 
 const rootDir = path.resolve(__dirname, "..");
 const distDir = path.join(rootDir, "dist");
@@ -10,7 +11,12 @@ const backupDir = path.join(rootDir, "backups");
 const port = Number(process.env.PORT || 4003);
 const host = process.env.HOST || "0.0.0.0";
 
+loadEnvFile(path.join(rootDir, ".env.local"));
 loadEnvFile(path.join(rootDir, ".env"));
+
+const appStateId = process.env.APP_STATE_ID || "main";
+let dbPool = null;
+let dbReadyPromise = null;
 
 const mimeByExt = {
   ".html": "text/html; charset=utf-8",
@@ -55,6 +61,60 @@ function loadEnvFile(filePath) {
       console.warn(`Failed to load .env: ${error.message}`);
     }
   }
+}
+
+function getDbPool() {
+  if (!dbPool) {
+    dbPool = new Pool({
+      host: process.env.PGHOST || "127.0.0.1",
+      port: Number(process.env.PGPORT || 5432),
+      database: process.env.PGDATABASE || "progress_tracker_electron",
+      user: process.env.PGUSER,
+      password: process.env.PGPASSWORD,
+      max: 4,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
+    });
+  }
+  return dbPool;
+}
+
+async function ensureDbSchema() {
+  if (!dbReadyPromise) {
+    dbReadyPromise = getDbPool().query(`
+      CREATE TABLE IF NOT EXISTS app_state (
+        id TEXT PRIMARY KEY,
+        data JSONB NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+  }
+  await dbReadyPromise;
+}
+
+async function readAppState() {
+  await ensureDbSchema();
+  const result = await getDbPool().query("SELECT data, updated_at FROM app_state WHERE id = $1", [
+    appStateId,
+  ]);
+  const row = result.rows[0];
+  return row ? { data: row.data, updatedAt: row.updated_at } : { data: null, updatedAt: null };
+}
+
+async function writeAppState(data) {
+  await ensureDbSchema();
+  const result = await getDbPool().query(
+    `
+      INSERT INTO app_state (id, data, updated_at)
+      VALUES ($1, $2::jsonb, NOW())
+      ON CONFLICT (id)
+      DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
+      RETURNING updated_at
+    `,
+    [appStateId, JSON.stringify(data)],
+  );
+  return result.rows[0]?.updated_at ?? null;
 }
 
 function isSafeBackupName(name) {
@@ -206,6 +266,23 @@ async function listBackups() {
 }
 
 async function handleApi(req, res, pathname) {
+  if (pathname === "/api/state" && req.method === "GET") {
+    const state = await readAppState();
+    sendJson(res, 200, { ok: true, state: state.data, updatedAt: state.updatedAt });
+    return;
+  }
+
+  if (pathname === "/api/state" && ["POST", "PUT", "PATCH"].includes(req.method)) {
+    const parsed = JSON.parse(await readBody(req));
+    const updatedAt = await writeAppState({
+      ...parsed,
+      version: parsed.version || 5,
+      persistedAt: new Date().toISOString(),
+    });
+    sendJson(res, 200, { ok: true, updatedAt });
+    return;
+  }
+
   if (pathname === "/api/backups" && req.method === "GET") {
     sendJson(res, 200, { ok: true, backups: await listBackups() });
     return;
@@ -323,4 +400,9 @@ const server = http.createServer(async (req, res) => {
 server.listen(port, host, () => {
   console.log(`科研进度管理平台 preview server listening at http://${host}:${port}`);
   console.log(`Backups directory: ${backupDir}`);
+});
+
+process.on("SIGTERM", async () => {
+  await dbPool?.end().catch(() => {});
+  process.exit(0);
 });
