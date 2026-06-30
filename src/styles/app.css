@@ -640,6 +640,13 @@ button {
   white-space: normal;
 }
 
+.portal-calendar-record-info {
+  position: fixed;
+  z-index: 2147483000;
+  display: grid;
+  pointer-events: auto;
+}
+
 .calendar-record-info strong {
   color: #172033;
   font-size: 12px;
@@ -671,6 +678,12 @@ button {
 .calendar-day-record:hover .calendar-record-info,
 .calendar-day-record:focus .calendar-record-info,
 .calendar-day-record:focus-within .calendar-record-info {
+  display: grid;
+}
+
+.calendar-day-record:hover .portal-calendar-record-info,
+.calendar-day-record:focus .portal-calendar-record-info,
+.calendar-day-record:focus-within .portal-calendar-record-info {
   display: grid;
 }
 
@@ -1710,12 +1723,140 @@ button {
 }
 
 .other-item-form {
-  display: grid;
-  grid-template-columns: 150px minmax(180px, 0.8fr) minmax(220px, 1fr) auto;
+  display: flex;
+  justify-content: flex-end;
   gap: 8px;
   padding: 12px 14px;
   border-bottom: 1px solid #e2e8f0;
   background: #ffffff;
+}
+
+.create-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.create-modal {
+  width: min(1040px, 96vw);
+  max-height: min(760px, 92vh);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border: 1px solid color-mix(in srgb, var(--category-accent) 28%, #cbd5e1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22);
+  overflow: hidden;
+}
+
+.create-modal-head,
+.create-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--category-tint, #eef2ff) 42%, #ffffff);
+}
+
+.create-modal-head {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.create-modal-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.create-modal-head strong {
+  color: #172033;
+  font-size: 16px;
+}
+
+.create-modal-head span {
+  color: #647084;
+  font-size: 12px;
+}
+
+.create-modal-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.8fr);
+  gap: 12px;
+  padding: 14px;
+  overflow: auto;
+}
+
+.create-form-fields {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 10px;
+}
+
+.create-field {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.create-field span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.create-control {
+  min-height: 34px;
+  padding: 6px 8px;
+  border-color: #d9e0eb;
+  background: #ffffff;
+}
+
+.create-textarea {
+  min-height: 78px;
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.create-field:has(.create-textarea),
+.create-field:has(.create-assist-textarea) {
+  grid-column: span 2;
+}
+
+.create-assist-panel {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: minmax(240px, 1fr) auto;
+  align-content: start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.create-assist-textarea {
+  min-height: 260px;
+  height: 100%;
+  padding: 9px;
+  border-color: #d9e0eb;
+  background: #ffffff;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.create-modal-foot {
+  justify-content: flex-end;
+  border-top: 1px solid #e2e8f0;
+  background: #fbfcfe;
 }
 
 .other-items-list {

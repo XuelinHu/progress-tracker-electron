@@ -312,6 +312,10 @@ function App() {
     title: "",
     description: "",
   }));
+  const [createModal, setCreateModal] = useState(null);
+  const [createDraft, setCreateDraft] = useState(null);
+  const [createAssistText, setCreateAssistText] = useState("");
+  const createAssistRef = useRef(null);
   const [serverStateReady, setServerStateReady] = useState(false);
   const [serverSaveError, setServerSaveError] = useState("");
   const saveTimerRef = useRef(null);
@@ -398,6 +402,14 @@ function App() {
       count: categoryRecords.filter((record) => record.status === status.id).length,
     }));
   }, [categoryRecords, statusOptions]);
+
+  function getDefaultStatusId() {
+    return (
+      statusOptions.find((status) => status.id === "进行中" || status.label === "进行中")?.id ??
+      statusOptions[0]?.id ??
+      "进行中"
+    );
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -644,6 +656,189 @@ function App() {
     }));
   }
 
+  function buildCalendarItemDraft(date = today(), overrides = {}) {
+    return {
+      date: date || today(),
+      title: "",
+      description: "",
+      categoryId: "other",
+      status: getDefaultStatusId(),
+      ...overrides,
+    };
+  }
+
+  function openCreateRecordModal(categoryId, context = {}) {
+    const category = CATEGORY_BY_ID[categoryId] ?? CATEGORIES[0];
+    setCreateModal({
+      mode: "record",
+      categoryId: category.id,
+      graphPosition: context.graphPosition,
+      sourceNodeId: context.sourceNodeId,
+    });
+    setCreateDraft(buildRecord(category.id));
+    setCreateAssistText("");
+  }
+
+  function openCalendarItemModal(date = today(), overrides = {}) {
+    setCreateModal({ mode: "calendar", categoryId: "other", date });
+    setCreateDraft(buildCalendarItemDraft(date, overrides));
+    setCreateAssistText("");
+  }
+
+  function closeCreateModal() {
+    setCreateModal(null);
+    setCreateDraft(null);
+    setCreateAssistText("");
+  }
+
+  function updateCreateDraft(fieldKey, value) {
+    setCreateDraft((current) => ({ ...(current ?? {}), [fieldKey]: value }));
+  }
+
+  function parseDateFromText(text) {
+    const iso = text.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
+    if (iso) {
+      return `${iso[1]}-${iso[2].padStart(2, "0")}-${iso[3].padStart(2, "0")}`;
+    }
+    const monthDay = text.match(/\b(\d{1,2})月(\d{1,2})[日号]?\b/);
+    if (monthDay) {
+      const year = new Date().getFullYear();
+      return `${year}-${monthDay[1].padStart(2, "0")}-${monthDay[2].padStart(2, "0")}`;
+    }
+    return "";
+  }
+
+  function extractLabeledValue(lines, labels) {
+    for (const line of lines) {
+      for (const label of labels) {
+        const pattern = new RegExp(`^${label}\\s*[:：=]\\s*(.+)$`, "i");
+        const match = line.match(pattern);
+        if (match) {
+          return match[1].trim();
+        }
+      }
+    }
+    return "";
+  }
+
+  function autoFillCreateDraft() {
+    const text = (createAssistRef.current?.value || createAssistText).trim();
+    if (!text || !createDraft || !createModal) {
+      return;
+    }
+
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const patch = {};
+    const matchedStatus = statusOptions.find(
+      (status) => text.includes(status.label) || text.includes(status.id),
+    );
+    if (matchedStatus) {
+      patch.status = matchedStatus.id;
+    }
+
+    const date = parseDateFromText(text);
+    const urls = text.match(/https?:\/\/[^\s，。；;]+|github\.com\/[^\s，。；;]+/gi) ?? [];
+    const paths = text.match(/[A-Za-z]:\\[^\n，。；;]+|\/(?:[\w.\-]+\/?)+/g) ?? [];
+
+    if (createModal.mode === "calendar") {
+      patch.date = extractLabeledValue(lines, ["日期", "时间", "date"]) || date || createDraft.date;
+      patch.title =
+        extractLabeledValue(lines, ["事项", "标题", "名称", "title"]) ||
+        createDraft.title ||
+        lines[0] ||
+        "";
+      patch.description =
+        extractLabeledValue(lines, ["备注", "说明", "注意事项", "todo", "description"]) ||
+        createDraft.description ||
+        lines.slice(1).join("\n");
+      setCreateDraft((current) => ({ ...current, ...patch }));
+      return;
+    }
+
+    const category = CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0];
+    const fieldByKey = Object.fromEntries(category.fields.map((field) => [field.key, field]));
+    for (const field of category.fields) {
+      const labeled = extractLabeledValue(lines, [field.label, field.key]);
+      if (labeled) {
+        patch[field.key] = labeled;
+      }
+    }
+
+    if (!patch.title) {
+      patch.title =
+        extractLabeledValue(lines, ["GitHub项目名称", "项目名称", "名称", "标题", "title"]) ||
+        createDraft.title ||
+        lines[0] ||
+        "";
+    }
+    if (fieldByKey.description && !patch.description) {
+      patch.description =
+        extractLabeledValue(lines, ["中文解释", "说明", "描述", "description"]) ||
+        createDraft.description ||
+        lines.slice(1, 3).join("\n");
+    }
+    if (fieldByKey.todo && !patch.todo) {
+      patch.todo =
+        extractLabeledValue(lines, ["Todo", "todo", "待办", "事项", "注意事项"]) ||
+        createDraft.todo ||
+        "";
+    }
+    const firstDateField = category.fields.find((field) => field.type === "date");
+    if (firstDateField && date && !patch[firstDateField.key]) {
+      patch[firstDateField.key] = date;
+    }
+    if (fieldByKey.githubUrl && urls.length > 0 && !patch.githubUrl) {
+      patch.githubUrl = urls.find((url) => url.toLowerCase().includes("github.com")) || urls[0];
+    }
+    if (fieldByKey.platformUrl && urls.length > 0 && !patch.platformUrl) {
+      patch.platformUrl = urls[0];
+    }
+    if (fieldByKey.officialUrl && urls.length > 1 && !patch.officialUrl) {
+      patch.officialUrl = urls[1];
+    }
+    if (paths.length > 0) {
+      if (fieldByKey.windowsPath && !patch.windowsPath) {
+        patch.windowsPath = paths.find((path) => /^[A-Za-z]:\\/.test(path)) || createDraft.windowsPath;
+      }
+      if (fieldByKey.linuxPath && !patch.linuxPath) {
+        patch.linuxPath = paths.find((path) => path.startsWith("/")) || createDraft.linuxPath;
+      }
+      if (fieldByKey.serverPath && !patch.serverPath) {
+        patch.serverPath = paths.find((path) => path.startsWith("/")) || createDraft.serverPath;
+      }
+    }
+
+    setCreateDraft((current) => ({ ...current, ...patch }));
+  }
+
+  function submitCreateModal(event) {
+    event.preventDefault();
+    if (!createDraft || !createModal) {
+      return;
+    }
+
+    if (createModal.mode === "calendar") {
+      const title = String(createDraft.title ?? "").trim();
+      if (!title) {
+        return;
+      }
+      addCalendarItem(createDraft.date || today(), {
+        title,
+        description: String(createDraft.description ?? "").trim(),
+        categoryId: createDraft.categoryId || "other",
+        status: createDraft.status || getDefaultStatusId(),
+      });
+      closeCreateModal();
+      return;
+    }
+
+    const graphContext = createModal.graphPosition
+      ? { position: createModal.graphPosition, sourceNodeId: createModal.sourceNodeId }
+      : null;
+    insertRecord(createDraft, graphContext);
+    closeCreateModal();
+  }
+
   function updateDateHistoryItem(recordId, fieldKey, historyId, item) {
     setRecords((current) =>
       current.map((record) => {
@@ -782,10 +977,10 @@ function App() {
     );
   }
 
-  function buildRecord(categoryId) {
+  function buildRecord(categoryId, overrides = {}) {
     const category = CATEGORY_BY_ID[categoryId] ?? CATEGORIES[0];
-    const defaultStatus = statusOptions[0]?.id ?? "进行中";
-    return category.fields.reduce(
+    const defaultStatus = getDefaultStatusId();
+    const record = category.fields.reduce(
       (draft, field) => {
         if (field.key === "status") {
           draft.status = defaultStatus;
@@ -815,12 +1010,56 @@ function App() {
         ],
       },
     );
+    return { ...record, ...overrides };
+  }
+
+  function createGraphNodeForRecord(record, position, sourceNodeId) {
+    const nodeId = `node-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    setGraphNodes((current) => [
+      ...current,
+      {
+        id: nodeId,
+        position,
+        data: { recordId: record.id, categoryId: record.categoryId },
+      },
+    ]);
+
+    if (sourceNodeId) {
+      setGraphEdges((current) => [
+        ...current,
+        {
+          id: `edge-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          source: sourceNodeId,
+          target: nodeId,
+          type: "smoothstep",
+          data: { relationType: "衍生出", label: "", description: "" },
+        },
+      ]);
+    }
+
+    setSelectedId(record.id);
+  }
+
+  function insertRecord(record, graphContext = null) {
+    const normalizedRecord = normalizeRecord({
+      ...record,
+      title: String(record.title ?? "").trim() || "未命名记录",
+      todo: String(record.todo ?? "").trim(),
+    });
+    setRecords((current) => [normalizedRecord, ...current]);
+    setSelectedId(normalizedRecord.id);
+    if (graphContext?.position) {
+      createGraphNodeForRecord(
+        normalizedRecord,
+        graphContext.position,
+        graphContext.sourceNodeId,
+      );
+    }
+    return normalizedRecord;
   }
 
   function addRecord() {
-    const record = buildRecord(activeCategoryId);
-    setRecords((current) => [record, ...current]);
-    setSelectedId(record.id);
+    openCreateRecordModal(activeCategoryId);
   }
 
   function duplicateRecord(sourceRecord) {
@@ -878,32 +1117,7 @@ function App() {
   }
 
   function addRecordFromGraph(categoryId, position, sourceNodeId) {
-    const record = buildRecord(categoryId);
-    const nodeId = `node-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
-
-    setRecords((current) => [record, ...current]);
-
-    setGraphNodes((current) => [
-      ...current,
-      {
-        id: nodeId,
-        position,
-        data: { recordId: record.id, categoryId },
-      },
-    ]);
-
-    if (sourceNodeId) {
-      setGraphEdges((current) => [
-        ...current,
-        {
-          id: `edge-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-          source: sourceNodeId,
-          target: nodeId,
-          type: "smoothstep",
-          data: { relationType: "衍生出", label: "", description: "" },
-        },
-      ]);
-    }
+    openCreateRecordModal(categoryId, { graphPosition: position, sourceNodeId });
   }
 
   function deleteRecord(recordId) {
@@ -1364,6 +1578,139 @@ function App() {
     setStatusConfigMessage("配置已生效，状态下拉和优先级排序已更新");
   }
 
+  function renderCreateModal() {
+    if (!createModal || !createDraft) {
+      return null;
+    }
+
+    const isCalendarItem = createModal.mode === "calendar";
+    const category = isCalendarItem
+      ? OTHER_ITEMS_PAGE
+      : CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0];
+    const fields = isCalendarItem
+      ? [
+          { key: "status", label: "默认状态", type: "status" },
+          { key: "date", label: "日期", type: "date" },
+          { key: "title", label: "事项名称", type: "text" },
+          { key: "description", label: "注意事项", type: "textarea" },
+        ]
+      : category.fields;
+
+    return (
+      <div className="create-modal-backdrop" role="presentation" onMouseDown={closeCreateModal}>
+        <form
+          className="create-modal"
+          onSubmit={submitCreateModal}
+          onMouseDown={(event) => event.stopPropagation()}
+          style={{ "--category-accent": category.accent, "--category-tint": category.tint }}
+        >
+          <div className="create-modal-head">
+            <div>
+              <strong>新增{category.name}</strong>
+              <span>{isCalendarItem ? "新建日历中的其他事项" : "填写左侧表单，右侧可粘贴文本自动补充"}</span>
+            </div>
+            <button className="danger-button small" type="button" onClick={closeCreateModal} title="关闭">
+              <X size={15} />
+            </button>
+          </div>
+
+          <div className="create-modal-body">
+            <div className="create-form-fields">
+              {fields.map((field) => {
+                if (field.type === "status") {
+                  const selectedStatus = statusById[createDraft.status] ?? statusOptions[0];
+                  return (
+                    <label className="create-field" key={field.key}>
+                      <span>{field.label}</span>
+                      <select
+                        className="form-control create-control status-select"
+                        value={createDraft.status ?? ""}
+                        onChange={(event) => updateCreateDraft("status", event.target.value)}
+                        style={{
+                          "--status-bg": selectedStatus?.bg || "#eef2ff",
+                          "--status-color": selectedStatus?.color || "#334155",
+                          "--status-border": selectedStatus?.border || "#cbd5e1",
+                        }}
+                      >
+                        {statusOptions.map((status) => (
+                          <option key={status.id} value={status.id}>
+                            {status.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  );
+                }
+
+                if (field.type === "date") {
+                  return (
+                    <label className="create-field" key={field.key}>
+                      <span>{field.label}</span>
+                      <input
+                        className="form-control create-control"
+                        type="date"
+                        value={createDraft[field.key] ?? ""}
+                        onChange={(event) => updateCreateDraft(field.key, event.target.value)}
+                      />
+                    </label>
+                  );
+                }
+
+                const isLong = field.type === "textarea" || field.key === "todo" || field.key === "description";
+                return (
+                  <label className="create-field" key={field.key}>
+                    <span>{field.label}</span>
+                    {isLong ? (
+                      <textarea
+                        className="form-control create-control create-textarea"
+                        rows={field.key === "todo" ? 4 : 3}
+                        value={createDraft[field.key] ?? ""}
+                        onChange={(event) => updateCreateDraft(field.key, event.target.value)}
+                      />
+                    ) : (
+                      <input
+                        className="form-control create-control"
+                        value={createDraft[field.key] ?? ""}
+                        onChange={(event) => updateCreateDraft(field.key, event.target.value)}
+                      />
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+
+            <div className="create-assist-panel">
+              <label className="create-field">
+                <span>自动识别文本</span>
+                <textarea
+                  ref={createAssistRef}
+                  className="form-control create-assist-textarea"
+                  value={createAssistText}
+                  onChange={(event) => setCreateAssistText(event.target.value)}
+                  placeholder="粘贴项目名称、状态、日期、GitHub 地址、路径、Todo 或备注"
+                />
+              </label>
+              <button className="icon-button" type="button" onClick={autoFillCreateDraft}>
+                <Search size={16} />
+                <span>自动识别 / 自动补充</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="create-modal-foot">
+            <button className="text-button" type="button" onClick={closeCreateModal}>
+              取消
+            </button>
+            <button className="icon-button primary" type="submit">
+              <Plus size={16} />
+              <span>新增</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   function renderStatusConfig() {
     const selectedBackupInfo = backupList.find((backup) => backup.name === selectedBackup);
     const selectedBackupLabel = selectedBackupInfo
@@ -1578,39 +1925,16 @@ function App() {
           </div>
         </div>
 
-        <form className="other-item-form" onSubmit={submitOtherItem}>
-          <input
-            className="form-control"
-            type="date"
-            value={otherItemDraft.date}
-            onChange={(event) =>
-              setOtherItemDraft((current) => ({ ...current, date: event.target.value }))
-            }
-            aria-label="其他事项日期"
-          />
-          <input
-            className="form-control"
-            value={otherItemDraft.title}
-            onChange={(event) =>
-              setOtherItemDraft((current) => ({ ...current, title: event.target.value }))
-            }
-            placeholder="事项名称"
-            aria-label="其他事项名称"
-          />
-          <input
-            className="form-control"
-            value={otherItemDraft.description}
-            onChange={(event) =>
-              setOtherItemDraft((current) => ({ ...current, description: event.target.value }))
-            }
-            placeholder="备注"
-            aria-label="其他事项备注"
-          />
-          <button className="icon-button primary" type="submit">
+        <div className="other-item-form">
+          <button
+            className="icon-button primary"
+            type="button"
+            onClick={() => openCalendarItemModal(today())}
+          >
             <Plus size={16} />
-            <span>新增</span>
+            <span>新增其他事项</span>
           </button>
-        </form>
+        </div>
 
         <div className="other-items-list">
           {sortedItems.map((item) => (
@@ -2073,6 +2397,7 @@ function App() {
             addCalendarItem={addCalendarItem}
             deleteCalendarItem={deleteCalendarItem}
             copyCalendarItem={copyCalendarItem}
+            openCalendarItemModal={openCalendarItemModal}
             openRecord={openRecordFromCalendar}
           />
         ) : isOtherItemsView ? (
@@ -2219,6 +2544,7 @@ function App() {
         </section>
         )}
       </main>
+      {renderCreateModal()}
     </div>
   );
 }

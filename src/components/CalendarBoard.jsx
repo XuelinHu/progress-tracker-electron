@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 
@@ -131,12 +132,14 @@ export default function CalendarBoard({
   addCalendarItem,
   deleteCalendarItem,
   copyCalendarItem,
+  openCalendarItemModal,
   openRecord,
 }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dropTarget, setDropTarget] = useState("");
+  const [tooltip, setTooltip] = useState(null);
   const todayIso = today();
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -237,16 +240,24 @@ export default function CalendarBoard({
   function handleAddCustomItem(event, dateIso) {
     event.preventDefault();
     event.stopPropagation();
-    const title = window.prompt("新建其他事项", "");
-    const value = String(title ?? "").trim();
-    if (!value) {
-      return;
-    }
-    addCalendarItem?.(dateIso, {
-      title: value,
-      categoryId: OTHER_CATEGORY.id,
-      status: "其他",
-    });
+    openCalendarItemModal?.(dateIso);
+  }
+
+  function openTooltip(event, content) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const width = Math.min(320, window.innerWidth - 20);
+    const estimatedHeight = 260;
+    const left = Math.min(Math.max(10, rect.left), window.innerWidth - width - 10);
+    const belowTop = rect.bottom + 6;
+    const top =
+      belowTop + estimatedHeight > window.innerHeight && rect.top > estimatedHeight
+        ? Math.max(10, rect.top - estimatedHeight - 6)
+        : Math.min(belowTop, window.innerHeight - 80);
+    setTooltip({ left, top, width, content });
+  }
+
+  function closeTooltip() {
+    setTooltip(null);
   }
 
   function handleCopyRecord(event, record, dateIso) {
@@ -408,23 +419,8 @@ export default function CalendarBoard({
                       const category = getCategory(item.categoryId);
                       const status = statusById[item.status] ?? statusById["其他"] ?? statusOptions[0];
                       const customNotes = [item.description].filter(Boolean);
-                      return (
-                        <div
-                          key={item.id}
-                          className="calendar-day-record custom"
-                          role="button"
-                          tabIndex={0}
-                          style={{
-                            "--record-accent": category.accent,
-                            "--record-tint": category.tint,
-                            "--record-status-bg": status?.bg || "#f1f5f9",
-                            "--record-status-color": status?.color || "#334155",
-                          }}
-                          title={item.title}
-                        >
-                          <span className="calendar-day-record-category">{category.name}</span>
-                          <span className="calendar-day-record-title">{item.title}</span>
-                          <span className="calendar-record-info" role="tooltip">
+                      const tooltipContent = (
+                        <>
                           <strong>{item.title}</strong>
                           <span>类别：{category.name}</span>
                           <span>状态：{status?.label || item.status || "其他"}</span>
@@ -439,7 +435,28 @@ export default function CalendarBoard({
                             items={customNotes}
                             emptyText="无备注"
                           />
-                        </span>
+                        </>
+                      );
+                      return (
+                        <div
+                          key={item.id}
+                          className="calendar-day-record custom"
+                          role="button"
+                          tabIndex={0}
+                          onMouseEnter={(event) => openTooltip(event, tooltipContent)}
+                          onMouseLeave={closeTooltip}
+                          onFocus={(event) => openTooltip(event, tooltipContent)}
+                          onBlur={closeTooltip}
+                          style={{
+                            "--record-accent": category.accent,
+                            "--record-tint": category.tint,
+                            "--record-status-bg": status?.bg || "#f1f5f9",
+                            "--record-status-color": status?.color || "#334155",
+                          }}
+                          title={item.title}
+                        >
+                          <span className="calendar-day-record-category">{category.name}</span>
+                          <span className="calendar-day-record-title">{item.title}</span>
                           <span
                             className="calendar-record-copy"
                             role="button"
@@ -479,6 +496,35 @@ export default function CalendarBoard({
                     const status = statusById[record.status] ?? statusOptions[0];
                     const dateField = getPrimaryDateField(record);
                     const details = getDayRecordDetails(record, day.iso, dateField);
+                    const tooltipContent = (
+                      <>
+                        <strong>{getRecordTitle(record)}</strong>
+                        <span>类别：{category.name}</span>
+                        <span>状态：{status?.label || record.status || "未设置"}</span>
+                        <span>日期：{day.iso}</span>
+                        <span>字段：{dateField?.label || "日期"}</span>
+                        <DetailSection
+                          title="今天做什么"
+                          items={details.arrangements}
+                          emptyText="未填写安排"
+                        />
+                        <DetailSection
+                          title="完成 Todo"
+                          items={details.doneTodos}
+                          emptyText="暂无完成"
+                        />
+                        <DetailSection
+                          title="待做事项"
+                          items={details.pendingTodos}
+                          emptyText="暂无待做"
+                        />
+                        <DetailSection
+                          title="注意事项"
+                          items={details.notes}
+                          emptyText="无备注"
+                        />
+                      </>
+                    );
                     return (
                       <div
                         key={record.id}
@@ -491,6 +537,10 @@ export default function CalendarBoard({
                           "--record-status-bg": status?.bg || "#eef2ff",
                           "--record-status-color": status?.color || "#334155",
                         }}
+                        onMouseEnter={(event) => openTooltip(event, tooltipContent)}
+                        onMouseLeave={closeTooltip}
+                        onFocus={(event) => openTooltip(event, tooltipContent)}
+                        onBlur={closeTooltip}
                         onClick={() => openRecord?.(record)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
@@ -502,33 +552,6 @@ export default function CalendarBoard({
                       >
                         <span className="calendar-day-record-category">{category.name}</span>
                         <span className="calendar-day-record-title">{getRecordTitle(record)}</span>
-                        <span className="calendar-record-info" role="tooltip">
-                          <strong>{getRecordTitle(record)}</strong>
-                          <span>类别：{category.name}</span>
-                          <span>状态：{status?.label || record.status || "未设置"}</span>
-                          <span>日期：{day.iso}</span>
-                          <span>字段：{dateField?.label || "日期"}</span>
-                          <DetailSection
-                            title="今天做什么"
-                            items={details.arrangements}
-                            emptyText="未填写安排"
-                          />
-                          <DetailSection
-                            title="完成 Todo"
-                            items={details.doneTodos}
-                            emptyText="暂无完成"
-                          />
-                          <DetailSection
-                            title="待做事项"
-                            items={details.pendingTodos}
-                            emptyText="暂无待做"
-                          />
-                          <DetailSection
-                            title="注意事项"
-                            items={details.notes}
-                            emptyText="无备注"
-                          />
-                        </span>
                         <span
                           className="calendar-record-copy"
                           role="button"
@@ -571,6 +594,19 @@ export default function CalendarBoard({
           })}
         </div>
       </div>
+      {tooltip &&
+        createPortal(
+          <div
+            className="calendar-record-info portal-calendar-record-info"
+            role="tooltip"
+            style={{ left: tooltip.left, top: tooltip.top, width: tooltip.width }}
+            onMouseEnter={() => setTooltip(tooltip)}
+            onMouseLeave={closeTooltip}
+          >
+            {tooltip.content}
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }
