@@ -38,18 +38,30 @@ function buildMonthDays(monthDate) {
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
   const firstDay = new Date(year, month, 1);
-  const start = new Date(firstDay);
-  start.setDate(firstDay.getDate() - firstDay.getDay());
-
-  return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
+  const lastDay = new Date(year, month + 1, 0);
+  const leadingBlanks = firstDay.getDay();
+  const days = Array.from({ length: lastDay.getDate() }, (_, index) => {
+    const date = new Date(year, month, index + 1);
     return {
+      key: toIsoDate(date),
       iso: toIsoDate(date),
       day: date.getDate(),
-      currentMonth: date.getMonth() === month,
+      blank: false,
     };
   });
+  const totalCells = Math.ceil((leadingBlanks + days.length) / 7) * 7;
+  const trailingBlanks = totalCells - leadingBlanks - days.length;
+  return [
+    ...Array.from({ length: leadingBlanks }, (_, index) => ({
+      key: `leading-${index}`,
+      blank: true,
+    })),
+    ...days,
+    ...Array.from({ length: trailingBlanks }, (_, index) => ({
+      key: `trailing-${index}`,
+      blank: true,
+    })),
+  ];
 }
 
 export default function CalendarBoard({
@@ -225,13 +237,15 @@ export default function CalendarBoard({
         </div>
         <div className="calendar-grid">
           {monthDays.map((day) => {
-            const dayRecords = recordsByDate.get(day.iso) ?? [];
+            const dayRecords = day.iso ? recordsByDate.get(day.iso) ?? [] : [];
+            if (day.blank) {
+              return <div key={day.key} className="calendar-day blank" aria-hidden="true" />;
+            }
             return (
               <div
-                key={day.iso}
+                key={day.key}
                 className={[
                   "calendar-day",
-                  day.currentMonth ? "" : "muted",
                   day.iso === todayIso ? "today" : "",
                   dropTarget === day.iso ? "drop-target" : "",
                 ]

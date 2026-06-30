@@ -58,18 +58,22 @@ button {
   font-size: 22px;
   line-height: 1.2;
   font-weight: 720;
+  white-space: nowrap;
 }
 
 .topbar-brand {
   min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
 .global-data-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -133,9 +137,9 @@ button {
 
 .category-tabs {
   display: grid;
-  grid-template-columns: repeat(8, minmax(74px, 1fr));
+  grid-template-columns: repeat(7, minmax(76px, 1fr));
   gap: 10px;
-  width: min(920px, 100%);
+  width: min(820px, 100%);
 }
 
 .category-tab {
@@ -425,9 +429,9 @@ button {
   border-right: 0;
 }
 
-.calendar-day.muted {
+.calendar-day.blank {
   background: #f8fafc;
-  color: #94a3b8;
+  pointer-events: none;
 }
 
 .calendar-day.today {

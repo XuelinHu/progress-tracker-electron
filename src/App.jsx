@@ -10,6 +10,7 @@ import {
   Plus,
   RotateCcw,
   Search,
+  Settings2,
   Save,
   Share2,
   Trash2,
@@ -64,7 +65,6 @@ const NAVIGATION_ITEMS = [
   GRAPH_CATEGORY,
   CALENDAR_CATEGORY,
   PROJECT_NAVIGATION_ITEM,
-  STATUS_CONFIG_PAGE,
 ].filter(Boolean);
 
 function today(offsetDays = 0) {
@@ -1717,7 +1717,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 / 8 切换页面</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 切换页面</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新
@@ -1773,6 +1773,19 @@ function App() {
             >
               <Download size={17} />
               <span>云端同步本地</span>
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              onClick={() => {
+                setActiveCategoryId(STATUS_CONFIG_PAGE.id);
+                setStatusFilter("all");
+                setStatusSortDirection("asc");
+              }}
+              title="打开优先级配置"
+            >
+              <Settings2 size={17} />
+              <span>优先级配置</span>
             </button>
             <input
               ref={fileInputRef}
