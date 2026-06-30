@@ -45,7 +45,6 @@ const GRAPH_CATEGORY = {
 const CALENDAR_CATEGORY = {
   id: "calendar",
   name: "日历",
-  shortcut: "6",
   accent: "#7c3aed",
   tint: "#f3e8ff",
 };
@@ -58,12 +57,11 @@ const STATUS_CONFIG_PAGE = {
 };
 const PROJECT_CATEGORY_ID = "project";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
-  ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "7" }
+  ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "6" }
   : null;
 const NAVIGATION_ITEMS = [
   ...CATEGORIES.filter((category) => category.id !== PROJECT_CATEGORY_ID),
   GRAPH_CATEGORY,
-  CALENDAR_CATEGORY,
   PROJECT_NAVIGATION_ITEM,
 ].filter(Boolean);
 
@@ -1717,7 +1715,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 切换页面</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 切换页面</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新
@@ -1728,7 +1726,7 @@ function App() {
 
           <div className="global-data-actions">
             <button
-              className="icon-button"
+              className="icon-button global-action data-export"
               type="button"
               onClick={exportJson}
               title="一键导出八个页面的全部数据（含历史记录、知识图谱和日历排期）"
@@ -1737,7 +1735,7 @@ function App() {
               <span>一键导出 JSON</span>
             </button>
             <button
-              className="icon-button"
+              className="icon-button global-action data-csv"
               type="button"
               onClick={exportAllCsv}
               title="一键导出五个数据栏目的全部记录为 CSV"
@@ -1746,7 +1744,7 @@ function App() {
               <span>导出全部 CSV</span>
             </button>
             <button
-              className="icon-button"
+              className="icon-button global-action data-import"
               type="button"
               onClick={() => fileInputRef.current?.click()}
               title="一键导入八个页面的全部数据"
@@ -1755,7 +1753,7 @@ function App() {
               <span>导入 JSON</span>
             </button>
             <button
-              className="icon-button"
+              className="icon-button global-action cloud-sync"
               type="button"
               onClick={syncDavBackup}
               disabled={backupBusy}
@@ -1765,7 +1763,7 @@ function App() {
               <span>同步云端</span>
             </button>
             <button
-              className="icon-button"
+              className="icon-button global-action cloud-restore"
               type="button"
               onClick={restoreDavBackup}
               disabled={backupBusy}
@@ -1775,7 +1773,7 @@ function App() {
               <span>云端同步本地</span>
             </button>
             <button
-              className="icon-button"
+              className="icon-button global-action config-action"
               type="button"
               onClick={() => {
                 setActiveCategoryId(STATUS_CONFIG_PAGE.id);
@@ -1786,6 +1784,19 @@ function App() {
             >
               <Settings2 size={17} />
               <span>优先级配置</span>
+            </button>
+            <button
+              className="icon-button global-action calendar-action"
+              type="button"
+              onClick={() => {
+                setActiveCategoryId(CALENDAR_CATEGORY.id);
+                setStatusFilter("all");
+                setStatusSortDirection("asc");
+              }}
+              title="打开日历排期"
+            >
+              <CalendarDays size={17} />
+              <span>日历</span>
             </button>
             <input
               ref={fileInputRef}

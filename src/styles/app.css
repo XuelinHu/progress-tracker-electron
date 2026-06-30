@@ -84,6 +84,46 @@ button {
   white-space: nowrap;
 }
 
+.global-data-actions .global-action {
+  border-color: color-mix(in srgb, var(--action-color) 34%, #dbe1ea);
+  background: color-mix(in srgb, var(--action-color) 12%, #ffffff);
+  color: var(--action-color);
+  font-weight: 720;
+}
+
+.global-data-actions .global-action:hover:not(:disabled) {
+  border-color: var(--action-color);
+  background: color-mix(in srgb, var(--action-color) 18%, #ffffff);
+}
+
+.data-export {
+  --action-color: #2563eb;
+}
+
+.data-csv {
+  --action-color: #0f766e;
+}
+
+.data-import {
+  --action-color: #d97706;
+}
+
+.cloud-sync {
+  --action-color: #0891b2;
+}
+
+.cloud-restore {
+  --action-color: #4338ca;
+}
+
+.config-action {
+  --action-color: #be185d;
+}
+
+.calendar-action {
+  --action-color: #7c3aed;
+}
+
 .shortcut-hint {
   display: flex;
   align-items: center;
@@ -137,9 +177,9 @@ button {
 
 .category-tabs {
   display: grid;
-  grid-template-columns: repeat(7, minmax(76px, 1fr));
+  grid-template-columns: repeat(6, minmax(82px, 1fr));
   gap: 10px;
-  width: min(820px, 100%);
+  width: min(760px, 100%);
 }
 
 .category-tab {
@@ -479,10 +519,14 @@ button {
   border: 0;
   border-left: 3px solid var(--record-accent);
   border-radius: 4px;
-  background: var(--record-status-bg);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--record-accent) 16%, #ffffff), var(--record-status-bg));
   color: var(--record-status-color);
   font-size: 11px;
   font-weight: 650;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -491,6 +535,26 @@ button {
 
 .calendar-day-record:hover {
   filter: brightness(0.98);
+}
+
+.calendar-day-record-category {
+  flex: 0 0 auto;
+  max-width: 42px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: var(--record-tint);
+  color: var(--record-accent);
+  font-size: 9px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-day-record-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .calendar-more {

@@ -274,13 +274,15 @@ export default function CalendarBoard({
                         className="calendar-day-record"
                         style={{
                           "--record-accent": category.accent,
+                          "--record-tint": category.tint,
                           "--record-status-bg": status?.bg || "#eef2ff",
                           "--record-status-color": status?.color || "#334155",
                         }}
                         onClick={() => openRecord?.(record)}
                         title={getRecordTitle(record)}
                       >
-                        {getRecordTitle(record)}
+                        <span className="calendar-day-record-category">{category.name}</span>
+                        <span className="calendar-day-record-title">{getRecordTitle(record)}</span>
                       </button>
                     );
                   })}
