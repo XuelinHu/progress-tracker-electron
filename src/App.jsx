@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownUp,
+  CalendarDays,
   Copy,
   Download,
   ExternalLink,
@@ -20,6 +21,7 @@ import StatusHistoryPopover from "./components/StatusHistoryPopover.jsx";
 import PortalPopover from "./components/PortalPopover.jsx";
 import CopyIconButton from "./components/CopyIconButton.jsx";
 import CopyableControl from "./components/CopyableControl.jsx";
+import CalendarBoard from "./components/CalendarBoard.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
@@ -39,18 +41,29 @@ const GRAPH_CATEGORY = {
   accent: "#0891b2",
   tint: "#cffafe",
 };
+const CALENDAR_CATEGORY = {
+  id: "calendar",
+  name: "日历",
+  shortcut: "6",
+  accent: "#7c3aed",
+  tint: "#f3e8ff",
+};
 const STATUS_CONFIG_PAGE = {
   id: "status-config",
   name: "优先级配置",
-  shortcut: "7",
+  shortcut: "8",
   accent: "#2563eb",
   tint: "#dbeafe",
 };
 const PROJECT_CATEGORY_ID = "project";
+const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
+  ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "7" }
+  : null;
 const NAVIGATION_ITEMS = [
   ...CATEGORIES.filter((category) => category.id !== PROJECT_CATEGORY_ID),
   GRAPH_CATEGORY,
-  CATEGORY_BY_ID[PROJECT_CATEGORY_ID],
+  CALENDAR_CATEGORY,
+  PROJECT_NAVIGATION_ITEM,
   STATUS_CONFIG_PAGE,
 ].filter(Boolean);
 
@@ -276,13 +289,16 @@ function App() {
   const saveTimerRef = useRef(null);
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
+  const isCalendarView = activeCategoryId === CALENDAR_CATEGORY.id;
   const isStatusConfigView = activeCategoryId === STATUS_CONFIG_PAGE.id;
   const activeCategory = CATEGORY_BY_ID[activeCategoryId] ?? CATEGORIES[0];
   const activeNavigationItem = isGraphView
     ? GRAPH_CATEGORY
-    : isStatusConfigView
-      ? STATUS_CONFIG_PAGE
-      : activeCategory;
+    : isCalendarView
+      ? CALENDAR_CATEGORY
+      : isStatusConfigView
+        ? STATUS_CONFIG_PAGE
+        : activeCategory;
   const tableTemplate = ["58px", ...activeCategory.fields.map((field) => field.width)].join(" ");
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -743,6 +759,16 @@ function App() {
     setSelectedId(nextRecord.id);
   }
 
+  function openRecordFromCalendar(record) {
+    if (!record?.categoryId) {
+      return;
+    }
+    setActiveCategoryId(record.categoryId);
+    setSelectedId(record.id);
+    setStatusFilter("all");
+    setStatusSortDirection("asc");
+  }
+
   function addRecordFromGraph(categoryId, position, sourceNodeId) {
     const record = buildRecord(categoryId);
     const nodeId = `node-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
@@ -844,8 +870,8 @@ function App() {
     return {
       version: 5,
       exportedAt: new Date().toISOString(),
-      scope: "pages-1-7",
-      includes: ["software", "patent", "paper", "contest", "graph", "status-config"],
+      scope: "pages-1-8",
+      includes: ["software", "patent", "paper", "contest", "graph", "calendar", "project", "status-config"],
       statusOptions,
       records,
       graph: {
@@ -1022,7 +1048,7 @@ function App() {
       }
       const backups = await loadBackupList();
       setSelectedBackup(data.backup?.name || backups[0]?.name || "");
-      setStatusConfigMessage("已创建服务器本地备份，包含 1-7 页面全部数据");
+      setStatusConfigMessage("已创建服务器本地备份，包含 1-8 页面全部数据");
     } catch (error) {
       setStatusConfigMessage(error.message || "服务器本地备份失败");
     } finally {
@@ -1088,7 +1114,7 @@ function App() {
       setStatusConfigMessage("请先选择要恢复的备份");
       return;
     }
-    if (!window.confirm("确认恢复所选备份吗？当前 1-7 页面数据会被备份内容覆盖。")) {
+    if (!window.confirm("确认恢复所选备份吗？当前 1-8 页面数据会被备份内容覆盖。")) {
       return;
     }
 
@@ -1258,7 +1284,7 @@ function App() {
       <div className="backup-panel">
         <div>
           <strong>服务器本地备份</strong>
-          <span>备份 1-7 页面：软著、专利、论文、比赛、知识图谱、项目、优先级配置。</span>
+          <span>备份 1-8 页面：软著、专利、论文、比赛、知识图谱、日历、项目、优先级配置。</span>
         </div>
         <div className="backup-actions">
           <button
@@ -1691,7 +1717,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 切换页面</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 / 8 切换页面</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新
@@ -1705,7 +1731,7 @@ function App() {
               className="icon-button"
               type="button"
               onClick={exportJson}
-              title="一键导出七个页面的全部数据（含历史记录和知识图谱）"
+              title="一键导出八个页面的全部数据（含历史记录、知识图谱和日历排期）"
             >
               <Download size={17} />
               <span>一键导出 JSON</span>
@@ -1723,7 +1749,7 @@ function App() {
               className="icon-button"
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              title="一键导入七个页面的全部数据"
+              title="一键导入八个页面的全部数据"
             >
               <Upload size={17} />
               <span>导入 JSON</span>
@@ -1782,6 +1808,7 @@ function App() {
             >
               <span className="shortcut-key">{category.shortcut}</span>
               {category.id === GRAPH_CATEGORY.id && <Share2 size={15} />}
+              {category.id === CALENDAR_CATEGORY.id && <CalendarDays size={15} />}
               {category.name}
             </button>
           ))}
@@ -1810,6 +1837,14 @@ function App() {
             updateStatusHistoryItem={updateStatusHistoryItem}
             updateTodoHistoryItem={updateTodoHistoryItem}
             syncTodoItems={syncTodoItems}
+          />
+        ) : isCalendarView ? (
+          <CalendarBoard
+            records={records}
+            statusOptions={statusOptions}
+            updateRecord={updateRecord}
+            updateRecordDate={updateRecordDate}
+            openRecord={openRecordFromCalendar}
           />
         ) : isStatusConfigView ? (
           renderStatusConfig()
