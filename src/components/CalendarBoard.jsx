@@ -1,9 +1,15 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 
 const DRAG_TYPE = "application/progress-calendar-record";
 const ACTIVE_STATUS = "进行中";
+const OTHER_CATEGORY = {
+  id: "other",
+  name: "其他事项",
+  accent: "#64748b",
+  tint: "#f1f5f9",
+};
 
 function today() {
   const date = new Date();
@@ -32,6 +38,10 @@ function getPrimaryDateField(record) {
 function getRecordDate(record) {
   const field = getPrimaryDateField(record);
   return field ? record?.[field.key] || "" : "";
+}
+
+function getCategory(categoryId) {
+  return CATEGORY_BY_ID[categoryId] ?? OTHER_CATEGORY;
 }
 
 function buildMonthDays(monthDate) {
@@ -66,10 +76,14 @@ function buildMonthDays(monthDate) {
 
 export default function CalendarBoard({
   records,
+  calendarItems = [],
   statusOptions,
   updateRecord,
   updateRecordDate,
   removeRecordDate,
+  addCalendarItem,
+  deleteCalendarItem,
+  copyCalendarItem,
   openRecord,
 }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
@@ -121,6 +135,19 @@ export default function CalendarBoard({
     return groups;
   }, [records]);
 
+  const calendarItemsByDate = useMemo(() => {
+    const groups = new Map();
+    for (const item of calendarItems) {
+      if (!item?.date) {
+        continue;
+      }
+      const list = groups.get(item.date) ?? [];
+      list.push(item);
+      groups.set(item.date, list);
+    }
+    return groups;
+  }, [calendarItems]);
+
   function moveMonth(offset) {
     setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   }
@@ -158,6 +185,45 @@ export default function CalendarBoard({
       return;
     }
     removeRecordDate?.(record.id, dateField.key, dateIso);
+  }
+
+  function handleAddCustomItem(event, dateIso) {
+    event.preventDefault();
+    event.stopPropagation();
+    const title = window.prompt("新建其他事项", "");
+    const value = String(title ?? "").trim();
+    if (!value) {
+      return;
+    }
+    addCalendarItem?.(dateIso, {
+      title: value,
+      categoryId: OTHER_CATEGORY.id,
+      status: "其他",
+    });
+  }
+
+  function handleCopyRecord(event, record, dateIso) {
+    event.preventDefault();
+    event.stopPropagation();
+    const category = getCategory(record.categoryId);
+    addCalendarItem?.(dateIso, {
+      title: getRecordTitle(record),
+      description: record.description || "",
+      categoryId: category.id,
+      status: record.status || "其他",
+    });
+  }
+
+  function handleDeleteCustomItem(event, itemId) {
+    event.preventDefault();
+    event.stopPropagation();
+    deleteCalendarItem?.(itemId);
+  }
+
+  function handleCopyCustomItem(event, item) {
+    event.preventDefault();
+    event.stopPropagation();
+    copyCalendarItem?.(item);
   }
 
   return (
@@ -249,6 +315,11 @@ export default function CalendarBoard({
         <div className="calendar-grid">
           {monthDays.map((day) => {
             const dayRecords = day.iso ? recordsByDate.get(day.iso) ?? [] : [];
+            const dayCustomItems = day.iso ? calendarItemsByDate.get(day.iso) ?? [] : [];
+            const visibleEntries = [
+              ...dayRecords.map((record) => ({ type: "record", record })),
+              ...dayCustomItems.map((item) => ({ type: "custom", item })),
+            ];
             if (day.blank) {
               return <div key={day.key} className="calendar-day blank" aria-hidden="true" />;
             }
@@ -272,11 +343,83 @@ export default function CalendarBoard({
               >
                 <div className="calendar-day-head">
                   <strong>{day.day}</strong>
+                  <button
+                    className="calendar-day-add"
+                    type="button"
+                    onClick={(event) => handleAddCustomItem(event, day.iso)}
+                    title="新建其他事项"
+                    aria-label={`在 ${day.iso} 新建其他事项`}
+                  >
+                    <Plus size={10} />
+                  </button>
                   {day.iso === todayIso && <span>今天</span>}
                 </div>
                 <div className="calendar-day-records">
-                  {dayRecords.slice(0, 4).map((record) => {
-                    const category = CATEGORY_BY_ID[record.categoryId] ?? CATEGORIES[0];
+                  {visibleEntries.slice(0, 4).map((entry) => {
+                    if (entry.type === "custom") {
+                      const item = entry.item;
+                      const category = getCategory(item.categoryId);
+                      const status = statusById[item.status] ?? statusById["其他"] ?? statusOptions[0];
+                      return (
+                        <div
+                          key={item.id}
+                          className="calendar-day-record custom"
+                          role="button"
+                          tabIndex={0}
+                          style={{
+                            "--record-accent": category.accent,
+                            "--record-tint": category.tint,
+                            "--record-status-bg": status?.bg || "#f1f5f9",
+                            "--record-status-color": status?.color || "#334155",
+                          }}
+                          title={item.title}
+                        >
+                          <span className="calendar-day-record-category">{category.name}</span>
+                          <span className="calendar-day-record-title">{item.title}</span>
+                          <span className="calendar-record-info" role="tooltip">
+                            <strong>{item.title}</strong>
+                            <span>类别：{category.name}</span>
+                            <span>状态：{status?.label || item.status || "其他"}</span>
+                            <span>日期：{item.date}</span>
+                            <span>类型：其他事项</span>
+                            {item.description && <span>说明：{item.description}</span>}
+                          </span>
+                          <span
+                            className="calendar-record-copy"
+                            role="button"
+                            tabIndex={0}
+                            title="复制这个事项"
+                            aria-label={`复制 ${item.title}`}
+                            onClick={(event) => handleCopyCustomItem(event, item)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                handleCopyCustomItem(event, item);
+                              }
+                            }}
+                          >
+                            <Copy size={10} />
+                          </span>
+                          <span
+                            className="calendar-record-remove"
+                            role="button"
+                            tabIndex={0}
+                            title="删除这个事项"
+                            aria-label={`删除 ${item.title}`}
+                            onClick={(event) => handleDeleteCustomItem(event, item.id)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                handleDeleteCustomItem(event, item.id);
+                              }
+                            }}
+                          >
+                            <X size={10} />
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    const record = entry.record;
+                    const category = getCategory(record.categoryId);
                     const status = statusById[record.status] ?? statusOptions[0];
                     const dateField = getPrimaryDateField(record);
                     return (
@@ -311,6 +454,21 @@ export default function CalendarBoard({
                           {record.description && <span>说明：{record.description}</span>}
                         </span>
                         <span
+                          className="calendar-record-copy"
+                          role="button"
+                          tabIndex={0}
+                          title="复制为其他事项"
+                          aria-label={`复制 ${getRecordTitle(record)}`}
+                          onClick={(event) => handleCopyRecord(event, record, day.iso)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              handleCopyRecord(event, record, day.iso);
+                            }
+                          }}
+                        >
+                          <Copy size={10} />
+                        </span>
+                        <span
                           className="calendar-record-remove"
                           role="button"
                           tabIndex={0}
@@ -328,8 +486,8 @@ export default function CalendarBoard({
                       </div>
                     );
                   })}
-                  {dayRecords.length > 4 && (
-                    <span className="calendar-more">+{dayRecords.length - 4}</span>
+                  {visibleEntries.length > 4 && (
+                    <span className="calendar-more">+{visibleEntries.length - 4}</span>
                   )}
                 </div>
               </div>

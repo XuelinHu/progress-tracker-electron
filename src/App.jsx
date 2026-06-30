@@ -150,6 +150,22 @@ function loadGraph() {
   return { nodes: [], edges: [] };
 }
 
+function normalizeCalendarItems(items) {
+  return Array.isArray(items)
+    ? items
+        .map((item) => ({
+          id: String(item?.id || createId("calendar-item")),
+          date: String(item?.date || today()),
+          title: String(item?.title || "其他事项"),
+          description: String(item?.description || ""),
+          categoryId: item?.categoryId || "other",
+          status: item?.status || "其他",
+          createdAt: item?.createdAt || new Date().toISOString(),
+        }))
+        .filter((item) => item.date && item.title)
+    : [];
+}
+
 function normalizeStatusConfig(items) {
   const source = Array.isArray(items) && items.length > 0 ? items : STATUSES;
   const seenIds = new Set();
@@ -273,6 +289,7 @@ function App() {
   const [initialGraph] = useState(loadGraph);
   const [graphNodes, setGraphNodes] = useState(initialGraph.nodes);
   const [graphEdges, setGraphEdges] = useState(initialGraph.edges);
+  const [calendarItems, setCalendarItems] = useState([]);
   const fileInputRef = useRef(null);
   const [pageLoadTime, setPageLoadTime] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
@@ -422,7 +439,7 @@ function App() {
     }, 450);
 
     return () => window.clearTimeout(saveTimerRef.current);
-  }, [graphEdges, graphNodes, records, serverStateReady, statusOptions]);
+  }, [calendarItems, graphEdges, graphNodes, records, serverStateReady, statusOptions]);
 
   useEffect(() => {
     if (statusFilter !== "all" && !statusOptions.some((status) => status.id === statusFilter)) {
@@ -555,6 +572,41 @@ function App() {
         };
       }),
     );
+  }
+
+  function addCalendarItem(date, draft = {}) {
+    const title = String(draft.title ?? "").trim();
+    if (!date || !title) {
+      return;
+    }
+    setCalendarItems((current) => [
+      ...current,
+      {
+        id: createId("calendar-item"),
+        date,
+        title,
+        description: String(draft.description ?? ""),
+        categoryId: draft.categoryId || "other",
+        status: draft.status || "其他",
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  }
+
+  function deleteCalendarItem(itemId) {
+    setCalendarItems((current) => current.filter((item) => item.id !== itemId));
+  }
+
+  function copyCalendarItem(item) {
+    if (!item?.date || !item?.title) {
+      return;
+    }
+    addCalendarItem(item.date, {
+      title: item.title,
+      description: item.description,
+      categoryId: item.categoryId,
+      status: item.status,
+    });
   }
 
   function updateDateHistoryItem(recordId, fieldKey, historyId, item) {
@@ -881,6 +933,7 @@ function App() {
     setRecords(seedRecords.map(normalizeRecord));
     setGraphNodes([]);
     setGraphEdges([]);
+    setCalendarItems([]);
     setSelectedId(null);
     setSearchTerm("");
     setStatusFilter("all");
@@ -899,6 +952,7 @@ function App() {
         nodes: graphNodes,
         edges: graphEdges,
       },
+      calendarItems,
     };
   }
 
@@ -922,6 +976,10 @@ function App() {
       setGraphEdges(edges);
       graphNodeCount = nodes.length;
       graphEdgeCount = edges.length;
+    }
+
+    if (!Array.isArray(parsed)) {
+      setCalendarItems(normalizeCalendarItems(parsed.calendarItems));
     }
 
     if (!Array.isArray(parsed) && Array.isArray(parsed.statusOptions)) {
@@ -1888,10 +1946,14 @@ function App() {
         ) : isCalendarView ? (
           <CalendarBoard
             records={records}
+            calendarItems={calendarItems}
             statusOptions={statusOptions}
             updateRecord={updateRecord}
             updateRecordDate={updateRecordDate}
             removeRecordDate={removeRecordDate}
+            addCalendarItem={addCalendarItem}
+            deleteCalendarItem={deleteCalendarItem}
+            copyCalendarItem={copyCalendarItem}
             openRecord={openRecordFromCalendar}
           />
         ) : isStatusConfigView ? (

@@ -488,13 +488,33 @@ button {
 .calendar-day-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 6px;
 }
 
 .calendar-day-head strong {
+  margin-right: auto;
   color: #273449;
   font-size: 13px;
+}
+
+.calendar-day-add {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c4b5fd;
+  border-radius: 4px;
+  background: #f5f3ff;
+  color: #7c3aed;
+  padding: 0;
+}
+
+.calendar-day-add:hover {
+  border-color: #7c3aed;
+  background: #ede9fe;
 }
 
 .calendar-day-head span {
@@ -540,6 +560,10 @@ button {
   z-index: 12;
 }
 
+.calendar-day-record.custom {
+  border-left-style: double;
+}
+
 .calendar-day-record-category {
   flex: 0 0 auto;
   max-width: 42px;
@@ -560,6 +584,7 @@ button {
   text-overflow: ellipsis;
 }
 
+.calendar-record-copy,
 .calendar-record-remove {
   flex: 0 0 auto;
   width: 15px;
@@ -568,9 +593,25 @@ button {
   align-items: center;
   justify-content: center;
   border-radius: 3px;
+}
+
+.calendar-record-copy {
+  background: #eff6ff;
+  color: #2563eb;
+  opacity: 0.82;
+}
+
+.calendar-record-remove {
   background: #fff1f2;
   color: #dc2626;
   opacity: 0.8;
+}
+
+.calendar-day-record:hover .calendar-record-copy,
+.calendar-record-copy:focus {
+  opacity: 1;
+  background: #bfdbfe;
+  color: #1d4ed8;
 }
 
 .calendar-day-record:hover .calendar-record-remove,
