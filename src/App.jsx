@@ -534,6 +534,29 @@ function App() {
     return historyId;
   }
 
+  function removeRecordDate(recordId, fieldKey, date) {
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) {
+          return record;
+        }
+
+        const dateHistory = record.dateHistory ?? {};
+        return {
+          ...record,
+          [fieldKey]: "",
+          dateHistory: {
+            ...dateHistory,
+            [fieldKey]: (dateHistory[fieldKey] ?? []).filter(
+              (entry) =>
+                entry.date !== date || !String(entry.item ?? "").includes("安排："),
+            ),
+          },
+        };
+      }),
+    );
+  }
+
   function updateDateHistoryItem(recordId, fieldKey, historyId, item) {
     setRecords((current) =>
       current.map((record) => {
@@ -1868,6 +1891,7 @@ function App() {
             statusOptions={statusOptions}
             updateRecord={updateRecord}
             updateRecordDate={updateRecordDate}
+            removeRecordDate={removeRecordDate}
             openRecord={openRecordFromCalendar}
           />
         ) : isStatusConfigView ? (

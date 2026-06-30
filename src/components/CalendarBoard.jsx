@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 
 const DRAG_TYPE = "application/progress-calendar-record";
@@ -69,6 +69,7 @@ export default function CalendarBoard({
   statusOptions,
   updateRecord,
   updateRecordDate,
+  removeRecordDate,
   openRecord,
 }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
@@ -147,6 +148,16 @@ export default function CalendarBoard({
       `${dateIso === todayIso ? "今天" : "日历"}安排：${getRecordTitle(record)} 正在进行中`,
     );
     updateRecord?.(record.id, { status: ACTIVE_STATUS });
+  }
+
+  function handleRemoveFromDate(event, record, dateIso) {
+    event.preventDefault();
+    event.stopPropagation();
+    const dateField = getPrimaryDateField(record);
+    if (!record || !dateField) {
+      return;
+    }
+    removeRecordDate?.(record.id, dateField.key, dateIso);
   }
 
   return (
@@ -267,11 +278,13 @@ export default function CalendarBoard({
                   {dayRecords.slice(0, 4).map((record) => {
                     const category = CATEGORY_BY_ID[record.categoryId] ?? CATEGORIES[0];
                     const status = statusById[record.status] ?? statusOptions[0];
+                    const dateField = getPrimaryDateField(record);
                     return (
-                      <button
+                      <div
                         key={record.id}
-                        type="button"
                         className="calendar-day-record"
+                        role="button"
+                        tabIndex={0}
                         style={{
                           "--record-accent": category.accent,
                           "--record-tint": category.tint,
@@ -279,11 +292,40 @@ export default function CalendarBoard({
                           "--record-status-color": status?.color || "#334155",
                         }}
                         onClick={() => openRecord?.(record)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            openRecord?.(record);
+                          }
+                        }}
                         title={getRecordTitle(record)}
                       >
                         <span className="calendar-day-record-category">{category.name}</span>
                         <span className="calendar-day-record-title">{getRecordTitle(record)}</span>
-                      </button>
+                        <span className="calendar-record-info" role="tooltip">
+                          <strong>{getRecordTitle(record)}</strong>
+                          <span>类别：{category.name}</span>
+                          <span>状态：{status?.label || record.status || "未设置"}</span>
+                          <span>日期：{day.iso}</span>
+                          <span>字段：{dateField?.label || "日期"}</span>
+                          {record.description && <span>说明：{record.description}</span>}
+                        </span>
+                        <span
+                          className="calendar-record-remove"
+                          role="button"
+                          tabIndex={0}
+                          title="从这个日期移除"
+                          aria-label={`从 ${day.iso} 移除 ${getRecordTitle(record)}`}
+                          onClick={(event) => handleRemoveFromDate(event, record, day.iso)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              handleRemoveFromDate(event, record, day.iso);
+                            }
+                          }}
+                        >
+                          <X size={10} />
+                        </span>
+                      </div>
                     );
                   })}
                   {dayRecords.length > 4 && (

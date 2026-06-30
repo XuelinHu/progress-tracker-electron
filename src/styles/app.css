@@ -452,6 +452,7 @@ button {
 }
 
 .calendar-day {
+  position: relative;
   min-width: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -513,9 +514,10 @@ button {
 }
 
 .calendar-day-record {
+  position: relative;
   min-width: 0;
   min-height: 22px;
-  padding: 0 6px;
+  padding: 0 3px 0 6px;
   border: 0;
   border-left: 3px solid var(--record-accent);
   border-radius: 4px;
@@ -529,12 +531,13 @@ button {
   gap: 5px;
   text-align: left;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .calendar-day-record:hover {
   filter: brightness(0.98);
+  overflow: visible;
+  z-index: 12;
 }
 
 .calendar-day-record-category {
@@ -555,6 +558,61 @@ button {
   flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.calendar-record-remove {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  background: #fff1f2;
+  color: #dc2626;
+  opacity: 0.8;
+}
+
+.calendar-day-record:hover .calendar-record-remove,
+.calendar-record-remove:focus {
+  opacity: 1;
+  background: #fecaca;
+  color: #b91c1c;
+}
+
+.calendar-record-info {
+  position: absolute;
+  left: 6px;
+  top: calc(100% + 5px);
+  z-index: 50;
+  width: min(260px, 72vw);
+  display: none;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--record-accent) 34%, #cbd5e1);
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+  color: #334155;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.calendar-record-info strong {
+  color: #172033;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.calendar-record-info span {
+  overflow-wrap: anywhere;
+}
+
+.calendar-day-record:hover .calendar-record-info,
+.calendar-day-record:focus .calendar-record-info,
+.calendar-day-record:focus-within .calendar-record-info {
+  display: grid;
 }
 
 .calendar-more {
