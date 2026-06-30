@@ -44,6 +44,53 @@ function getCategory(categoryId) {
   return CATEGORY_BY_ID[categoryId] ?? OTHER_CATEGORY;
 }
 
+function getTodoLines(record) {
+  return String(record?.todo ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function getDayRecordDetails(record, dateIso, dateField) {
+  const todoHistory = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
+  const doneTodos = todoHistory
+    .filter((entry) => entry.doneDate === dateIso && entry.item)
+    .map((entry) => entry.item);
+  const doneSet = new Set(
+    todoHistory.filter((entry) => entry.doneDate).map((entry) => entry.item),
+  );
+  const pendingTodos = getTodoLines(record)
+    .filter((line) => !doneSet.has(line))
+    .slice(0, 4);
+  const dateEntries = (record?.dateHistory?.[dateField?.key] ?? [])
+    .filter((entry) => entry.date === dateIso && String(entry.item ?? "").trim())
+    .map((entry) => entry.item.trim());
+
+  return {
+    arrangements: dateEntries.length > 0 ? dateEntries : [`进行：${getRecordTitle(record)}`],
+    doneTodos,
+    pendingTodos,
+    notes: [record?.description, record?.todo]
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean)
+      .slice(0, 2),
+  };
+}
+
+function DetailSection({ title, items, emptyText }) {
+  const visibleItems = items.filter(Boolean);
+  return (
+    <span className="calendar-info-section">
+      <b>{title}</b>
+      {visibleItems.length > 0 ? (
+        visibleItems.slice(0, 4).map((item, index) => <em key={`${title}-${index}`}>{item}</em>)
+      ) : (
+        <em>{emptyText}</em>
+      )}
+    </span>
+  );
+}
+
 function buildMonthDays(monthDate) {
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
@@ -360,6 +407,7 @@ export default function CalendarBoard({
                       const item = entry.item;
                       const category = getCategory(item.categoryId);
                       const status = statusById[item.status] ?? statusById["其他"] ?? statusOptions[0];
+                      const customNotes = [item.description].filter(Boolean);
                       return (
                         <div
                           key={item.id}
@@ -377,13 +425,21 @@ export default function CalendarBoard({
                           <span className="calendar-day-record-category">{category.name}</span>
                           <span className="calendar-day-record-title">{item.title}</span>
                           <span className="calendar-record-info" role="tooltip">
-                            <strong>{item.title}</strong>
-                            <span>类别：{category.name}</span>
-                            <span>状态：{status?.label || item.status || "其他"}</span>
-                            <span>日期：{item.date}</span>
-                            <span>类型：其他事项</span>
-                            {item.description && <span>说明：{item.description}</span>}
-                          </span>
+                          <strong>{item.title}</strong>
+                          <span>类别：{category.name}</span>
+                          <span>状态：{status?.label || item.status || "其他"}</span>
+                          <span>日期：{item.date}</span>
+                          <DetailSection
+                            title="今天事项"
+                            items={[item.title]}
+                            emptyText="未填写事项"
+                          />
+                          <DetailSection
+                            title="注意事项"
+                            items={customNotes}
+                            emptyText="无备注"
+                          />
+                        </span>
                           <span
                             className="calendar-record-copy"
                             role="button"
@@ -422,6 +478,7 @@ export default function CalendarBoard({
                     const category = getCategory(record.categoryId);
                     const status = statusById[record.status] ?? statusOptions[0];
                     const dateField = getPrimaryDateField(record);
+                    const details = getDayRecordDetails(record, day.iso, dateField);
                     return (
                       <div
                         key={record.id}
@@ -451,7 +508,26 @@ export default function CalendarBoard({
                           <span>状态：{status?.label || record.status || "未设置"}</span>
                           <span>日期：{day.iso}</span>
                           <span>字段：{dateField?.label || "日期"}</span>
-                          {record.description && <span>说明：{record.description}</span>}
+                          <DetailSection
+                            title="今天做什么"
+                            items={details.arrangements}
+                            emptyText="未填写安排"
+                          />
+                          <DetailSection
+                            title="完成 Todo"
+                            items={details.doneTodos}
+                            emptyText="暂无完成"
+                          />
+                          <DetailSection
+                            title="待做事项"
+                            items={details.pendingTodos}
+                            emptyText="暂无待做"
+                          />
+                          <DetailSection
+                            title="注意事项"
+                            items={details.notes}
+                            emptyText="无备注"
+                          />
                         </span>
                         <span
                           className="calendar-record-copy"
