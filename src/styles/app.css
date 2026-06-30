@@ -177,9 +177,9 @@ button {
 
 .category-tabs {
   display: grid;
-  grid-template-columns: repeat(6, minmax(82px, 1fr));
+  grid-template-columns: repeat(7, minmax(76px, 1fr));
   gap: 10px;
-  width: min(760px, 100%);
+  width: min(840px, 100%);
 }
 
 .category-tab {
@@ -1661,6 +1661,99 @@ button {
   cursor: not-allowed;
 }
 
+.other-items-page {
+  gap: 0;
+  max-height: calc(100vh - 132px);
+  overflow: auto;
+}
+
+.other-items-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fbfcfe;
+}
+
+.other-items-header h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.other-items-header p {
+  margin: 6px 0 0;
+  color: #647084;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.other-item-form {
+  display: grid;
+  grid-template-columns: 150px minmax(180px, 0.8fr) minmax(220px, 1fr) auto;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.other-items-list {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px 16px;
+}
+
+.other-item-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 130px minmax(180px, 0.8fr) minmax(220px, 1fr) 64px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #dbe1ea;
+  border-left: 4px solid #64748b;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.other-item-date {
+  width: fit-content;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.other-item-row strong,
+.other-item-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.other-item-row strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.other-item-desc {
+  color: #647084;
+  font-size: 12px;
+}
+
+.other-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
 .backup-empty {
   padding: 8px;
   color: #94a3b8;
@@ -1981,6 +2074,17 @@ button {
     grid-template-columns: 1fr 1fr;
   }
 
+  .other-item-form,
+  .other-item-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .other-item-form .icon-button,
+  .other-item-desc,
+  .other-item-actions {
+    grid-column: 1 / -1;
+  }
+
   .history-summary {
     grid-column: 1 / -1;
   }
@@ -2032,6 +2136,11 @@ button {
   }
 
   .history-item {
+    grid-template-columns: 1fr;
+  }
+
+  .other-item-form,
+  .other-item-row {
     grid-template-columns: 1fr;
   }
 

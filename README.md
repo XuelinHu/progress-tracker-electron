@@ -63,6 +63,20 @@ npm run dev
 ```bash
 npm run check
 ```
+<!-- codex-runtime-config:start -->
+## 运行配置与数据存储
+
+- Web/PM2 默认端口：`4003`。
+- 本机访问：`http://127.0.0.1:4003/`。
+- FRP 外网访问：`http://47.120.48.245:14003/`。
+- Electron 联调地址：`electron/main.cjs` 默认加载 `http://localhost:4003`。
+- 预览服务入口：`npm run preview` -> `scripts/preview-server.cjs`。
+- 数据库类型：PostgreSQL。
+- 数据库名称：`progress_tracker_electron`。
+- 默认连接变量：`PGHOST=127.0.0.1`、`PGPORT=5432`、`PGDATABASE=progress_tracker_electron`、`PGUSER=<your-postgres-user>`、`PGPASSWORD=<your-postgres-password>`。
+- 核心表：`app_state`，默认状态主键 `APP_STATE_ID=main`，`data JSONB` 保存 1-7 类别页记录、知识图谱、日历事项、其他事项、优先级配置和同步状态。
+- WebDAV：通过 `DAV_URL`、`DAV_USERNAME`、`DAV_PASSWORD`、`DAV_PROJECT` 配置云端备份；真实凭据只放本地 `.env`。
+<!-- codex-runtime-config:end -->
 
 ## 打包
 

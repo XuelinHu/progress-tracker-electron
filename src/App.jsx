@@ -55,6 +55,13 @@ const STATUS_CONFIG_PAGE = {
   accent: "#2563eb",
   tint: "#dbeafe",
 };
+const OTHER_ITEMS_PAGE = {
+  id: "other-items",
+  name: "其他事项",
+  shortcut: "7",
+  accent: "#64748b",
+  tint: "#f1f5f9",
+};
 const PROJECT_CATEGORY_ID = "project";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
   ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "6" }
@@ -63,6 +70,7 @@ const NAVIGATION_ITEMS = [
   ...CATEGORIES.filter((category) => category.id !== PROJECT_CATEGORY_ID),
   GRAPH_CATEGORY,
   PROJECT_NAVIGATION_ITEM,
+  OTHER_ITEMS_PAGE,
 ].filter(Boolean);
 
 function today(offsetDays = 0) {
@@ -299,21 +307,29 @@ function App() {
   const [backupList, setBackupList] = useState([]);
   const [selectedBackup, setSelectedBackup] = useState("");
   const [backupBusy, setBackupBusy] = useState(false);
+  const [otherItemDraft, setOtherItemDraft] = useState(() => ({
+    date: today(),
+    title: "",
+    description: "",
+  }));
   const [serverStateReady, setServerStateReady] = useState(false);
   const [serverSaveError, setServerSaveError] = useState("");
   const saveTimerRef = useRef(null);
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const isCalendarView = activeCategoryId === CALENDAR_CATEGORY.id;
+  const isOtherItemsView = activeCategoryId === OTHER_ITEMS_PAGE.id;
   const isStatusConfigView = activeCategoryId === STATUS_CONFIG_PAGE.id;
   const activeCategory = CATEGORY_BY_ID[activeCategoryId] ?? CATEGORIES[0];
   const activeNavigationItem = isGraphView
     ? GRAPH_CATEGORY
     : isCalendarView
       ? CALENDAR_CATEGORY
-      : isStatusConfigView
-        ? STATUS_CONFIG_PAGE
-        : activeCategory;
+      : isOtherItemsView
+        ? OTHER_ITEMS_PAGE
+        : isStatusConfigView
+          ? STATUS_CONFIG_PAGE
+          : activeCategory;
   const tableTemplate = ["58px", ...activeCategory.fields.map((field) => field.width)].join(" ");
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -607,6 +623,25 @@ function App() {
       categoryId: item.categoryId,
       status: item.status,
     });
+  }
+
+  function submitOtherItem(event) {
+    event.preventDefault();
+    const title = otherItemDraft.title.trim();
+    if (!title) {
+      return;
+    }
+    addCalendarItem(otherItemDraft.date || today(), {
+      title,
+      description: otherItemDraft.description.trim(),
+      categoryId: "other",
+      status: "其他",
+    });
+    setOtherItemDraft((current) => ({
+      ...current,
+      title: "",
+      description: "",
+    }));
   }
 
   function updateDateHistoryItem(recordId, fieldKey, historyId, item) {
@@ -1527,6 +1562,90 @@ function App() {
     );
   }
 
+  function renderOtherItems() {
+    const sortedItems = [...calendarItems].sort(
+      (left, right) =>
+        String(left.date).localeCompare(String(right.date)) ||
+        String(left.title).localeCompare(String(right.title), "zh-Hans-CN"),
+    );
+
+    return (
+      <section className="workspace other-items-page">
+        <div className="other-items-header">
+          <div>
+            <h2>其他事项</h2>
+            <p>管理日历中的独立事项。这里的新建、复制和删除都会保存到 PostgreSQL。</p>
+          </div>
+        </div>
+
+        <form className="other-item-form" onSubmit={submitOtherItem}>
+          <input
+            className="form-control"
+            type="date"
+            value={otherItemDraft.date}
+            onChange={(event) =>
+              setOtherItemDraft((current) => ({ ...current, date: event.target.value }))
+            }
+            aria-label="其他事项日期"
+          />
+          <input
+            className="form-control"
+            value={otherItemDraft.title}
+            onChange={(event) =>
+              setOtherItemDraft((current) => ({ ...current, title: event.target.value }))
+            }
+            placeholder="事项名称"
+            aria-label="其他事项名称"
+          />
+          <input
+            className="form-control"
+            value={otherItemDraft.description}
+            onChange={(event) =>
+              setOtherItemDraft((current) => ({ ...current, description: event.target.value }))
+            }
+            placeholder="备注"
+            aria-label="其他事项备注"
+          />
+          <button className="icon-button primary" type="submit">
+            <Plus size={16} />
+            <span>新增</span>
+          </button>
+        </form>
+
+        <div className="other-items-list">
+          {sortedItems.map((item) => (
+            <div key={item.id} className="other-item-row">
+              <span className="other-item-date">{item.date}</span>
+              <strong>{item.title}</strong>
+              <span className="other-item-desc">{item.description || "无备注"}</span>
+              <div className="other-item-actions">
+                <button
+                  className="row-copy-button"
+                  type="button"
+                  onClick={() => copyCalendarItem(item)}
+                  title="复制这个事项"
+                  aria-label={`复制 ${item.title}`}
+                >
+                  <Copy size={12} />
+                </button>
+                <button
+                  className="row-delete-button"
+                  type="button"
+                  onClick={() => deleteCalendarItem(item.id)}
+                  title="删除这个事项"
+                  aria-label={`删除 ${item.title}`}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {sortedItems.length === 0 && <div className="empty-state">暂无其他事项</div>}
+        </div>
+      </section>
+    );
+  }
+
   function renderCell(record, field) {
     if (field.type === "status") {
       const status = statusById[record.status] ?? statusOptions[0];
@@ -1796,7 +1915,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 切换页面</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 切换页面</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新
@@ -1912,9 +2031,9 @@ function App() {
               }}
             >
               <span className="shortcut-key">{category.shortcut}</span>
-              {category.id === GRAPH_CATEGORY.id && <Share2 size={15} />}
-              {category.id === CALENDAR_CATEGORY.id && <CalendarDays size={15} />}
-              {category.name}
+            {category.id === GRAPH_CATEGORY.id && <Share2 size={15} />}
+            {category.id === CALENDAR_CATEGORY.id && <CalendarDays size={15} />}
+            {category.name}
             </button>
           ))}
         </nav>
@@ -1956,6 +2075,8 @@ function App() {
             copyCalendarItem={copyCalendarItem}
             openRecord={openRecordFromCalendar}
           />
+        ) : isOtherItemsView ? (
+          renderOtherItems()
         ) : isStatusConfigView ? (
           renderStatusConfig()
         ) : (
