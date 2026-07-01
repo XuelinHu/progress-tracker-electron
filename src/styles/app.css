@@ -397,8 +397,8 @@ button {
   min-height: 0;
   max-height: 100%;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  overflow: hidden;
+  grid-template-rows: auto auto auto;
+  overflow: auto;
   background: #ffffff;
 }
 
@@ -448,18 +448,19 @@ button {
 }
 
 .calendar-grid {
-  min-height: 0;
+  min-height: 100%;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-auto-rows: minmax(116px, auto);
-  align-items: start;
-  overflow: auto;
+  grid-auto-rows: minmax(116px, max-content);
+  align-items: stretch;
+  overflow: visible;
 }
 
 .calendar-day {
   position: relative;
   min-width: 0;
   min-height: 116px;
+  height: 100%;
   display: grid;
   grid-template-rows: auto auto;
   align-content: start;
@@ -2460,7 +2461,7 @@ button {
   }
 
   .calendar-grid {
-    grid-auto-rows: minmax(116px, auto);
+    grid-auto-rows: minmax(116px, max-content);
   }
 
   .toolbar {
