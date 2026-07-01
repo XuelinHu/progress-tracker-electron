@@ -1834,7 +1834,7 @@ button {
 .create-assist-panel {
   min-width: 0;
   display: grid;
-  grid-template-rows: minmax(300px, 1fr) auto auto;
+  grid-template-rows: minmax(300px, 1fr) auto auto auto auto;
   align-content: start;
   gap: 10px;
   padding: 10px;
@@ -1883,6 +1883,62 @@ button {
 .create-assist-copy svg {
   width: 9px;
   height: 9px;
+}
+
+.create-assist-errors {
+  display: grid;
+  gap: 4px;
+  padding: 8px 9px;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  background: #fff1f2;
+  color: #991b1b;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.create-assist-errors strong {
+  font-size: 12px;
+}
+
+.create-assist-errors span {
+  overflow-wrap: anywhere;
+}
+
+.create-json-template {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid #dbe1ea;
+  border-radius: 7px;
+  background: #ffffff;
+}
+
+.create-json-template > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.create-json-template strong {
+  color: #475569;
+  font-size: 12px;
+}
+
+.create-json-template pre {
+  max-height: 190px;
+  margin: 0;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .create-modal-foot {

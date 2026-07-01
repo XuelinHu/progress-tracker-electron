@@ -317,6 +317,7 @@ function App() {
   const [createModal, setCreateModal] = useState(null);
   const [createDraft, setCreateDraft] = useState(null);
   const [createAssistText, setCreateAssistText] = useState("");
+  const [createAssistIssues, setCreateAssistIssues] = useState([]);
   const createAssistRef = useRef(null);
   const [serverStateReady, setServerStateReady] = useState(false);
   const [serverSaveError, setServerSaveError] = useState("");
@@ -679,18 +680,21 @@ function App() {
     });
     setCreateDraft(buildRecord(category.id));
     setCreateAssistText("");
+    setCreateAssistIssues([]);
   }
 
   function openCalendarItemModal(date = today(), overrides = {}) {
     setCreateModal({ mode: "calendar", categoryId: "other", date });
     setCreateDraft(buildCalendarItemDraft(date, overrides));
     setCreateAssistText("");
+    setCreateAssistIssues([]);
   }
 
   function closeCreateModal() {
     setCreateModal(null);
     setCreateDraft(null);
     setCreateAssistText("");
+    setCreateAssistIssues([]);
   }
 
   function updateCreateDraft(fieldKey, value) {
@@ -723,14 +727,149 @@ function App() {
     return "";
   }
 
+  function buildCreateJsonTemplate() {
+    if (!createModal) {
+      return "{}";
+    }
+    if (createModal.mode === "calendar") {
+      return JSON.stringify(
+        {
+          status: getDefaultStatusId(),
+          date: today(),
+          title: "今天要处理的事项",
+          description: "注意事项或补充说明",
+        },
+        null,
+        2,
+      );
+    }
+
+    const category = CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0];
+    const template = {};
+    for (const field of category.fields) {
+      if (field.key === "status") {
+        template[field.key] = getDefaultStatusId();
+      } else if (field.type === "date") {
+        template[field.key] = today();
+      } else if (field.key === "title") {
+        template[field.key] = `${category.name}项目名称`;
+      } else if (field.key === "todo") {
+        template[field.key] = "待办事项1\n待办事项2";
+      } else {
+        template[field.key] = "";
+      }
+    }
+    return JSON.stringify(template, null, 2);
+  }
+
+  function buildCreateJsonExample() {
+    if (!createModal) {
+      return "{}";
+    }
+    if (createModal.mode === "calendar") {
+      return JSON.stringify(
+        {
+          status: "进行中",
+          date: today(),
+          title: "完成铁路数据清洗",
+          description: "今天重点核对异常样本，记录未完成原因",
+        },
+        null,
+        2,
+      );
+    }
+
+    const category = CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0];
+    const example = {};
+    for (const field of category.fields) {
+      if (field.key === "status") {
+        example[field.key] = "进行中";
+      } else if (field.type === "date") {
+        example[field.key] = today();
+      } else if (field.key === "title") {
+        example[field.key] = "railway-example-project";
+      } else if (field.key === "description") {
+        example[field.key] = `${category.name}示例项目说明`;
+      } else if (field.key === "todo") {
+        example[field.key] = "整理需求\n补充 README\n提交 GitHub";
+      } else if (field.key === "serverPath" || field.key === "linuxPath") {
+        example[field.key] = "/ds1/workspace/ai/railway-example-project";
+      } else if (field.key === "windowsPath") {
+        example[field.key] = "D:\\workspace\\ai\\railway-example-project";
+      } else if (field.key === "githubUrl") {
+        example[field.key] = "https://github.com/XuelinHu/railway-example-project";
+      } else if (field.key === "platformUrl") {
+        example[field.key] = "https://example.com/platform";
+      } else if (field.key === "officialUrl") {
+        example[field.key] = "https://example.com/official";
+      } else {
+        example[field.key] = "";
+      }
+    }
+    return JSON.stringify(example, null, 2);
+  }
+
+  function parseJsonAssist(text, fields) {
+    const trimmed = text.trim();
+    if (!trimmed.startsWith("{")) {
+      return null;
+    }
+    const parsed = JSON.parse(trimmed);
+    if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
+      throw new Error("JSON 顶层必须是一个对象");
+    }
+
+    const patch = {};
+    for (const field of fields) {
+      const rawValue = parsed[field.key] ?? parsed[field.label];
+      if (rawValue !== undefined && rawValue !== null) {
+        patch[field.key] = String(rawValue);
+      }
+    }
+    if (parsed.status !== undefined || parsed["状态"] !== undefined) {
+      patch.status = String(parsed.status ?? parsed["状态"]);
+    }
+    return patch;
+  }
+
   function autoFillCreateDraft() {
     const text = (createAssistRef.current?.value || createAssistText).trim();
     if (!text || !createDraft || !createModal) {
+      setCreateAssistIssues(["请先在右侧文本框粘贴文本或 JSON。"]);
       return;
     }
 
     const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const isCalendarAssist = createModal.mode === "calendar";
+    const assistFields = isCalendarAssist
+      ? [
+          { key: "status", label: "状态", type: "status" },
+          { key: "date", label: "日期", type: "date" },
+          { key: "title", label: "事项名称", type: "text" },
+          { key: "description", label: "注意事项", type: "textarea" },
+        ]
+      : (CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0]).fields;
     const patch = {};
+    try {
+      const jsonPatch = parseJsonAssist(text, assistFields);
+      if (jsonPatch) {
+        const validKeys = new Set(assistFields.map((field) => field.key));
+        const acceptedPatch = Object.fromEntries(
+          Object.entries(jsonPatch).filter(([key, value]) => validKeys.has(key) && String(value).trim()),
+        );
+        if (Object.keys(acceptedPatch).length === 0) {
+          setCreateAssistIssues(["JSON 已解析，但没有匹配到当前弹框字段。请使用下方 JSON 模板中的字段名。"]);
+          return;
+        }
+        setCreateDraft((current) => ({ ...current, ...acceptedPatch }));
+        setCreateAssistIssues([]);
+        return;
+      }
+    } catch (error) {
+      setCreateAssistIssues([`JSON 解析失败：${error.message || "格式不正确"}`, "请检查双引号、逗号和大括号是否完整。"]);
+      return;
+    }
+
     const matchedStatus = statusOptions.find(
       (status) => text.includes(status.label) || text.includes(status.id),
     );
@@ -753,7 +892,15 @@ function App() {
         extractLabeledValue(lines, ["备注", "说明", "注意事项", "todo", "description"]) ||
         createDraft.description ||
         lines.slice(1).join("\n");
+      const meaningfulKeys = Object.entries(patch).filter(
+        ([key, value]) => key !== "date" && String(value ?? "").trim(),
+      );
+      if (meaningfulKeys.length === 0) {
+        setCreateAssistIssues(["未识别到事项名称、备注或状态。", "建议粘贴 JSON，或使用“事项：xxx”“备注：xxx”“日期：2026-07-01”这样的格式。"]);
+        return;
+      }
       setCreateDraft((current) => ({ ...current, ...patch }));
+      setCreateAssistIssues([]);
       return;
     }
 
@@ -810,7 +957,18 @@ function App() {
       }
     }
 
+    const meaningfulKeys = Object.entries(patch).filter(
+      ([key, value]) =>
+        String(value ?? "").trim() &&
+        !(key === "title" && value === createDraft.title) &&
+        !(key === "description" && value === createDraft.description),
+    );
+    if (meaningfulKeys.length === 0) {
+      setCreateAssistIssues(["未识别到当前项目字段。", "建议粘贴 JSON，或使用“GitHub项目名称：xxx”“状态：进行中”“阶段日期：2026-07-01”“服务器绝对路径：/path”这样的格式。"]);
+      return;
+    }
     setCreateDraft((current) => ({ ...current, ...patch }));
+    setCreateAssistIssues([]);
   }
 
   function submitCreateModal(event) {
@@ -1597,6 +1755,8 @@ function App() {
           { key: "description", label: "注意事项", type: "textarea" },
         ]
       : category.fields;
+    const jsonTemplate = buildCreateJsonTemplate();
+    const jsonExample = buildCreateJsonExample();
 
     return (
       <div className="create-modal-backdrop" role="presentation" onMouseDown={closeCreateModal}>
@@ -1703,6 +1863,36 @@ function App() {
                   className="create-assist-copy"
                 />
                 <span>({CREATE_ASSIST_HINT})</span>
+              </div>
+              {createAssistIssues.length > 0 && (
+                <div className="create-assist-errors" role="alert">
+                  <strong>自动识别失败</strong>
+                  {createAssistIssues.map((issue, index) => (
+                    <span key={`${issue}-${index}`}>{issue}</span>
+                  ))}
+                </div>
+              )}
+              <div className="create-json-template">
+                <div>
+                  <strong>JSON 导入模板</strong>
+                  <CopyIconButton
+                    value={jsonTemplate}
+                    label="JSON 导入模板"
+                    className="create-assist-copy"
+                  />
+                </div>
+                <pre>{jsonTemplate}</pre>
+              </div>
+              <div className="create-json-template">
+                <div>
+                  <strong>JSON 示例</strong>
+                  <CopyIconButton
+                    value={jsonExample}
+                    label="JSON 示例"
+                    className="create-assist-copy"
+                  />
+                </div>
+                <pre>{jsonExample}</pre>
               </div>
             </div>
           </div>
