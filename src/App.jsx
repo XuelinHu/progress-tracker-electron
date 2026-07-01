@@ -62,6 +62,8 @@ const OTHER_ITEMS_PAGE = {
   accent: "#64748b",
   tint: "#f1f5f9",
 };
+const CREATE_ASSIST_HINT =
+  "粘贴项目名称、状态、日期、GitHub 地址、路径、Todo 或备注，点击自动识别后会填充到左侧表单。";
 const PROJECT_CATEGORY_ID = "project";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
   ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "6" }
@@ -1694,6 +1696,14 @@ function App() {
                 <Search size={16} />
                 <span>自动识别 / 自动补充</span>
               </button>
+              <div className="create-assist-hint">
+                <CopyIconButton
+                  value={CREATE_ASSIST_HINT}
+                  label="自动识别提示"
+                  className="create-assist-copy"
+                />
+                <span>({CREATE_ASSIST_HINT})</span>
+              </div>
             </div>
           </div>
 

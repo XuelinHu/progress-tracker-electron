@@ -140,6 +140,7 @@ export default function CalendarBoard({
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dropTarget, setDropTarget] = useState("");
   const [tooltip, setTooltip] = useState(null);
+  const [scheduleDraft, setScheduleDraft] = useState(null);
   const todayIso = today();
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -208,6 +209,16 @@ export default function CalendarBoard({
     event.dataTransfer.setData("text/plain", getRecordTitle(record));
   }
 
+  function recordHasDate(record, dateField, dateIso) {
+    if (!record || !dateField || !dateIso) {
+      return false;
+    }
+    if (record[dateField.key] === dateIso) {
+      return true;
+    }
+    return (record.dateHistory?.[dateField.key] ?? []).some((entry) => entry.date === dateIso);
+  }
+
   function handleDrop(event, dateIso) {
     event.preventDefault();
     setDropTarget("");
@@ -218,13 +229,42 @@ export default function CalendarBoard({
       return;
     }
 
+    const existsOnDate = recordHasDate(record, dateField, dateIso);
+    if (!existsOnDate) {
+      updateRecord?.(record.id, { [dateField.key]: dateIso, status: ACTIVE_STATUS });
+    } else {
+      updateRecord?.(record.id, { status: ACTIVE_STATUS });
+    }
+    setScheduleDraft({
+      recordId: record.id,
+      recordTitle: getRecordTitle(record),
+      categoryName: getCategory(record.categoryId).name,
+      date: dateIso,
+      fieldKey: dateField.key,
+      fieldLabel: dateField.label,
+      existsOnDate,
+      item: "",
+    });
+  }
+
+  function closeScheduleDraft() {
+    setScheduleDraft(null);
+  }
+
+  function submitScheduleDraft(event) {
+    event.preventDefault();
+    if (!scheduleDraft) {
+      return;
+    }
+    const item = scheduleDraft.item.trim() || `${scheduleDraft.recordTitle} 今日事项`;
     updateRecordDate?.(
-      record.id,
-      dateField.key,
-      dateIso,
-      `${dateIso === todayIso ? "今天" : "日历"}安排：${getRecordTitle(record)} 正在进行中`,
+      scheduleDraft.recordId,
+      scheduleDraft.fieldKey,
+      scheduleDraft.date,
+      `${scheduleDraft.date === todayIso ? "今天" : "日历"}事项：${item}`,
     );
-    updateRecord?.(record.id, { status: ACTIVE_STATUS });
+    updateRecord?.(scheduleDraft.recordId, { status: ACTIVE_STATUS });
+    closeScheduleDraft();
   }
 
   function handleRemoveFromDate(event, record, dateIso) {
@@ -604,6 +644,56 @@ export default function CalendarBoard({
             onMouseLeave={closeTooltip}
           >
             {tooltip.content}
+          </div>,
+          document.body,
+        )}
+      {scheduleDraft &&
+        createPortal(
+          <div className="calendar-schedule-backdrop" role="presentation" onMouseDown={closeScheduleDraft}>
+            <form
+              className="calendar-schedule-modal"
+              onSubmit={submitScheduleDraft}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <div className="calendar-schedule-head">
+                <div>
+                  <strong>{scheduleDraft.existsOnDate ? "新增今天事项" : "安排到日历"}</strong>
+                  <span>
+                    {scheduleDraft.categoryName} · {scheduleDraft.recordTitle} · {scheduleDraft.date}
+                  </span>
+                </div>
+                <button className="calendar-schedule-close" type="button" onClick={closeScheduleDraft}>
+                  <X size={15} />
+                </button>
+              </div>
+              <label className="calendar-schedule-field">
+                <span>今天具体完成什么</span>
+                <textarea
+                  value={scheduleDraft.item}
+                  onChange={(event) =>
+                    setScheduleDraft((current) =>
+                      current ? { ...current, item: event.target.value } : current,
+                    )
+                  }
+                  placeholder="输入今天要做的事项、完成内容、Todo 或注意事项"
+                  autoFocus
+                />
+              </label>
+              <div className="calendar-schedule-note">
+                {scheduleDraft.existsOnDate
+                  ? "这条记录当天已存在，提交后会继续追加一条当天事项。"
+                  : `已先放入 ${scheduleDraft.fieldLabel}，提交后会记录今天的具体事项。`}
+              </div>
+              <div className="calendar-schedule-actions">
+                <button className="text-button" type="button" onClick={closeScheduleDraft}>
+                  取消
+                </button>
+                <button className="icon-button primary" type="submit">
+                  <Plus size={16} />
+                  <span>确认新增</span>
+                </button>
+              </div>
+            </form>
           </div>,
           document.body,
         )}

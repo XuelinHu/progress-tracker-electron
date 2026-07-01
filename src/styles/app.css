@@ -1834,7 +1834,7 @@ button {
 .create-assist-panel {
   min-width: 0;
   display: grid;
-  grid-template-rows: minmax(240px, 1fr) auto;
+  grid-template-rows: minmax(300px, 1fr) auto auto;
   align-content: start;
   gap: 10px;
   padding: 10px;
@@ -1844,7 +1844,7 @@ button {
 }
 
 .create-assist-textarea {
-  min-height: 260px;
+  min-height: 330px;
   height: 100%;
   padding: 9px;
   border-color: #d9e0eb;
@@ -1853,10 +1853,143 @@ button {
   resize: vertical;
 }
 
+.create-assist-panel .create-assist-textarea {
+  min-height: 360px;
+  height: 360px;
+}
+
+.create-assist-hint {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 5px;
+  color: #647084;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.create-assist-hint span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.create-assist-copy {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+}
+
+.create-assist-copy svg {
+  width: 9px;
+  height: 9px;
+}
+
 .create-modal-foot {
   justify-content: flex-end;
   border-top: 1px solid #e2e8f0;
   background: #fbfcfe;
+}
+
+.calendar-schedule-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.calendar-schedule-modal {
+  width: min(560px, 94vw);
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #c4b5fd;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.22);
+}
+
+.calendar-schedule-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.calendar-schedule-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.calendar-schedule-head strong {
+  color: #172033;
+  font-size: 16px;
+}
+
+.calendar-schedule-head span,
+.calendar-schedule-note {
+  color: #647084;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.calendar-schedule-close {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  background: #fff1f2;
+  color: #dc2626;
+  padding: 0;
+}
+
+.calendar-schedule-field {
+  display: grid;
+  gap: 6px;
+}
+
+.calendar-schedule-field span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.calendar-schedule-field textarea {
+  width: 100%;
+  min-height: 150px;
+  padding: 9px;
+  border: 1px solid #d9e0eb;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #172033;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+  outline: 0;
+}
+
+.calendar-schedule-field textarea:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.14);
+}
+
+.calendar-schedule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .other-items-list {
