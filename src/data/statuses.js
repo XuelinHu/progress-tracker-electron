@@ -56,6 +56,14 @@ export const STATUSES = [
     border: "#fcd34d",
   },
   {
+    id: "已完成",
+    label: "已完成",
+    priority: 990,
+    color: "#334155",
+    bg: "#e2e8f0",
+    border: "#94a3b8",
+  },
+  {
     id: "结束",
     label: "结束",
     priority: 1000,

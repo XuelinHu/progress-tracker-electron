@@ -129,9 +129,8 @@ export default function CalendarBoard({
   updateRecord,
   updateRecordDate,
   removeRecordDate,
-  addCalendarItem,
+  updateCalendarItem,
   deleteCalendarItem,
-  copyCalendarItem,
   openCalendarItemModal,
   openRecord,
 }) {
@@ -308,8 +307,14 @@ export default function CalendarBoard({
       title: getRecordTitle(record),
       description: record.description || "",
       categoryId: category.id,
-      status: record.status || "已完成",
+      status: ACTIVE_STATUS,
     });
+  }
+
+  function handleToggleCustomDone(event, item) {
+    event.stopPropagation();
+    const nextStatus = item.status === "已完成" ? ACTIVE_STATUS : "已完成";
+    updateCalendarItem?.(item.id, { status: nextStatus });
   }
 
   function handleDeleteCustomItem(event, itemId) {
@@ -491,7 +496,9 @@ export default function CalendarBoard({
                       return (
                         <div
                           key={item.id}
-                          className="calendar-day-record custom calendar-type-other"
+                          className={`calendar-day-record custom calendar-type-other ${
+                            item.status === "已完成" ? "done" : ""
+                          }`}
                           role="button"
                           tabIndex={0}
                           onMouseEnter={(event) => openTooltip(event, tooltipContent)}
@@ -530,6 +537,18 @@ export default function CalendarBoard({
                           >
                             <Copy size={10} />
                           </span>
+                          <label
+                            className="calendar-record-done"
+                            title={item.status === "已完成" ? "标记为进行中" : "标记为已完成"}
+                            aria-label={`${item.title} 标记已完成`}
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={item.status === "已完成"}
+                              onChange={(event) => handleToggleCustomDone(event, item)}
+                            />
+                          </label>
                           <span
                             className="calendar-record-remove"
                             role="button"

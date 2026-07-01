@@ -631,6 +631,7 @@ button {
 }
 
 .calendar-record-copy,
+.calendar-record-done,
 .calendar-record-remove {
   flex: 0 0 auto;
   width: 15px;
@@ -641,10 +642,33 @@ button {
   border-radius: 3px;
 }
 
+.calendar-day-record.done {
+  opacity: 0.88;
+}
+
+.calendar-day-record.done .calendar-day-record-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
 .calendar-record-copy {
   background: #eff6ff;
   color: #2563eb;
   opacity: 0.82;
+}
+
+.calendar-record-done {
+  border: 1px solid #94a3b8;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.calendar-record-done input {
+  width: 11px;
+  height: 11px;
+  margin: 0;
+  accent-color: #111827;
+  cursor: pointer;
 }
 
 .calendar-record-remove {

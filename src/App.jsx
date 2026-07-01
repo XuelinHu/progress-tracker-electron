@@ -68,10 +68,10 @@ const CREATE_ASSIST_HINT =
 const CALENDAR_DONE_STATUS = {
   id: "已完成",
   label: "已完成",
-  priority: 35,
-  color: "#166534",
-  bg: "#dcfce7",
-  border: "#86efac",
+  priority: 990,
+  color: "#334155",
+  bg: "#e2e8f0",
+  border: "#94a3b8",
 };
 const PROJECT_CATEGORY_ID = "project";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
@@ -214,7 +214,11 @@ function normalizeStatusConfig(items) {
     })
     .filter(Boolean);
 
-  return normalized.length > 0 ? normalized : STATUSES;
+  const defaultStatuses = STATUSES.filter(
+    (status) => !normalized.some((item) => item.id === status.id),
+  );
+  const merged = [...normalized, ...defaultStatuses];
+  return merged.length > 0 ? merged : STATUSES;
 }
 
 function sortStatusConfig(items) {
@@ -2710,6 +2714,7 @@ function App() {
             updateRecordDate={updateRecordDate}
             removeRecordDate={removeRecordDate}
             addCalendarItem={addCalendarItem}
+            updateCalendarItem={updateCalendarItem}
             deleteCalendarItem={deleteCalendarItem}
             copyCalendarItem={copyCalendarItem}
             openCalendarItemModal={openCalendarItemModal}
