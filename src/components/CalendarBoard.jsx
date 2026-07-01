@@ -77,6 +77,50 @@ function buildTodoPatch(record, item, addedDate = today()) {
   };
 }
 
+function getCalendarTodoItem(record, dateIso) {
+  const prefix = `${dateIso} 日历事项：`;
+  const history = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
+  const historyItem = history.find((entry) => String(entry.item ?? "").startsWith(prefix));
+  if (historyItem?.item) {
+    return historyItem.item;
+  }
+  const todoLine = getTodoLines(record).find((line) => line.startsWith(prefix));
+  return todoLine || `${prefix}${getRecordTitle(record)}`;
+}
+
+function isCalendarTodoDone(record, item) {
+  return (record?.todoHistory ?? []).some((entry) => entry.item === item && entry.doneDate);
+}
+
+function buildTodoDonePatch(record, item, dateIso) {
+  const text = String(item ?? "").trim();
+  if (!text) {
+    return {};
+  }
+  const lines = getTodoLines(record);
+  const todo = lines.includes(text) ? String(record?.todo ?? "") : [...lines, text].join("\n");
+  const history = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
+  const hasHistory = history.some((entry) => entry.item === text);
+  return {
+    todo,
+    todoHistory: hasHistory
+      ? history.map((entry) =>
+          entry.item === text
+            ? { ...entry, doneDate: entry.doneDate ? null : dateIso }
+            : entry,
+        )
+      : [
+          ...history,
+          {
+            id: `todo-hist-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+            item: text,
+            addedDate: dateIso,
+            doneDate: dateIso,
+          },
+        ],
+  };
+}
+
 function getDayRecordDetails(record, dateIso, dateField) {
   const todoHistory = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
   const doneTodos = todoHistory
@@ -357,6 +401,12 @@ export default function CalendarBoard({
     updateCalendarItem?.(item.id, { status: nextStatus });
   }
 
+  function handleToggleRecordTodo(event, record, dateIso) {
+    event.stopPropagation();
+    const todoItem = getCalendarTodoItem(record, dateIso);
+    updateRecord?.(record.id, buildTodoDonePatch(record, todoItem, dateIso));
+  }
+
   function handleDeleteCustomItem(event, itemId) {
     event.preventDefault();
     event.stopPropagation();
@@ -613,6 +663,8 @@ export default function CalendarBoard({
                     const status = statusById[record.status] ?? statusOptions[0];
                     const dateField = getPrimaryDateField(record);
                     const details = getDayRecordDetails(record, day.iso, dateField);
+                    const calendarTodoItem = getCalendarTodoItem(record, day.iso);
+                    const calendarTodoDone = isCalendarTodoDone(record, calendarTodoItem);
                     const tooltipContent = (
                       <>
                         <strong>{getRecordTitle(record)}</strong>
@@ -645,7 +697,9 @@ export default function CalendarBoard({
                     return (
                       <div
                         key={record.id}
-                        className={`calendar-day-record calendar-type-${record.categoryId}`}
+                        className={`calendar-day-record calendar-type-${record.categoryId} ${
+                          calendarTodoDone ? "done" : ""
+                        }`}
                         role="button"
                         tabIndex={0}
                         style={{
@@ -685,6 +739,18 @@ export default function CalendarBoard({
                         >
                           <Copy size={10} />
                         </span>
+                        <label
+                          className="calendar-record-done"
+                          title={calendarTodoDone ? "标记为未完成" : "完成今天事项"}
+                          aria-label={`${getRecordTitle(record)} 完成今天事项`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={calendarTodoDone}
+                            onChange={(event) => handleToggleRecordTodo(event, record, day.iso)}
+                          />
+                        </label>
                         <span
                           className="calendar-record-remove"
                           role="button"
