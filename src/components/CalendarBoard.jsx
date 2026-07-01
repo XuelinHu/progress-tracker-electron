@@ -453,7 +453,7 @@ export default function CalendarBoard({
                   {day.iso === todayIso && <span>今天</span>}
                 </div>
                 <div className="calendar-day-records">
-                  {visibleEntries.slice(0, 4).map((entry) => {
+                  {visibleEntries.map((entry) => {
                     if (entry.type === "custom") {
                       const item = entry.item;
                       const category = getCategory(item.categoryId);
@@ -480,7 +480,7 @@ export default function CalendarBoard({
                       return (
                         <div
                           key={item.id}
-                          className="calendar-day-record custom"
+                          className="calendar-day-record custom calendar-type-other"
                           role="button"
                           tabIndex={0}
                           onMouseEnter={(event) => openTooltip(event, tooltipContent)}
@@ -492,6 +492,7 @@ export default function CalendarBoard({
                             "--record-tint": category.tint,
                             "--record-status-bg": status?.bg || "#f1f5f9",
                             "--record-status-color": status?.color || "#334155",
+                            "--record-status-border": status?.border || "#cbd5e1",
                           }}
                           title={item.title}
                         >
@@ -568,7 +569,7 @@ export default function CalendarBoard({
                     return (
                       <div
                         key={record.id}
-                        className="calendar-day-record"
+                        className={`calendar-day-record calendar-type-${record.categoryId}`}
                         role="button"
                         tabIndex={0}
                         style={{
@@ -576,6 +577,7 @@ export default function CalendarBoard({
                           "--record-tint": category.tint,
                           "--record-status-bg": status?.bg || "#eef2ff",
                           "--record-status-color": status?.color || "#334155",
+                          "--record-status-border": status?.border || "#cbd5e1",
                         }}
                         onMouseEnter={(event) => openTooltip(event, tooltipContent)}
                         onMouseLeave={closeTooltip}
@@ -625,9 +627,6 @@ export default function CalendarBoard({
                       </div>
                     );
                   })}
-                  {visibleEntries.length > 4 && (
-                    <span className="calendar-more">+{visibleEntries.length - 4}</span>
-                  )}
                 </div>
               </div>
             );

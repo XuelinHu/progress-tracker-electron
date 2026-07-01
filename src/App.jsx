@@ -38,13 +38,14 @@ const EMPTY_CONTEST_PLACEHOLDER_IDS = new Set([
 const GRAPH_CATEGORY = {
   id: "graph",
   name: "知识图谱",
-  shortcut: "5",
+  shortcut: "F",
   accent: "#0891b2",
   tint: "#cffafe",
 };
 const CALENDAR_CATEGORY = {
   id: "calendar",
   name: "日历",
+  shortcut: "G",
   accent: "#7c3aed",
   tint: "#f3e8ff",
 };
@@ -66,13 +67,13 @@ const CREATE_ASSIST_HINT =
   "粘贴项目名称、状态、日期、GitHub 地址、路径、Todo 或备注，点击自动识别后会填充到左侧表单。";
 const PROJECT_CATEGORY_ID = "project";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
-  ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "6" }
+  ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "5" }
   : null;
+const OTHER_NAVIGATION_ITEM = { ...OTHER_ITEMS_PAGE, shortcut: "6" };
 const NAVIGATION_ITEMS = [
   ...CATEGORIES.filter((category) => category.id !== PROJECT_CATEGORY_ID),
-  GRAPH_CATEGORY,
   PROJECT_NAVIGATION_ITEM,
-  OTHER_ITEMS_PAGE,
+  OTHER_NAVIGATION_ITEM,
 ].filter(Boolean);
 
 function today(offsetDays = 0) {
@@ -498,6 +499,20 @@ function App() {
         target.closest("input, textarea, select, [contenteditable='true']");
 
       if (isEditing) {
+        return;
+      }
+
+      const shortcut = event.key.toLowerCase();
+      if (shortcut === "g") {
+        setActiveCategoryId(CALENDAR_CATEGORY.id);
+        setStatusFilter("all");
+        setStatusSortDirection("asc");
+        return;
+      }
+      if (shortcut === "f") {
+        setActiveCategoryId(GRAPH_CATEGORY.id);
+        setStatusFilter("all");
+        setStatusSortDirection("asc");
         return;
       }
 
@@ -2439,7 +2454,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 切换页面</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 切换数据页，G 打开日历，F 打开知识图谱</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新
@@ -2520,7 +2535,20 @@ function App() {
               title="打开日历排期"
             >
               <CalendarDays size={17} />
-              <span>日历</span>
+              <span>日历(G)</span>
+            </button>
+            <button
+              className="icon-button global-action graph-action"
+              type="button"
+              onClick={() => {
+                setActiveCategoryId(GRAPH_CATEGORY.id);
+                setStatusFilter("all");
+                setStatusSortDirection("asc");
+              }}
+              title="打开知识图谱"
+            >
+              <Share2 size={17} />
+              <span>知识图谱(F)</span>
             </button>
             <input
               ref={fileInputRef}
@@ -2555,8 +2583,6 @@ function App() {
               }}
             >
               <span className="shortcut-key">{category.shortcut}</span>
-            {category.id === GRAPH_CATEGORY.id && <Share2 size={15} />}
-            {category.id === CALENDAR_CATEGORY.id && <CalendarDays size={15} />}
             {category.name}
             </button>
           ))}

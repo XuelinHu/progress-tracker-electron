@@ -124,6 +124,10 @@ button {
   --action-color: #7c3aed;
 }
 
+.graph-action {
+  --action-color: #0891b2;
+}
+
 .shortcut-hint {
   display: flex;
   align-items: center;
@@ -189,10 +193,10 @@ button {
   gap: 6px;
   min-height: 36px;
   padding: 0 10px;
-  border: 1px solid #d5dce8;
+  border: 1px solid var(--tab-tint);
   border-radius: 8px;
-  background: #ffffff;
-  color: #344156;
+  background: color-mix(in srgb, var(--tab-tint) 42%, #ffffff);
+  color: color-mix(in srgb, var(--tab-accent) 72%, #344156);
   font-size: 13px;
   font-weight: 680;
   white-space: nowrap;
@@ -204,7 +208,7 @@ button {
 }
 
 .category-tab.active {
-  border-color: var(--tab-accent);
+  border-color: var(--tab-tint);
   background: var(--tab-tint);
   color: var(--tab-accent);
   box-shadow: inset 0 -3px 0 var(--tab-accent);
@@ -447,15 +451,18 @@ button {
   min-height: 0;
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  grid-auto-rows: minmax(104px, 1fr);
+  grid-auto-rows: minmax(116px, auto);
+  align-items: start;
   overflow: auto;
 }
 
 .calendar-day {
   position: relative;
   min-width: 0;
+  min-height: 116px;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: start;
   gap: 6px;
   padding: 7px;
   border-right: 1px solid #dbe1ea;
@@ -530,19 +537,23 @@ button {
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 4px;
+  gap: 5px;
 }
 
 .calendar-day-record {
   position: relative;
   min-width: 0;
   min-height: 22px;
-  padding: 0 3px 0 6px;
-  border: 0;
+  padding: 2px 3px 2px 6px;
+  border: 1px solid color-mix(in srgb, var(--record-accent) 28%, #dbe1ea);
   border-left: 3px solid var(--record-accent);
   border-radius: 4px;
   background:
-    linear-gradient(90deg, color-mix(in srgb, var(--record-accent) 16%, #ffffff), var(--record-status-bg));
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--record-accent) 24%, #ffffff),
+      color-mix(in srgb, var(--record-tint) 58%, var(--record-status-bg))
+    );
   color: var(--record-status-color);
   font-size: 11px;
   font-weight: 650;
@@ -554,6 +565,13 @@ button {
   white-space: nowrap;
 }
 
+.calendar-day-record + .calendar-day-record {
+  margin-top: 2px;
+  box-shadow:
+    0 -4px 0 -2px color-mix(in srgb, var(--record-accent) 58%, #ffffff),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
 .calendar-day-record:hover {
   filter: brightness(0.98);
   overflow: visible;
@@ -562,6 +580,33 @@ button {
 
 .calendar-day-record.custom {
   border-left-style: double;
+  border-color: color-mix(in srgb, #64748b 34%, #dbe1ea);
+  background:
+    linear-gradient(90deg, #e2e8f0, color-mix(in srgb, var(--record-tint) 72%, #ffffff));
+}
+
+.calendar-type-software {
+  --record-type-bg: #dbeafe;
+}
+
+.calendar-type-patent {
+  --record-type-bg: #dcfce7;
+}
+
+.calendar-type-paper {
+  --record-type-bg: #fef3c7;
+}
+
+.calendar-type-contest {
+  --record-type-bg: #ffe4e6;
+}
+
+.calendar-type-project {
+  --record-type-bg: #f3e8ff;
+}
+
+.calendar-type-other {
+  --record-type-bg: #f1f5f9;
 }
 
 .calendar-day-record-category {
@@ -569,7 +614,7 @@ button {
   max-width: 42px;
   padding: 1px 4px;
   border-radius: 999px;
-  background: var(--record-tint);
+  background: var(--record-type-bg, var(--record-tint));
   color: var(--record-accent);
   font-size: 9px;
   font-weight: 800;
