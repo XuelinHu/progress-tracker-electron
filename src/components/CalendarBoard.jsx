@@ -304,11 +304,11 @@ export default function CalendarBoard({
     event.preventDefault();
     event.stopPropagation();
     const category = getCategory(record.categoryId);
-    addCalendarItem?.(dateIso, {
+    openCalendarItemModal?.(dateIso, {
       title: getRecordTitle(record),
       description: record.description || "",
       categoryId: category.id,
-      status: record.status || "其他",
+      status: record.status || "已完成",
     });
   }
 
@@ -321,7 +321,18 @@ export default function CalendarBoard({
   function handleCopyCustomItem(event, item) {
     event.preventDefault();
     event.stopPropagation();
-    copyCalendarItem?.(item);
+    openCalendarItemModal?.(item.date, {
+      title: item.title,
+      description: item.description,
+      categoryId: item.categoryId,
+      status: item.status || "已完成",
+    });
+  }
+
+  function handleEditCustomItem(event, item) {
+    event.preventDefault();
+    event.stopPropagation();
+    openCalendarItemModal?.(item.date, item, { itemId: item.id });
   }
 
   return (
@@ -487,6 +498,12 @@ export default function CalendarBoard({
                           onMouseLeave={closeTooltip}
                           onFocus={(event) => openTooltip(event, tooltipContent)}
                           onBlur={closeTooltip}
+                          onClick={(event) => handleEditCustomItem(event, item)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              handleEditCustomItem(event, item);
+                            }
+                          }}
                           style={{
                             "--record-accent": category.accent,
                             "--record-tint": category.tint,

@@ -65,6 +65,14 @@ const OTHER_ITEMS_PAGE = {
 };
 const CREATE_ASSIST_HINT =
   "粘贴项目名称、状态、日期、GitHub 地址、路径、Todo 或备注，点击自动识别后会填充到左侧表单。";
+const CALENDAR_DONE_STATUS = {
+  id: "已完成",
+  label: "已完成",
+  priority: 35,
+  color: "#166534",
+  bg: "#dcfce7",
+  border: "#86efac",
+};
 const PROJECT_CATEGORY_ID = "project";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
   ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "5" }
@@ -170,7 +178,7 @@ function normalizeCalendarItems(items) {
           title: String(item?.title || "其他事项"),
           description: String(item?.description || ""),
           categoryId: item?.categoryId || "other",
-          status: item?.status || "其他",
+          status: item?.status || CALENDAR_DONE_STATUS.id,
           createdAt: item?.createdAt || new Date().toISOString(),
         }))
         .filter((item) => item.date && item.title)
@@ -343,6 +351,17 @@ function App() {
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
     [statusOptions],
   );
+  const calendarStatusOptions = useMemo(
+    () =>
+      statusOptions.some((status) => status.id === CALENDAR_DONE_STATUS.id)
+        ? statusOptions
+        : [CALENDAR_DONE_STATUS, ...statusOptions],
+    [statusOptions],
+  );
+  const calendarStatusById = useMemo(
+    () => Object.fromEntries(calendarStatusOptions.map((status) => [status.id, status])),
+    [calendarStatusOptions],
+  );
   const statusPriority = useMemo(
     () => new Map(statusOptions.map((status) => [status.id, status.priority])),
     [statusOptions],
@@ -413,6 +432,10 @@ function App() {
       statusOptions[0]?.id ??
       "进行中"
     );
+  }
+
+  function getDefaultCalendarStatusId() {
+    return CALENDAR_DONE_STATUS.id;
   }
 
   useEffect(() => {
@@ -633,10 +656,32 @@ function App() {
         title,
         description: String(draft.description ?? ""),
         categoryId: draft.categoryId || "other",
-        status: draft.status || "其他",
+        status: draft.status || getDefaultCalendarStatusId(),
         createdAt: new Date().toISOString(),
       },
     ]);
+  }
+
+  function updateCalendarItem(itemId, patch) {
+    setCalendarItems((current) =>
+      current.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              ...patch,
+              title: String(patch.title ?? item.title ?? "").trim() || item.title,
+              description:
+                patch.description === undefined
+                  ? item.description
+                  : String(patch.description ?? ""),
+              status: patch.status || item.status || getDefaultCalendarStatusId(),
+              categoryId: patch.categoryId || item.categoryId || "other",
+              date: patch.date || item.date || today(),
+              updatedAt: new Date().toISOString(),
+            }
+          : item,
+      ),
+    );
   }
 
   function deleteCalendarItem(itemId) {
@@ -647,11 +692,11 @@ function App() {
     if (!item?.date || !item?.title) {
       return;
     }
-    addCalendarItem(item.date, {
+    openCalendarItemModal(item.date, {
       title: item.title,
       description: item.description,
       categoryId: item.categoryId,
-      status: item.status,
+      status: item.status || getDefaultCalendarStatusId(),
     });
   }
 
@@ -665,7 +710,7 @@ function App() {
       title,
       description: otherItemDraft.description.trim(),
       categoryId: "other",
-      status: "其他",
+      status: getDefaultCalendarStatusId(),
     });
     setOtherItemDraft((current) => ({
       ...current,
@@ -680,7 +725,7 @@ function App() {
       title: "",
       description: "",
       categoryId: "other",
-      status: getDefaultStatusId(),
+      status: getDefaultCalendarStatusId(),
       ...overrides,
     };
   }
@@ -698,8 +743,13 @@ function App() {
     setCreateAssistIssues([]);
   }
 
-  function openCalendarItemModal(date = today(), overrides = {}) {
-    setCreateModal({ mode: "calendar", categoryId: "other", date });
+  function openCalendarItemModal(date = today(), overrides = {}, context = {}) {
+    setCreateModal({
+      mode: "calendar",
+      categoryId: "other",
+      date,
+      itemId: context.itemId || null,
+    });
     setCreateDraft(buildCalendarItemDraft(date, overrides));
     setCreateAssistText("");
     setCreateAssistIssues([]);
@@ -749,7 +799,7 @@ function App() {
     if (createModal.mode === "calendar") {
       return JSON.stringify(
         {
-          status: getDefaultStatusId(),
+          status: getDefaultCalendarStatusId(),
           date: today(),
           title: "今天要处理的事项",
           description: "注意事项或补充说明",
@@ -784,7 +834,7 @@ function App() {
     if (createModal.mode === "calendar") {
       return JSON.stringify(
         {
-          status: "进行中",
+          status: getDefaultCalendarStatusId(),
           date: today(),
           title: "完成铁路数据清洗",
           description: "今天重点核对异常样本，记录未完成原因",
@@ -997,12 +1047,22 @@ function App() {
       if (!title) {
         return;
       }
-      addCalendarItem(createDraft.date || today(), {
-        title,
-        description: String(createDraft.description ?? "").trim(),
-        categoryId: createDraft.categoryId || "other",
-        status: createDraft.status || getDefaultStatusId(),
-      });
+      if (createModal.itemId) {
+        updateCalendarItem(createModal.itemId, {
+          date: createDraft.date || today(),
+          title,
+          description: String(createDraft.description ?? "").trim(),
+          categoryId: createDraft.categoryId || "other",
+          status: createDraft.status || getDefaultCalendarStatusId(),
+        });
+      } else {
+        addCalendarItem(createDraft.date || today(), {
+          title,
+          description: String(createDraft.description ?? "").trim(),
+          categoryId: createDraft.categoryId || "other",
+          status: createDraft.status || getDefaultCalendarStatusId(),
+        });
+      }
       closeCreateModal();
       return;
     }
@@ -1783,7 +1843,10 @@ function App() {
         >
           <div className="create-modal-head">
             <div>
-              <strong>新增{category.name}</strong>
+              <strong>
+                {isCalendarItem && createModal.itemId ? "编辑" : "新增"}
+                {category.name}
+              </strong>
               <span>{isCalendarItem ? "新建日历中的其他事项" : "填写左侧表单，右侧可粘贴文本自动补充"}</span>
             </div>
             <button className="danger-button small" type="button" onClick={closeCreateModal} title="关闭">
@@ -1795,7 +1858,10 @@ function App() {
             <div className="create-form-fields">
               {fields.map((field) => {
                 if (field.type === "status") {
-                  const selectedStatus = statusById[createDraft.status] ?? statusOptions[0];
+                  const selectStatusOptions = isCalendarItem ? calendarStatusOptions : statusOptions;
+                  const selectStatusById = isCalendarItem ? calendarStatusById : statusById;
+                  const selectedStatus =
+                    selectStatusById[createDraft.status] ?? selectStatusOptions[0];
                   return (
                     <label className="create-field" key={field.key}>
                       <span>{field.label}</span>
@@ -1809,7 +1875,7 @@ function App() {
                           "--status-border": selectedStatus?.border || "#cbd5e1",
                         }}
                       >
-                        {statusOptions.map((status) => (
+                        {selectStatusOptions.map((status) => (
                           <option key={status.id} value={status.id}>
                             {status.label}
                           </option>
@@ -2153,15 +2219,35 @@ function App() {
 
         <div className="other-items-list">
           {sortedItems.map((item) => (
-            <div key={item.id} className="other-item-row">
+            <div
+              key={item.id}
+              className="other-item-row"
+              onClick={() => openCalendarItemModal(item.date, item, { itemId: item.id })}
+            >
               <span className="other-item-date">{item.date}</span>
               <strong>{item.title}</strong>
+              <span
+                className="status-chip other-item-status"
+                style={{
+                  "--status-bg":
+                    calendarStatusById[item.status]?.bg || CALENDAR_DONE_STATUS.bg,
+                  "--status-color":
+                    calendarStatusById[item.status]?.color || CALENDAR_DONE_STATUS.color,
+                  "--status-border":
+                    calendarStatusById[item.status]?.border || CALENDAR_DONE_STATUS.border,
+                }}
+              >
+                {calendarStatusById[item.status]?.label || item.status || CALENDAR_DONE_STATUS.label}
+              </span>
               <span className="other-item-desc">{item.description || "无备注"}</span>
               <div className="other-item-actions">
                 <button
                   className="row-copy-button"
                   type="button"
-                  onClick={() => copyCalendarItem(item)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    copyCalendarItem(item);
+                  }}
                   title="复制这个事项"
                   aria-label={`复制 ${item.title}`}
                 >
@@ -2170,7 +2256,10 @@ function App() {
                 <button
                   className="row-delete-button"
                   type="button"
-                  onClick={() => deleteCalendarItem(item.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    deleteCalendarItem(item.id);
+                  }}
                   title="删除这个事项"
                   aria-label={`删除 ${item.title}`}
                 >
@@ -2616,7 +2705,7 @@ function App() {
           <CalendarBoard
             records={records}
             calendarItems={calendarItems}
-            statusOptions={statusOptions}
+            statusOptions={calendarStatusOptions}
             updateRecord={updateRecord}
             updateRecordDate={updateRecordDate}
             removeRecordDate={removeRecordDate}

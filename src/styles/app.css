@@ -2102,7 +2102,7 @@ button {
 .other-item-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: 130px minmax(180px, 0.8fr) minmax(220px, 1fr) 64px;
+  grid-template-columns: 130px minmax(180px, 0.8fr) 92px minmax(220px, 1fr) 64px;
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
@@ -2110,6 +2110,12 @@ button {
   border-left: 4px solid #64748b;
   border-radius: 8px;
   background: #ffffff;
+  cursor: pointer;
+}
+
+.other-item-row:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
 .other-item-date {
@@ -2133,6 +2139,12 @@ button {
 .other-item-row strong {
   color: #172033;
   font-size: 13px;
+}
+
+.other-item-status {
+  min-width: 0;
+  justify-content: center;
+  font-size: 11px;
 }
 
 .other-item-desc {
