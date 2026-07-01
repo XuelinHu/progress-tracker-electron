@@ -1302,10 +1302,12 @@ function App() {
   }
 
   function duplicateRecord(sourceRecord) {
+    const category = CATEGORY_BY_ID[sourceRecord.categoryId] ?? CATEGORIES[0];
     const nextRecord = {
       ...structuredClone(sourceRecord),
       id: createId(sourceRecord.categoryId),
       title: `${getRecordTitle(sourceRecord)} 副本`,
+      todo: "",
       history: [
         ...(sourceRecord.history ?? []).map((entry) => ({
           ...entry,
@@ -1319,17 +1321,17 @@ function App() {
           summary: `复制自"${getRecordTitle(sourceRecord)}"`,
         },
       ],
-      dateHistory: Object.fromEntries(
-        Object.entries(sourceRecord.dateHistory ?? {}).map(([fieldKey, entries]) => [
-          fieldKey,
-          (entries ?? []).map((entry) => ({ ...entry, id: createId("date-history") })),
-        ]),
-      ),
-      todoHistory: (sourceRecord.todoHistory ?? []).map((entry) => ({
-        ...entry,
-        id: createId("todo-hist"),
-      })),
+      dateHistory: {},
+      todoHistory: [],
     };
+    category.fields.forEach((field) => {
+      if (field.type === "date") {
+        nextRecord[field.key] = today();
+      }
+      if (field.key === "todo") {
+        nextRecord[field.key] = "";
+      }
+    });
 
     setRecords((current) => {
       const index = current.findIndex((record) => record.id === sourceRecord.id);

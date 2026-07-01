@@ -52,6 +52,31 @@ function getTodoLines(record) {
     .filter(Boolean);
 }
 
+function buildTodoPatch(record, item, addedDate = today()) {
+  const text = String(item ?? "").trim();
+  if (!text) {
+    return {};
+  }
+  const lines = getTodoLines(record);
+  const todo = lines.includes(text) ? String(record?.todo ?? "") : [...lines, text].join("\n");
+  const history = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
+  const hasHistory = history.some((entry) => entry.item === text);
+  return {
+    todo,
+    todoHistory: hasHistory
+      ? history
+      : [
+          ...history,
+          {
+            id: `todo-hist-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+            item: text,
+            addedDate,
+            doneDate: null,
+          },
+        ],
+  };
+}
+
 function getDayRecordDetails(record, dateIso, dateField) {
   const todoHistory = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
   const doneTodos = todoHistory
@@ -229,10 +254,15 @@ export default function CalendarBoard({
     }
 
     const existsOnDate = recordHasDate(record, dateField, dateIso);
+    const todoItem = `${dateIso} 日历事项：${getRecordTitle(record)}`;
+    const patch = {
+      ...buildTodoPatch(record, todoItem, dateIso),
+      status: ACTIVE_STATUS,
+    };
     if (!existsOnDate) {
-      updateRecord?.(record.id, { [dateField.key]: dateIso, status: ACTIVE_STATUS });
+      updateRecord?.(record.id, { ...patch, [dateField.key]: dateIso });
     } else {
-      updateRecord?.(record.id, { status: ACTIVE_STATUS });
+      updateRecord?.(record.id, patch);
     }
     setScheduleDraft({
       recordId: record.id,
@@ -242,6 +272,7 @@ export default function CalendarBoard({
       fieldKey: dateField.key,
       fieldLabel: dateField.label,
       existsOnDate,
+      defaultTodoItem: todoItem,
       item: "",
     });
   }
@@ -262,7 +293,16 @@ export default function CalendarBoard({
       scheduleDraft.date,
       `${scheduleDraft.date === todayIso ? "今天" : "日历"}事项：${item}`,
     );
-    updateRecord?.(scheduleDraft.recordId, { status: ACTIVE_STATUS });
+    const record = records.find((entry) => entry.id === scheduleDraft.recordId);
+    const typedItem = scheduleDraft.item.trim()
+      ? `${scheduleDraft.date} 日历事项：${item}`
+      : "";
+    updateRecord?.(scheduleDraft.recordId, {
+      ...(typedItem && typedItem !== scheduleDraft.defaultTodoItem
+        ? buildTodoPatch(record, typedItem, scheduleDraft.date)
+        : {}),
+      status: ACTIVE_STATUS,
+    });
     closeScheduleDraft();
   }
 
