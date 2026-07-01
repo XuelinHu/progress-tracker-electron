@@ -2094,6 +2094,20 @@ button {
   gap: 8px;
 }
 
+.calendar-schedule-actions .calendar-schedule-submit,
+.calendar-schedule-actions .calendar-schedule-submit:hover,
+.calendar-schedule-actions .calendar-schedule-submit:focus {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.22);
+}
+
+.calendar-schedule-actions .calendar-schedule-submit svg,
+.calendar-schedule-actions .calendar-schedule-submit span {
+  color: #ffffff !important;
+}
+
 .other-items-list {
   display: grid;
   gap: 6px;

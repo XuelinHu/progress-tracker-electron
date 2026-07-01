@@ -704,7 +704,7 @@ export default function CalendarBoard({
                 <button className="text-button" type="button" onClick={closeScheduleDraft}>
                   取消
                 </button>
-                <button className="icon-button primary" type="submit">
+                <button className="icon-button primary calendar-schedule-submit" type="submit">
                   <Plus size={16} />
                   <span>确认新增</span>
                 </button>
