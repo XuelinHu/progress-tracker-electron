@@ -186,6 +186,8 @@ function normalizeCalendarItems(items) {
         .map((item) => ({
           id: String(item?.id || createId("calendar-item")),
           date: String(item?.date || ""),
+          startDate: String(item?.startDate || ""),
+          endDate: String(item?.endDate || ""),
           title: String(item?.title || "其他事项"),
           description: String(item?.description || ""),
           categoryId: item?.categoryId || "other",
@@ -687,6 +689,8 @@ function App() {
       {
         id: createId("calendar-item"),
         date: date || "",
+        startDate: draft.startDate || "",
+        endDate: draft.endDate || "",
         title,
         description: String(draft.description ?? ""),
         categoryId: draft.categoryId || "other",
@@ -716,6 +720,9 @@ function App() {
                   : normalizeDurationMinutes(patch.durationMinutes),
               categoryId: patch.categoryId || item.categoryId || "other",
               date: patch.date === undefined ? item.date || "" : patch.date || "",
+              startDate:
+                patch.startDate === undefined ? item.startDate || "" : patch.startDate || "",
+              endDate: patch.endDate === undefined ? item.endDate || "" : patch.endDate || "",
               updatedAt: new Date().toISOString(),
             }
           : item,
@@ -737,6 +744,8 @@ function App() {
       categoryId: item.categoryId,
       status: item.status || getDefaultCalendarStatusId(),
       durationMinutes: normalizeDurationMinutes(item.durationMinutes),
+      startDate: item.startDate || "",
+      endDate: item.endDate || "",
     });
   }
 
@@ -762,6 +771,8 @@ function App() {
   function buildCalendarItemDraft(date = today(), overrides = {}) {
     return {
       date: date || "",
+      startDate: "",
+      endDate: "",
       title: "",
       description: "",
       categoryId: "other",
@@ -842,6 +853,8 @@ function App() {
         {
           status: getDefaultCalendarStatusId(),
           date: today(),
+          startDate: today(),
+          endDate: "",
           title: "今天要处理的事项",
           durationMinutes: "30",
           description: "注意事项或补充说明",
@@ -878,6 +891,8 @@ function App() {
         {
           status: getDefaultCalendarStatusId(),
           date: today(),
+          startDate: today(),
+          endDate: today(1),
           title: "完成铁路数据清洗",
           durationMinutes: "45",
           description: "今天重点核对异常样本，记录未完成原因",
@@ -991,6 +1006,14 @@ function App() {
 
     if (createModal.mode === "calendar") {
       patch.date = extractLabeledValue(lines, ["日期", "时间", "date"]) || date || createDraft.date;
+      patch.startDate =
+        extractLabeledValue(lines, ["开始日期", "开始时间", "startDate"]) ||
+        createDraft.startDate ||
+        "";
+      patch.endDate =
+        extractLabeledValue(lines, ["结束日期", "结束时间", "endDate"]) ||
+        createDraft.endDate ||
+        "";
       patch.title =
         extractLabeledValue(lines, ["事项", "标题", "名称", "title"]) ||
         createDraft.title ||
@@ -1106,6 +1129,8 @@ function App() {
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || getDefaultCalendarStatusId(),
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
+          startDate: createDraft.startDate || "",
+          endDate: createDraft.endDate || "",
         });
       } else {
         addCalendarItem(createDraft.date || "", {
@@ -1114,6 +1139,8 @@ function App() {
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || getDefaultCalendarStatusId(),
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
+          startDate: createDraft.startDate || "",
+          endDate: createDraft.endDate || "",
         });
       }
       closeCreateModal();
@@ -1881,6 +1908,8 @@ function App() {
       ? [
           { key: "status", label: "默认状态", type: "status" },
           { key: "date", label: "日期", type: "date" },
+          { key: "startDate", label: "开始日期", type: "date" },
+          { key: "endDate", label: "结束日期", type: "date" },
           { key: "title", label: "事项名称", type: "text" },
           { key: "durationMinutes", label: "预计耗时（分钟）", type: "number" },
           { key: "description", label: "注意事项", type: "textarea" },
@@ -1995,23 +2024,23 @@ function App() {
                   </label>
                 );
               })}
-            </div>
-
-            <div className="create-assist-panel">
-              <label className="create-field">
+              <label className="create-field create-assist-input-field">
                 <span>自动识别文本</span>
                 <textarea
                   ref={createAssistRef}
                   className="form-control create-assist-textarea"
                   value={createAssistText}
                   onChange={(event) => setCreateAssistText(event.target.value)}
-                  placeholder="粘贴项目名称、状态、日期、GitHub 地址、路径、Todo 或备注"
+                  placeholder="粘贴项目名称、状态、日期、开始日期、结束日期、预计耗时、GitHub 地址、路径、Todo 或备注"
                 />
               </label>
               <button className="icon-button" type="button" onClick={autoFillCreateDraft}>
                 <Search size={16} />
                 <span>自动识别 / 自动补充</span>
               </button>
+            </div>
+
+            <div className="create-assist-panel">
               <div className="create-assist-hint">
                 <CopyIconButton
                   value={CREATE_ASSIST_HINT}

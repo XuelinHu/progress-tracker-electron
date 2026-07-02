@@ -422,7 +422,13 @@ export default function CalendarBoard({
   }
 
   function handleAddUnscheduledItem() {
-    openCalendarItemModal?.("", { categoryId: "other", status: ACTIVE_STATUS });
+    openCalendarItemModal?.("", {
+      categoryId: "other",
+      status: ACTIVE_STATUS,
+      startDate: today(),
+      endDate: "",
+      durationMinutes: "30",
+    });
   }
 
   function openTooltip(event, content) {
@@ -485,6 +491,8 @@ export default function CalendarBoard({
       categoryId: item.categoryId,
       status: item.status || "已完成",
       durationMinutes: item.durationMinutes || "",
+      startDate: item.startDate || "",
+      endDate: item.endDate || "",
     });
   }
 
@@ -635,6 +643,8 @@ export default function CalendarBoard({
                           <span>类别：{category.name}</span>
                           <span>状态：{status?.label || item.status || "其他"}</span>
                           <span>日期：{item.date}</span>
+                          {item.startDate && <span>开始日期：{item.startDate}</span>}
+                          {item.endDate && <span>结束日期：{item.endDate}</span>}
                           {item.durationMinutes && <span>预计耗时：{item.durationMinutes}分钟</span>}
                           <DetailSection
                             title="今天事项"
@@ -885,6 +895,8 @@ export default function CalendarBoard({
                 <strong>{item.title}</strong>
                 <span className="calendar-todo-meta">
                   <span>{status?.label || item.status || ACTIVE_STATUS}</span>
+                  {item.startDate && <span>{item.startDate} 起</span>}
+                  {item.endDate && <span>{item.endDate} 止</span>}
                   {item.durationMinutes && <span>{item.durationMinutes}分钟</span>}
                 </span>
                 {item.description && <em>{item.description}</em>}
