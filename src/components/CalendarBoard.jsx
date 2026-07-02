@@ -322,15 +322,6 @@ export default function CalendarBoard({
 
     const existsOnDate = recordHasDate(record, dateField, dateIso);
     const todoItem = `${dateIso} 日历事项：${getRecordTitle(record)}`;
-    const patch = {
-      ...buildTodoPatch(record, todoItem, dateIso),
-      status: ACTIVE_STATUS,
-    };
-    if (!existsOnDate) {
-      updateRecord?.(record.id, { ...patch, [dateField.key]: dateIso });
-    } else {
-      updateRecord?.(record.id, patch);
-    }
     setScheduleDraft({
       recordId: record.id,
       recordTitle: getRecordTitle(record),
@@ -367,13 +358,14 @@ export default function CalendarBoard({
       ),
     );
     const record = records.find((entry) => entry.id === scheduleDraft.recordId);
-    const typedItem = scheduleDraft.item.trim()
-      ? formatScheduleItem(`${scheduleDraft.date} 日历事项：`, item, durationMinutes)
-      : "";
+    const todoItem = formatScheduleItem(
+      `${scheduleDraft.date} 日历事项：`,
+      item,
+      durationMinutes,
+    );
     updateRecord?.(scheduleDraft.recordId, {
-      ...(typedItem && typedItem !== scheduleDraft.defaultTodoItem
-        ? buildTodoPatch(record, typedItem, scheduleDraft.date)
-        : {}),
+      ...buildTodoPatch(record, todoItem, scheduleDraft.date),
+      ...(scheduleDraft.existsOnDate ? {} : { [scheduleDraft.fieldKey]: scheduleDraft.date }),
       status: ACTIVE_STATUS,
     });
     closeScheduleDraft();
@@ -433,7 +425,11 @@ export default function CalendarBoard({
   function handleToggleRecordTodo(event, record, dateIso) {
     event.stopPropagation();
     const todoItem = getCalendarTodoItem(record, dateIso);
-    updateRecord?.(record.id, buildTodoDonePatch(record, todoItem, dateIso));
+    const isDone = isCalendarTodoDone(record, todoItem);
+    updateRecord?.(record.id, {
+      ...buildTodoDonePatch(record, todoItem, dateIso),
+      status: isDone ? ACTIVE_STATUS : "已完成",
+    });
   }
 
   function handleDeleteCustomItem(event, itemId) {
