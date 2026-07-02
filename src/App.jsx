@@ -56,8 +56,17 @@ const STATUS_CONFIG_PAGE = {
   accent: "#2563eb",
   tint: "#dbeafe",
 };
+const PROBLEM_ITEMS_PAGE = {
+  id: "problem-items",
+  itemCategoryId: "problem",
+  name: "问题记录",
+  shortcut: "6",
+  accent: "#dc2626",
+  tint: "#fee2e2",
+};
 const OTHER_ITEMS_PAGE = {
   id: "other-items",
+  itemCategoryId: "other",
   name: "其他事项",
   shortcut: "7",
   accent: "#64748b",
@@ -77,10 +86,12 @@ const PROJECT_CATEGORY_ID = "project";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
   ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "5" }
   : null;
-const OTHER_NAVIGATION_ITEM = { ...OTHER_ITEMS_PAGE, shortcut: "6" };
+const PROBLEM_NAVIGATION_ITEM = { ...PROBLEM_ITEMS_PAGE, shortcut: "6" };
+const OTHER_NAVIGATION_ITEM = { ...OTHER_ITEMS_PAGE, shortcut: "7" };
 const NAVIGATION_ITEMS = [
   ...CATEGORIES.filter((category) => category.id !== PROJECT_CATEGORY_ID),
   PROJECT_NAVIGATION_ITEM,
+  PROBLEM_NAVIGATION_ITEM,
   OTHER_NAVIGATION_ITEM,
 ].filter(Boolean);
 
@@ -187,8 +198,18 @@ function normalizeCalendarItems(items) {
 }
 
 function normalizeDurationMinutes(value) {
-  const minutes = Number.parseInt(String(value ?? ""), 10);
+  const raw = String(value ?? "").trim();
+  if (!/^\d+$/.test(raw)) {
+    return "";
+  }
+  const minutes = Number.parseInt(raw, 10);
   return Number.isFinite(minutes) && minutes > 0 ? String(minutes) : "";
+}
+
+function getCalendarItemPage(categoryId) {
+  return categoryId === PROBLEM_ITEMS_PAGE.itemCategoryId
+    ? PROBLEM_ITEMS_PAGE
+    : OTHER_ITEMS_PAGE;
 }
 
 function normalizeStatusConfig(items) {
@@ -344,6 +365,7 @@ function App() {
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const isCalendarView = activeCategoryId === CALENDAR_CATEGORY.id;
+  const isProblemItemsView = activeCategoryId === PROBLEM_ITEMS_PAGE.id;
   const isOtherItemsView = activeCategoryId === OTHER_ITEMS_PAGE.id;
   const isStatusConfigView = activeCategoryId === STATUS_CONFIG_PAGE.id;
   const activeCategory = CATEGORY_BY_ID[activeCategoryId] ?? CATEGORIES[0];
@@ -351,11 +373,13 @@ function App() {
     ? GRAPH_CATEGORY
     : isCalendarView
       ? CALENDAR_CATEGORY
-      : isOtherItemsView
-        ? OTHER_ITEMS_PAGE
-        : isStatusConfigView
-          ? STATUS_CONFIG_PAGE
-          : activeCategory;
+      : isProblemItemsView
+        ? PROBLEM_ITEMS_PAGE
+        : isOtherItemsView
+          ? OTHER_ITEMS_PAGE
+          : isStatusConfigView
+            ? STATUS_CONFIG_PAGE
+            : activeCategory;
   const tableTemplate = ["58px", ...activeCategory.fields.map((field) => field.width)].join(" ");
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -1851,7 +1875,7 @@ function App() {
 
     const isCalendarItem = createModal.mode === "calendar";
     const category = isCalendarItem
-      ? OTHER_ITEMS_PAGE
+      ? getCalendarItemPage(createDraft.categoryId)
       : CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0];
     const fields = isCalendarItem
       ? [
@@ -1879,7 +1903,7 @@ function App() {
                 {isCalendarItem && createModal.itemId ? "编辑" : "新增"}
                 {category.name}
               </strong>
-              <span>{isCalendarItem ? "新建日历中的其他事项" : "填写左侧表单，右侧可粘贴文本自动补充"}</span>
+              <span>{isCalendarItem ? `新建日历中的${category.name}` : "填写左侧表单，右侧可粘贴文本自动补充"}</span>
             </div>
             <button className="danger-button small" type="button" onClick={closeCreateModal} title="关闭">
               <X size={15} />
@@ -1942,7 +1966,9 @@ function App() {
                         step="1"
                         inputMode="numeric"
                         value={createDraft[field.key] ?? ""}
-                        onChange={(event) => updateCreateDraft(field.key, event.target.value)}
+                        onChange={(event) =>
+                          updateCreateDraft(field.key, event.target.value.replace(/\D/g, ""))
+                        }
                       />
                     </label>
                   );
@@ -2239,8 +2265,10 @@ function App() {
     );
   }
 
-  function renderOtherItems() {
-    const sortedItems = [...calendarItems].sort(
+  function renderCalendarItemPage(page) {
+    const sortedItems = calendarItems
+      .filter((item) => (item.categoryId || "other") === page.itemCategoryId)
+      .sort(
       (left, right) =>
         String(left.date).localeCompare(String(right.date)) ||
         String(left.title).localeCompare(String(right.title), "zh-Hans-CN"),
@@ -2250,8 +2278,8 @@ function App() {
       <section className="workspace other-items-page">
         <div className="other-items-header">
           <div>
-            <h2>其他事项</h2>
-            <p>管理日历中的独立事项。这里的新建、复制和删除都会保存到 PostgreSQL。</p>
+            <h2>{page.name}</h2>
+            <p>管理日历中的{page.name}。这里的新建、复制和删除都会保存到 PostgreSQL。</p>
           </div>
         </div>
 
@@ -2259,10 +2287,10 @@ function App() {
           <button
             className="icon-button primary"
             type="button"
-            onClick={() => openCalendarItemModal(today())}
+            onClick={() => openCalendarItemModal(today(), { categoryId: page.itemCategoryId })}
           >
             <Plus size={16} />
-            <span>新增其他事项</span>
+            <span>新增{page.name}</span>
           </button>
         </div>
 
@@ -2288,7 +2316,14 @@ function App() {
               >
                 {calendarStatusById[item.status]?.label || item.status || CALENDAR_DONE_STATUS.label}
               </span>
-              <span className="other-item-desc">{item.description || "无备注"}</span>
+              <span className="other-item-desc">
+                {[
+                  item.durationMinutes ? `预计${item.durationMinutes}分钟` : "",
+                  item.description || "无备注",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
               <div className="other-item-actions">
                 <button
                   className="row-copy-button"
@@ -2317,7 +2352,7 @@ function App() {
               </div>
             </div>
           ))}
-          {sortedItems.length === 0 && <div className="empty-state">暂无其他事项</div>}
+          {sortedItems.length === 0 && <div className="empty-state">暂无{page.name}</div>}
         </div>
       </section>
     );
@@ -2592,7 +2627,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 切换数据页，G 打开日历，F 打开知识图谱</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 切换数据页，G 打开日历，F 打开知识图谱</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新
@@ -2765,8 +2800,10 @@ function App() {
             openCalendarItemModal={openCalendarItemModal}
             openRecord={openRecordFromCalendar}
           />
+        ) : isProblemItemsView ? (
+          renderCalendarItemPage(PROBLEM_ITEMS_PAGE)
         ) : isOtherItemsView ? (
-          renderOtherItems()
+          renderCalendarItemPage(OTHER_ITEMS_PAGE)
         ) : isStatusConfigView ? (
           renderStatusConfig()
         ) : (

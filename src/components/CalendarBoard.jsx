@@ -11,6 +11,12 @@ const OTHER_CATEGORY = {
   accent: "#64748b",
   tint: "#f1f5f9",
 };
+const PROBLEM_CATEGORY = {
+  id: "problem",
+  name: "问题记录",
+  accent: "#dc2626",
+  tint: "#fee2e2",
+};
 
 function today() {
   const date = new Date();
@@ -42,6 +48,9 @@ function getRecordDate(record) {
 }
 
 function getCategory(categoryId) {
+  if (categoryId === PROBLEM_CATEGORY.id) {
+    return PROBLEM_CATEGORY;
+  }
   return CATEGORY_BY_ID[categoryId] ?? OTHER_CATEGORY;
 }
 
@@ -93,7 +102,11 @@ function isCalendarTodoDone(record, item) {
 }
 
 function normalizeDurationMinutes(value) {
-  const minutes = Number.parseInt(String(value ?? ""), 10);
+  const raw = String(value ?? "").trim();
+  if (!/^\d+$/.test(raw)) {
+    return "";
+  }
+  const minutes = Number.parseInt(raw, 10);
   return Number.isFinite(minutes) && minutes > 0 ? String(minutes) : "";
 }
 
@@ -604,7 +617,7 @@ export default function CalendarBoard({
                       return (
                         <div
                           key={item.id}
-                          className={`calendar-day-record custom calendar-type-other ${
+                          className={`calendar-day-record custom calendar-type-${item.categoryId || "other"} ${
                             item.status === "已完成" ? "done" : ""
                           }`}
                           role="button"
@@ -848,7 +861,9 @@ export default function CalendarBoard({
                   value={scheduleDraft.durationMinutes}
                   onChange={(event) =>
                     setScheduleDraft((current) =>
-                      current ? { ...current, durationMinutes: event.target.value } : current,
+                      current
+                        ? { ...current, durationMinutes: event.target.value.replace(/\D/g, "") }
+                        : current,
                     )
                   }
                   placeholder="例如 30"
