@@ -333,9 +333,22 @@ button {
   overflow-wrap: anywhere;
 }
 
+.calendar-todo-card.record-todo {
+  background: color-mix(in srgb, var(--record-tint) 24%, #ffffff);
+}
+
+.calendar-todo-source {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .calendar-todo-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   color: #647084;
   font-size: 11px;
@@ -1169,19 +1182,26 @@ button {
 }
 
 .date-history-row {
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-rows: auto auto;
   gap: 4px;
 }
 
 .date-history-row .date-input {
-  flex: 0 0 auto;
-  width: 116px;
+  width: 100%;
 }
 
 .date-history-row .date-item-input {
-  flex: 1 1 auto;
   min-width: 0;
+  width: 100%;
+}
+
+.date-history-item-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 4px;
 }
 
 .date-confirm-btn {
@@ -1605,7 +1625,6 @@ button {
 }
 
 .date-item-copyable {
-  flex: 1 1 auto;
   min-width: 0;
   grid-template-columns: 20px minmax(0, 1fr);
 }

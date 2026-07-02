@@ -87,26 +87,28 @@ export default function DateHistoryField({
           onChange={(e) => setDraftDate(e.target.value)}
           aria-label={label}
         />
-        <CopyableControl value={item} label={`${label}事项`} className="date-item-copyable">
-          <input
-            className={itemClassName}
-            type="text"
-            value={item}
-            onFocus={onFocus}
-            onChange={(e) => setItem(e.target.value)}
-            onKeyDown={handleItemKeydown}
-            placeholder="填写本次事项"
-            aria-label={`${label}事项`}
-          />
-        </CopyableControl>
-        <button
-          className="date-confirm-btn"
-          type="button"
-          onClick={handleConfirm}
-          title="确认添加（日期为空则默认今天，Enter 也可确认）"
-        >
-          ✓
-        </button>
+        <div className="date-history-item-row">
+          <CopyableControl value={item} label={`${label}事项`} className="date-item-copyable">
+            <input
+              className={itemClassName}
+              type="text"
+              value={item}
+              onFocus={onFocus}
+              onChange={(e) => setItem(e.target.value)}
+              onKeyDown={handleItemKeydown}
+              placeholder="填写本次事项"
+              aria-label={`${label}事项`}
+            />
+          </CopyableControl>
+          <button
+            className="date-confirm-btn"
+            type="button"
+            onClick={handleConfirm}
+            title="确认添加（日期为空则默认今天，Enter 也可确认）"
+          >
+            ✓
+          </button>
+        </div>
       </div>
 
       {showPopover &&

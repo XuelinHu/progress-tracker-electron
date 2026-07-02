@@ -5,6 +5,7 @@ import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 
 const DRAG_TYPE = "application/progress-calendar-record";
 const CALENDAR_ITEM_DRAG_TYPE = "application/progress-calendar-item";
+const TODO_DRAG_TYPE = "application/progress-calendar-todo";
 const ACTIVE_STATUS = "进行中";
 const DONE_STATUS = "已完成";
 const OTHER_CATEGORY = {
@@ -63,6 +64,13 @@ function getTodoLines(record) {
     .filter(Boolean);
 }
 
+function cleanScheduleTodoItem(item) {
+  return String(item ?? "")
+    .replace(/^(今天|日历)事项：/, "")
+    .replace(/；预计耗时：\d+分钟$/, "")
+    .trim();
+}
+
 function buildTodoPatch(record, item, addedDate = today()) {
   const text = String(item ?? "").trim();
   if (!text) {
@@ -96,7 +104,15 @@ function getCalendarTodoItem(record, dateIso) {
     return historyItem.item;
   }
   const todoLine = getTodoLines(record).find((line) => line.startsWith(prefix));
-  return todoLine || `${prefix}${getRecordTitle(record)}`;
+  if (todoLine) {
+    return todoLine;
+  }
+  const historyItems = new Set(history.map((entry) => entry.item));
+  const dateHistoryItem = Object.values(record?.dateHistory ?? {})
+    .flatMap((entries) => (Array.isArray(entries) ? entries : []))
+    .find((entry) => entry.date === dateIso && historyItems.has(cleanScheduleTodoItem(entry.item)))
+    ?.item;
+  return dateHistoryItem ? cleanScheduleTodoItem(dateHistoryItem) : `${prefix}${getRecordTitle(record)}`;
 }
 
 function isCalendarTodoDone(record, item) {
@@ -298,13 +314,33 @@ export default function CalendarBoard({
     return groups;
   }, [calendarItems]);
   const unscheduledItems = useMemo(
-    () =>
-      calendarItems
+    () => {
+      const calendarTodoItems = calendarItems
         .filter((item) => !item?.date)
-        .sort((left, right) =>
-          String(left.createdAt || "").localeCompare(String(right.createdAt || "")),
-        ),
-    [calendarItems],
+        .map((item) => ({
+          type: "calendar",
+          key: `calendar-${item.id}`,
+          sortDate: item.startDate || item.createdAt || "",
+          item,
+        }));
+      const recordTodoItems = records.flatMap((record) =>
+        (record.todoHistory ?? [])
+          .filter((todo) => todo.item && !todo.doneDate)
+          .map((todo) => ({
+            type: "recordTodo",
+            key: `todo-${record.id}-${todo.id || todo.item}`,
+            sortDate: todo.addedDate || record.startDate || "",
+            record,
+            todo,
+          })),
+      );
+      return [...calendarTodoItems, ...recordTodoItems].sort(
+        (left, right) =>
+          String(right.sortDate || "").localeCompare(String(left.sortDate || "")) ||
+          String(right.key).localeCompare(String(left.key)),
+      );
+    },
+    [calendarItems, records],
   );
 
   function moveMonth(offset) {
@@ -323,6 +359,15 @@ export default function CalendarBoard({
     event.dataTransfer.setData("text/plain", item.title || "待办事项");
   }
 
+  function handleRecordTodoDragStart(event, record, todo) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(
+      TODO_DRAG_TYPE,
+      JSON.stringify({ recordId: record.id, item: todo.item || "" }),
+    );
+    event.dataTransfer.setData("text/plain", todo.item || "待办事项");
+  }
+
   function recordHasDate(record, dateField, dateIso) {
     if (!record || !dateField || !dateIso) {
       return false;
@@ -339,6 +384,23 @@ export default function CalendarBoard({
     const calendarItemId = event.dataTransfer.getData(CALENDAR_ITEM_DRAG_TYPE);
     if (calendarItemId) {
       updateCalendarItem?.(calendarItemId, { date: dateIso, status: ACTIVE_STATUS });
+      return;
+    }
+
+    const todoPayload = event.dataTransfer.getData(TODO_DRAG_TYPE);
+    if (todoPayload) {
+      try {
+        const parsed = JSON.parse(todoPayload);
+        const record = records.find((item) => item.id === parsed.recordId);
+        const dateField = getPrimaryDateField(record);
+        const todoItem = String(parsed.item ?? "").trim();
+        if (record && dateField && todoItem) {
+          updateRecordDate?.(record.id, dateField.key, dateIso, todoItem);
+          updateRecord?.(record.id, { status: ACTIVE_STATUS });
+        }
+      } catch {
+        // Ignore malformed drag payloads from outside the app.
+      }
       return;
     }
 
@@ -865,12 +927,51 @@ export default function CalendarBoard({
           <span>新增待办</span>
         </button>
         <div className="calendar-todo-list">
-          {unscheduledItems.map((item) => {
+          {unscheduledItems.map((entry) => {
+            if (entry.type === "recordTodo") {
+              const { record, todo } = entry;
+              const category = getCategory(record.categoryId);
+              const status = statusById[record.status] ?? statusById[ACTIVE_STATUS] ?? statusOptions[0];
+              return (
+                <div
+                  key={entry.key}
+                  className="calendar-todo-card record-todo"
+                  draggable
+                  onDragStart={(event) => handleRecordTodoDragStart(event, record, todo)}
+                  onClick={() => openRecord?.(record)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openRecord?.(record);
+                    }
+                  }}
+                  style={{
+                    "--record-accent": category.accent,
+                    "--record-tint": category.tint,
+                    "--record-status-bg": status?.bg || "#eef2ff",
+                    "--record-status-color": status?.color || "#334155",
+                    "--record-status-border": status?.border || "#cbd5e1",
+                  }}
+                  title="拖到中间日期格安排日期"
+                >
+                  <span className="calendar-record-category">{category.name}</span>
+                  <strong>{todo.item}</strong>
+                  <span className="calendar-todo-source">{getRecordTitle(record)}</span>
+                  <span className="calendar-todo-meta">
+                    <span>{status?.label || record.status || ACTIVE_STATUS}</span>
+                    <span>{todo.addedDate || record.startDate || "未记录时间"}</span>
+                  </span>
+                </div>
+              );
+            }
+            const item = entry.item;
             const category = getCategory(item.categoryId);
             const status = statusById[item.status] ?? statusById[ACTIVE_STATUS] ?? statusOptions[0];
             return (
               <div
-                key={item.id}
+                key={entry.key}
                 className="calendar-todo-card"
                 draggable
                 onDragStart={(event) => handleCalendarItemDragStart(event, item)}
