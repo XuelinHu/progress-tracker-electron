@@ -64,7 +64,7 @@ const OTHER_ITEMS_PAGE = {
   tint: "#f1f5f9",
 };
 const CREATE_ASSIST_HINT =
-  "粘贴项目名称、状态、日期、GitHub 地址、路径、Todo 或备注，点击自动识别后会填充到左侧表单。";
+  "粘贴项目名称、状态、日期、预计耗时、GitHub 地址、路径、Todo 或备注，点击自动识别后会填充到左侧表单。";
 const CALENDAR_DONE_STATUS = {
   id: "已完成",
   label: "已完成",
@@ -179,10 +179,16 @@ function normalizeCalendarItems(items) {
           description: String(item?.description || ""),
           categoryId: item?.categoryId || "other",
           status: item?.status || CALENDAR_DONE_STATUS.id,
+          durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
           createdAt: item?.createdAt || new Date().toISOString(),
         }))
         .filter((item) => item.date && item.title)
     : [];
+}
+
+function normalizeDurationMinutes(value) {
+  const minutes = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(minutes) && minutes > 0 ? String(minutes) : "";
 }
 
 function normalizeStatusConfig(items) {
@@ -661,6 +667,7 @@ function App() {
         description: String(draft.description ?? ""),
         categoryId: draft.categoryId || "other",
         status: draft.status || getDefaultCalendarStatusId(),
+        durationMinutes: normalizeDurationMinutes(draft.durationMinutes),
         createdAt: new Date().toISOString(),
       },
     ]);
@@ -679,6 +686,10 @@ function App() {
                   ? item.description
                   : String(patch.description ?? ""),
               status: patch.status || item.status || getDefaultCalendarStatusId(),
+              durationMinutes:
+                patch.durationMinutes === undefined
+                  ? normalizeDurationMinutes(item.durationMinutes)
+                  : normalizeDurationMinutes(patch.durationMinutes),
               categoryId: patch.categoryId || item.categoryId || "other",
               date: patch.date || item.date || today(),
               updatedAt: new Date().toISOString(),
@@ -701,6 +712,7 @@ function App() {
       description: item.description,
       categoryId: item.categoryId,
       status: item.status || getDefaultCalendarStatusId(),
+      durationMinutes: normalizeDurationMinutes(item.durationMinutes),
     });
   }
 
@@ -730,6 +742,7 @@ function App() {
       description: "",
       categoryId: "other",
       status: getDefaultCalendarStatusId(),
+      durationMinutes: "",
       ...overrides,
     };
   }
@@ -806,6 +819,7 @@ function App() {
           status: getDefaultCalendarStatusId(),
           date: today(),
           title: "今天要处理的事项",
+          durationMinutes: "30",
           description: "注意事项或补充说明",
         },
         null,
@@ -841,6 +855,7 @@ function App() {
           status: getDefaultCalendarStatusId(),
           date: today(),
           title: "完成铁路数据清洗",
+          durationMinutes: "45",
           description: "今天重点核对异常样本，记录未完成原因",
         },
         null,
@@ -961,6 +976,14 @@ function App() {
         extractLabeledValue(lines, ["备注", "说明", "注意事项", "todo", "description"]) ||
         createDraft.description ||
         lines.slice(1).join("\n");
+      const duration =
+        extractLabeledValue(lines, ["预计耗时", "耗时", "分钟", "durationMinutes", "duration"]) ||
+        text.match(/(?:预计耗时|耗时)\s*[:：=]?\s*(\d+)\s*分钟?/i)?.[1] ||
+        text.match(/\b(\d+)\s*分钟\b/)?.[1] ||
+        "";
+      if (duration) {
+        patch.durationMinutes = normalizeDurationMinutes(duration);
+      }
       const meaningfulKeys = Object.entries(patch).filter(
         ([key, value]) => key !== "date" && String(value ?? "").trim(),
       );
@@ -1058,6 +1081,7 @@ function App() {
           description: String(createDraft.description ?? "").trim(),
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || getDefaultCalendarStatusId(),
+          durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
         });
       } else {
         addCalendarItem(createDraft.date || today(), {
@@ -1065,6 +1089,7 @@ function App() {
           description: String(createDraft.description ?? "").trim(),
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || getDefaultCalendarStatusId(),
+          durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
         });
       }
       closeCreateModal();
@@ -1833,6 +1858,7 @@ function App() {
           { key: "status", label: "默认状态", type: "status" },
           { key: "date", label: "日期", type: "date" },
           { key: "title", label: "事项名称", type: "text" },
+          { key: "durationMinutes", label: "预计耗时（分钟）", type: "number" },
           { key: "description", label: "注意事项", type: "textarea" },
         ]
       : category.fields;
@@ -1898,6 +1924,23 @@ function App() {
                       <input
                         className="form-control create-control"
                         type="date"
+                        value={createDraft[field.key] ?? ""}
+                        onChange={(event) => updateCreateDraft(field.key, event.target.value)}
+                      />
+                    </label>
+                  );
+                }
+
+                if (field.type === "number") {
+                  return (
+                    <label className="create-field" key={field.key}>
+                      <span>{field.label}</span>
+                      <input
+                        className="form-control create-control"
+                        type="number"
+                        min="1"
+                        step="1"
+                        inputMode="numeric"
                         value={createDraft[field.key] ?? ""}
                         onChange={(event) => updateCreateDraft(field.key, event.target.value)}
                       />

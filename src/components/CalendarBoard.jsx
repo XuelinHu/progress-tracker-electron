@@ -437,6 +437,7 @@ export default function CalendarBoard({
       description: item.description,
       categoryId: item.categoryId,
       status: item.status || "已完成",
+      durationMinutes: item.durationMinutes || "",
     });
   }
 
@@ -587,6 +588,7 @@ export default function CalendarBoard({
                           <span>类别：{category.name}</span>
                           <span>状态：{status?.label || item.status || "其他"}</span>
                           <span>日期：{item.date}</span>
+                          {item.durationMinutes && <span>预计耗时：{item.durationMinutes}分钟</span>}
                           <DetailSection
                             title="今天事项"
                             items={[item.title]}
