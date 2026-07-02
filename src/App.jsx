@@ -185,7 +185,7 @@ function normalizeCalendarItems(items) {
     ? items
         .map((item) => ({
           id: String(item?.id || createId("calendar-item")),
-          date: String(item?.date || today()),
+          date: String(item?.date || ""),
           title: String(item?.title || "其他事项"),
           description: String(item?.description || ""),
           categoryId: item?.categoryId || "other",
@@ -193,7 +193,7 @@ function normalizeCalendarItems(items) {
           durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
           createdAt: item?.createdAt || new Date().toISOString(),
         }))
-        .filter((item) => item.date && item.title)
+        .filter((item) => item.title)
     : [];
 }
 
@@ -469,7 +469,7 @@ function App() {
   }
 
   function getDefaultCalendarStatusId() {
-    return CALENDAR_DONE_STATUS.id;
+    return getDefaultStatusId();
   }
 
   useEffect(() => {
@@ -679,14 +679,14 @@ function App() {
 
   function addCalendarItem(date, draft = {}) {
     const title = String(draft.title ?? "").trim();
-    if (!date || !title) {
+    if (!title) {
       return;
     }
     setCalendarItems((current) => [
       ...current,
       {
         id: createId("calendar-item"),
-        date,
+        date: date || "",
         title,
         description: String(draft.description ?? ""),
         categoryId: draft.categoryId || "other",
@@ -715,7 +715,7 @@ function App() {
                   ? normalizeDurationMinutes(item.durationMinutes)
                   : normalizeDurationMinutes(patch.durationMinutes),
               categoryId: patch.categoryId || item.categoryId || "other",
-              date: patch.date || item.date || today(),
+              date: patch.date === undefined ? item.date || "" : patch.date || "",
               updatedAt: new Date().toISOString(),
             }
           : item,
@@ -728,10 +728,10 @@ function App() {
   }
 
   function copyCalendarItem(item) {
-    if (!item?.date || !item?.title) {
+    if (!item?.title) {
       return;
     }
-    openCalendarItemModal(item.date, {
+    openCalendarItemModal(item.date || "", {
       title: item.title,
       description: item.description,
       categoryId: item.categoryId,
@@ -761,7 +761,7 @@ function App() {
 
   function buildCalendarItemDraft(date = today(), overrides = {}) {
     return {
-      date: date || today(),
+      date: date || "",
       title: "",
       description: "",
       categoryId: "other",
@@ -788,7 +788,7 @@ function App() {
     setCreateModal({
       mode: "calendar",
       categoryId: "other",
-      date,
+      date: date || "",
       itemId: context.itemId || null,
     });
     setCreateDraft(buildCalendarItemDraft(date, overrides));
@@ -1100,7 +1100,7 @@ function App() {
       }
       if (createModal.itemId) {
         updateCalendarItem(createModal.itemId, {
-          date: createDraft.date || today(),
+          date: createDraft.date || "",
           title,
           description: String(createDraft.description ?? "").trim(),
           categoryId: createDraft.categoryId || "other",
@@ -1108,7 +1108,7 @@ function App() {
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
         });
       } else {
-        addCalendarItem(createDraft.date || today(), {
+        addCalendarItem(createDraft.date || "", {
           title,
           description: String(createDraft.description ?? "").trim(),
           categoryId: createDraft.categoryId || "other",

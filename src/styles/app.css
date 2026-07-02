@@ -252,7 +252,7 @@ button {
 
 .calendar-page {
   display: grid;
-  grid-template-columns: minmax(240px, 310px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 290px) minmax(0, 1fr) minmax(210px, 270px);
   gap: 0;
   height: calc(100vh - 226px);
   max-height: calc(100vh - 226px);
@@ -270,6 +270,83 @@ button {
   padding: 12px;
   border-right: 1px solid #dbe1ea;
   background: #fbfcfe;
+}
+
+.calendar-todo-panel {
+  min-width: 0;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-left: 1px solid #dbe1ea;
+  background: #fbfcfe;
+}
+
+.calendar-todo-add {
+  width: 100%;
+  justify-content: center;
+}
+
+.calendar-todo-list {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding-right: 2px;
+}
+
+.calendar-todo-card {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--record-accent) 32%, #dbe1ea);
+  border-left: 4px solid var(--record-accent);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  cursor: grab;
+}
+
+.calendar-todo-card:active {
+  cursor: grabbing;
+}
+
+.calendar-todo-card:hover {
+  background: color-mix(in srgb, var(--record-tint) 38%, #ffffff);
+}
+
+.calendar-todo-card strong {
+  font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.calendar-todo-card em {
+  color: #647084;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.calendar-todo-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #647084;
+  font-size: 11px;
+}
+
+.calendar-todo-meta span:first-child {
+  padding: 2px 5px;
+  border: 1px solid var(--record-status-border);
+  border-radius: 5px;
+  background: var(--record-status-bg);
+  color: var(--record-status-color);
 }
 
 .calendar-panel-title {
@@ -608,6 +685,10 @@ button {
 
 .calendar-type-other {
   --record-type-bg: #f1f5f9;
+}
+
+.calendar-type-problem {
+  --record-type-bg: #fee2e2;
 }
 
 .calendar-day-record-category {
@@ -2093,7 +2174,8 @@ button {
 }
 
 .calendar-schedule-field textarea,
-.calendar-schedule-field input {
+.calendar-schedule-field input,
+.calendar-schedule-field select {
   width: 100%;
   padding: 9px;
   border: 1px solid #d9e0eb;
@@ -2110,7 +2192,8 @@ button {
   min-height: 150px;
 }
 
-.calendar-schedule-field input {
+.calendar-schedule-field input,
+.calendar-schedule-field select {
   min-height: 36px;
   resize: none;
 }
@@ -2120,7 +2203,8 @@ button {
 }
 
 .calendar-schedule-field textarea:focus,
-.calendar-schedule-field input:focus {
+.calendar-schedule-field input:focus,
+.calendar-schedule-field select:focus {
   border-color: #7c3aed;
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.14);
 }
@@ -2493,9 +2577,11 @@ button {
     min-height: 0;
   }
 
-  .calendar-source-panel {
+  .calendar-source-panel,
+  .calendar-todo-panel {
     max-height: 260px;
     border-right: 0;
+    border-left: 0;
     border-bottom: 1px solid #dbe1ea;
   }
 }

@@ -4,7 +4,9 @@ import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, X } from "
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 
 const DRAG_TYPE = "application/progress-calendar-record";
+const CALENDAR_ITEM_DRAG_TYPE = "application/progress-calendar-item";
 const ACTIVE_STATUS = "进行中";
+const DONE_STATUS = "已完成";
 const OTHER_CATEGORY = {
   id: "other",
   name: "其他事项",
@@ -116,6 +118,10 @@ function formatScheduleItem(prefix, item, durationMinutes) {
 }
 
 function buildTodoDonePatch(record, item, dateIso) {
+  return buildTodoCompletionPatch(record, item, dateIso, !isCalendarTodoDone(record, item));
+}
+
+function buildTodoCompletionPatch(record, item, dateIso, completed) {
   const text = String(item ?? "").trim();
   if (!text) {
     return {};
@@ -124,12 +130,13 @@ function buildTodoDonePatch(record, item, dateIso) {
   const todo = lines.includes(text) ? String(record?.todo ?? "") : [...lines, text].join("\n");
   const history = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
   const hasHistory = history.some((entry) => entry.item === text);
+  const doneDate = completed ? dateIso : null;
   return {
     todo,
     todoHistory: hasHistory
       ? history.map((entry) =>
           entry.item === text
-            ? { ...entry, doneDate: entry.doneDate ? null : dateIso }
+            ? { ...entry, doneDate }
             : entry,
         )
       : [
@@ -138,7 +145,7 @@ function buildTodoDonePatch(record, item, dateIso) {
             id: `todo-hist-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
             item: text,
             addedDate: dateIso,
-            doneDate: dateIso,
+            doneDate,
           },
         ],
   };
@@ -221,6 +228,7 @@ export default function CalendarBoard({
   updateRecord,
   updateRecordDate,
   removeRecordDate,
+  addCalendarItem,
   updateCalendarItem,
   deleteCalendarItem,
   openCalendarItemModal,
@@ -289,6 +297,15 @@ export default function CalendarBoard({
     }
     return groups;
   }, [calendarItems]);
+  const unscheduledItems = useMemo(
+    () =>
+      calendarItems
+        .filter((item) => !item?.date)
+        .sort((left, right) =>
+          String(left.createdAt || "").localeCompare(String(right.createdAt || "")),
+        ),
+    [calendarItems],
+  );
 
   function moveMonth(offset) {
     setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
@@ -298,6 +315,12 @@ export default function CalendarBoard({
     event.dataTransfer.effectAllowed = "copyMove";
     event.dataTransfer.setData(DRAG_TYPE, record.id);
     event.dataTransfer.setData("text/plain", getRecordTitle(record));
+  }
+
+  function handleCalendarItemDragStart(event, item) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(CALENDAR_ITEM_DRAG_TYPE, item.id);
+    event.dataTransfer.setData("text/plain", item.title || "待办事项");
   }
 
   function recordHasDate(record, dateField, dateIso) {
@@ -313,6 +336,12 @@ export default function CalendarBoard({
   function handleDrop(event, dateIso) {
     event.preventDefault();
     setDropTarget("");
+    const calendarItemId = event.dataTransfer.getData(CALENDAR_ITEM_DRAG_TYPE);
+    if (calendarItemId) {
+      updateCalendarItem?.(calendarItemId, { date: dateIso, status: ACTIVE_STATUS });
+      return;
+    }
+
     const recordId = event.dataTransfer.getData(DRAG_TYPE);
     const record = records.find((item) => item.id === recordId);
     const dateField = getPrimaryDateField(record);
@@ -333,6 +362,7 @@ export default function CalendarBoard({
       defaultTodoItem: todoItem,
       item: "",
       durationMinutes: "",
+      status: ACTIVE_STATUS,
     });
   }
 
@@ -363,10 +393,14 @@ export default function CalendarBoard({
       item,
       durationMinutes,
     );
+    const nextStatus = scheduleDraft.status || ACTIVE_STATUS;
+    const isDone = nextStatus === DONE_STATUS;
     updateRecord?.(scheduleDraft.recordId, {
-      ...buildTodoPatch(record, todoItem, scheduleDraft.date),
+      ...(isDone
+        ? buildTodoCompletionPatch(record, todoItem, scheduleDraft.date, true)
+        : buildTodoPatch(record, todoItem, scheduleDraft.date)),
       ...(scheduleDraft.existsOnDate ? {} : { [scheduleDraft.fieldKey]: scheduleDraft.date }),
-      status: ACTIVE_STATUS,
+      status: nextStatus,
     });
     closeScheduleDraft();
   }
@@ -385,6 +419,10 @@ export default function CalendarBoard({
     event.preventDefault();
     event.stopPropagation();
     openCalendarItemModal?.(dateIso);
+  }
+
+  function handleAddUnscheduledItem() {
+    openCalendarItemModal?.("", { categoryId: "other", status: ACTIVE_STATUS });
   }
 
   function openTooltip(event, content) {
@@ -427,8 +465,8 @@ export default function CalendarBoard({
     const todoItem = getCalendarTodoItem(record, dateIso);
     const isDone = isCalendarTodoDone(record, todoItem);
     updateRecord?.(record.id, {
-      ...buildTodoDonePatch(record, todoItem, dateIso),
-      status: isDone ? ACTIVE_STATUS : "已完成",
+      ...buildTodoCompletionPatch(record, todoItem, dateIso, !isDone),
+      status: isDone ? ACTIVE_STATUS : DONE_STATUS,
     });
   }
 
@@ -802,6 +840,62 @@ export default function CalendarBoard({
           })}
         </div>
       </div>
+
+      <aside className="calendar-todo-panel">
+        <div className="calendar-panel-title">
+          <CalendarDays size={16} />
+          <strong>待办事项</strong>
+        </div>
+        <button
+          className="icon-button primary calendar-todo-add"
+          type="button"
+          onClick={handleAddUnscheduledItem}
+        >
+          <Plus size={16} />
+          <span>新增待办</span>
+        </button>
+        <div className="calendar-todo-list">
+          {unscheduledItems.map((item) => {
+            const category = getCategory(item.categoryId);
+            const status = statusById[item.status] ?? statusById[ACTIVE_STATUS] ?? statusOptions[0];
+            return (
+              <div
+                key={item.id}
+                className="calendar-todo-card"
+                draggable
+                onDragStart={(event) => handleCalendarItemDragStart(event, item)}
+                onClick={(event) => handleEditCustomItem(event, item)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    handleEditCustomItem(event, item);
+                  }
+                }}
+                style={{
+                  "--record-accent": category.accent,
+                  "--record-tint": category.tint,
+                  "--record-status-bg": status?.bg || "#eef2ff",
+                  "--record-status-color": status?.color || "#334155",
+                  "--record-status-border": status?.border || "#cbd5e1",
+                }}
+                title="拖到中间日期格安排日期"
+              >
+                <span className="calendar-record-category">{category.name}</span>
+                <strong>{item.title}</strong>
+                <span className="calendar-todo-meta">
+                  <span>{status?.label || item.status || ACTIVE_STATUS}</span>
+                  {item.durationMinutes && <span>{item.durationMinutes}分钟</span>}
+                </span>
+                {item.description && <em>{item.description}</em>}
+              </div>
+            );
+          })}
+          {unscheduledItems.length === 0 && (
+            <div className="calendar-empty">暂无未排期待办</div>
+          )}
+        </div>
+      </aside>
       {tooltip &&
         createPortal(
           <div
@@ -846,6 +940,23 @@ export default function CalendarBoard({
                   placeholder="输入今天要做的事项、完成内容、Todo 或注意事项"
                   autoFocus
                 />
+              </label>
+              <label className="calendar-schedule-field compact">
+                <span>默认状态</span>
+                <select
+                  value={scheduleDraft.status}
+                  onChange={(event) =>
+                    setScheduleDraft((current) =>
+                      current ? { ...current, status: event.target.value } : current,
+                    )
+                  }
+                >
+                  {statusOptions.map((status) => (
+                    <option key={status.id} value={status.id}>
+                      {status.label}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="calendar-schedule-field compact">
                 <span>预计耗时（分钟）</span>
