@@ -2092,9 +2092,9 @@ button {
   font-weight: 720;
 }
 
-.calendar-schedule-field textarea {
+.calendar-schedule-field textarea,
+.calendar-schedule-field input {
   width: 100%;
-  min-height: 150px;
   padding: 9px;
   border: 1px solid #d9e0eb;
   border-radius: 7px;
@@ -2106,7 +2106,21 @@ button {
   outline: 0;
 }
 
-.calendar-schedule-field textarea:focus {
+.calendar-schedule-field textarea {
+  min-height: 150px;
+}
+
+.calendar-schedule-field input {
+  min-height: 36px;
+  resize: none;
+}
+
+.calendar-schedule-field.compact {
+  max-width: 220px;
+}
+
+.calendar-schedule-field textarea:focus,
+.calendar-schedule-field input:focus {
   border-color: #7c3aed;
   box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.14);
 }

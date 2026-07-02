@@ -92,6 +92,16 @@ function isCalendarTodoDone(record, item) {
   return (record?.todoHistory ?? []).some((entry) => entry.item === item && entry.doneDate);
 }
 
+function normalizeDurationMinutes(value) {
+  const minutes = Number.parseInt(String(value ?? ""), 10);
+  return Number.isFinite(minutes) && minutes > 0 ? String(minutes) : "";
+}
+
+function formatScheduleItem(prefix, item, durationMinutes) {
+  const duration = normalizeDurationMinutes(durationMinutes);
+  return duration ? `${prefix}${item}；预计耗时：${duration}分钟` : `${prefix}${item}`;
+}
+
 function buildTodoDonePatch(record, item, dateIso) {
   const text = String(item ?? "").trim();
   if (!text) {
@@ -318,6 +328,7 @@ export default function CalendarBoard({
       existsOnDate,
       defaultTodoItem: todoItem,
       item: "",
+      durationMinutes: "",
     });
   }
 
@@ -331,15 +342,20 @@ export default function CalendarBoard({
       return;
     }
     const item = scheduleDraft.item.trim() || `${scheduleDraft.recordTitle} 今日事项`;
+    const durationMinutes = normalizeDurationMinutes(scheduleDraft.durationMinutes);
     updateRecordDate?.(
       scheduleDraft.recordId,
       scheduleDraft.fieldKey,
       scheduleDraft.date,
-      `${scheduleDraft.date === todayIso ? "今天" : "日历"}事项：${item}`,
+      formatScheduleItem(
+        `${scheduleDraft.date === todayIso ? "今天" : "日历"}事项：`,
+        item,
+        durationMinutes,
+      ),
     );
     const record = records.find((entry) => entry.id === scheduleDraft.recordId);
     const typedItem = scheduleDraft.item.trim()
-      ? `${scheduleDraft.date} 日历事项：${item}`
+      ? formatScheduleItem(`${scheduleDraft.date} 日历事项：`, item, durationMinutes)
       : "";
     updateRecord?.(scheduleDraft.recordId, {
       ...(typedItem && typedItem !== scheduleDraft.defaultTodoItem
@@ -818,6 +834,22 @@ export default function CalendarBoard({
                   }
                   placeholder="输入今天要做的事项、完成内容、Todo 或注意事项"
                   autoFocus
+                />
+              </label>
+              <label className="calendar-schedule-field compact">
+                <span>预计耗时（分钟）</span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  inputMode="numeric"
+                  value={scheduleDraft.durationMinutes}
+                  onChange={(event) =>
+                    setScheduleDraft((current) =>
+                      current ? { ...current, durationMinutes: event.target.value } : current,
+                    )
+                  }
+                  placeholder="例如 30"
                 />
               </label>
               <div className="calendar-schedule-note">
