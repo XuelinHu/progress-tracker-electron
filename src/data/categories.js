@@ -17,11 +17,17 @@ const descriptionField = {
   type: "textarea",
   width: "minmax(125px, 0.5fr)",
 };
-const stageDateField = {
-  key: "stageDate",
-  label: "阶段日期",
+const startDateField = {
+  key: "startDate",
+  label: "开始日期",
   type: "date",
-  width: "minmax(210px, 0.7fr)",
+  width: "minmax(160px, 0.55fr)",
+};
+const endDateField = {
+  key: "endDate",
+  label: "结束日期",
+  type: "date",
+  width: "minmax(160px, 0.55fr)",
 };
 const windowsPathField = {
   key: "windowsPath",
@@ -58,9 +64,10 @@ export const CATEGORIES = [
     fields: [
       statusField,
       titleField,
+      startDateField,
+      endDateField,
       descriptionField,
       todoField,
-      stageDateField,
       windowsPathField,
       serverPathField,
       githubUrlField,
@@ -75,9 +82,10 @@ export const CATEGORIES = [
     fields: [
       statusField,
       titleField,
+      startDateField,
+      endDateField,
       descriptionField,
       todoField,
-      stageDateField,
       windowsPathField,
       linuxPathField,
       serverPathField,
@@ -93,9 +101,10 @@ export const CATEGORIES = [
     fields: [
       statusField,
       titleField,
+      startDateField,
+      endDateField,
       descriptionField,
       todoField,
-      stageDateField,
       windowsPathField,
       linuxPathField,
       githubUrlField,
@@ -110,19 +119,9 @@ export const CATEGORIES = [
     fields: [
       statusField,
       titleField,
-      {
-        key: "registrationDate",
-        label: "报名日期",
-        type: "date",
-        width: "minmax(230px, 0.8fr)",
-      },
+      startDateField,
+      endDateField,
       todoField,
-      {
-        key: "endDate",
-        label: "结束日期",
-        type: "date",
-        width: "minmax(230px, 0.8fr)",
-      },
       {
         key: "platformUrl",
         label: "平台网址",
@@ -146,19 +145,9 @@ export const CATEGORIES = [
     fields: [
       statusField,
       titleField,
-      {
-        key: "registrationDate",
-        label: "报名日期",
-        type: "date",
-        width: "minmax(230px, 0.8fr)",
-      },
+      startDateField,
+      endDateField,
       todoField,
-      {
-        key: "endDate",
-        label: "结束日期",
-        type: "date",
-        width: "minmax(230px, 0.8fr)",
-      },
       {
         key: "platformUrl",
         label: "平台网址",

@@ -110,13 +110,13 @@ function createId(prefix = "item") {
 
 function normalizeRecord(record) {
   const rawTodo = Array.isArray(record.todoHistory) ? record.todoHistory : [];
-  const normalizedDate =
-    record.categoryId === "contest" || record.categoryId === PROJECT_CATEGORY_ID
-      ? { registrationDate: record.registrationDate || today() }
-      : { stageDate: record.stageDate || today() };
+  const normalizedStartDate =
+    record.startDate || record.registrationDate || record.stageDate || today();
+  const normalizedEndDate = record.endDate || normalizedStartDate || today();
   return {
     ...record,
-    ...normalizedDate,
+    startDate: normalizedStartDate,
+    endDate: normalizedEndDate,
     history: Array.isArray(record.history) ? record.history : [],
     dateHistory:
       record.dateHistory && typeof record.dateHistory === "object"
@@ -150,6 +150,7 @@ function isEmptyContestPlaceholder(record) {
     !hasText(record.title) &&
     !hasText(record.platformUrl) &&
     !hasText(record.officialUrl) &&
+    !hasText(record.startDate) &&
     !hasText(record.registrationDate) &&
     !hasText(record.endDate) &&
     !hasText(record.todo) &&
@@ -186,8 +187,8 @@ function normalizeCalendarItems(items) {
         .map((item) => ({
           id: String(item?.id || createId("calendar-item")),
           date: String(item?.date || ""),
-          startDate: String(item?.startDate || ""),
-          endDate: String(item?.endDate || ""),
+          startDate: String(item?.startDate || item?.date || today()),
+          endDate: String(item?.endDate || item?.startDate || item?.date || today()),
           title: String(item?.title || "其他事项"),
           description: String(item?.description || ""),
           categoryId: item?.categoryId || "other",
@@ -689,8 +690,8 @@ function App() {
       {
         id: createId("calendar-item"),
         date: date || "",
-        startDate: draft.startDate || "",
-        endDate: draft.endDate || "",
+        startDate: draft.startDate || today(),
+        endDate: draft.endDate || draft.startDate || today(),
         title,
         description: String(draft.description ?? ""),
         categoryId: draft.categoryId || "other",
@@ -721,8 +722,11 @@ function App() {
               categoryId: patch.categoryId || item.categoryId || "other",
               date: patch.date === undefined ? item.date || "" : patch.date || "",
               startDate:
-                patch.startDate === undefined ? item.startDate || "" : patch.startDate || "",
-              endDate: patch.endDate === undefined ? item.endDate || "" : patch.endDate || "",
+                patch.startDate === undefined ? item.startDate || today() : patch.startDate || today(),
+              endDate:
+                patch.endDate === undefined
+                  ? item.endDate || item.startDate || today()
+                  : patch.endDate || patch.startDate || item.startDate || today(),
               updatedAt: new Date().toISOString(),
             }
           : item,
@@ -771,8 +775,8 @@ function App() {
   function buildCalendarItemDraft(date = today(), overrides = {}) {
     return {
       date: date || "",
-      startDate: "",
-      endDate: "",
+      startDate: today(),
+      endDate: today(),
       title: "",
       description: "",
       categoryId: "other",
@@ -854,7 +858,7 @@ function App() {
           status: getDefaultCalendarStatusId(),
           date: today(),
           startDate: today(),
-          endDate: "",
+          endDate: today(),
           title: "今天要处理的事项",
           durationMinutes: "30",
           description: "注意事项或补充说明",
@@ -1129,8 +1133,8 @@ function App() {
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || getDefaultCalendarStatusId(),
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
-          startDate: createDraft.startDate || "",
-          endDate: createDraft.endDate || "",
+          startDate: createDraft.startDate || today(),
+          endDate: createDraft.endDate || createDraft.startDate || today(),
         });
       } else {
         addCalendarItem(createDraft.date || "", {
@@ -1139,8 +1143,8 @@ function App() {
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || getDefaultCalendarStatusId(),
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
-          startDate: createDraft.startDate || "",
-          endDate: createDraft.endDate || "",
+          startDate: createDraft.startDate || today(),
+          endDate: createDraft.endDate || createDraft.startDate || today(),
         });
       }
       closeCreateModal();
@@ -1571,10 +1575,11 @@ function App() {
     { key: "categoryName", label: "类别" },
     { key: "status", label: "状态" },
     { key: "title", label: "项目名称" },
+    { key: "startDate", label: "开始日期" },
+    { key: "endDate", label: "结束日期" },
     { key: "description", label: "中文解释" },
     { key: "stageDate", label: "阶段日期" },
     { key: "registrationDate", label: "报名日期" },
-    { key: "endDate", label: "结束日期" },
     { key: "windowsPath", label: "Windows路径" },
     { key: "linuxPath", label: "Linux路径" },
     { key: "serverPath", label: "服务器路径" },

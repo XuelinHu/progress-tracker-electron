@@ -426,7 +426,7 @@ export default function CalendarBoard({
       categoryId: "other",
       status: ACTIVE_STATUS,
       startDate: today(),
-      endDate: "",
+      endDate: today(),
       durationMinutes: "30",
     });
   }
