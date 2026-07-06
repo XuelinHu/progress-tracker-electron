@@ -486,14 +486,14 @@ export default function CalendarBoard({
     closeScheduleDraft();
   }
 
-  function handleRemoveFromDate(event, record, dateIso) {
+  function handleRemoveFromDate(event, record, dateIso, occurrenceId = "") {
     event.preventDefault();
     event.stopPropagation();
     const dateField = getPrimaryDateField(record);
     if (!record || !dateField) {
       return;
     }
-    removeRecordDate?.(record.id, dateField.key, dateIso);
+    removeRecordDate?.(record.id, dateField.key, dateIso, occurrenceId);
   }
 
   function handleAddCustomItem(event, dateIso) {
@@ -913,10 +913,12 @@ export default function CalendarBoard({
                           tabIndex={0}
                           title="从这个日期移除"
                           aria-label={`从 ${day.iso} 移除 ${getRecordTitle(record)}`}
-                          onClick={(event) => handleRemoveFromDate(event, record, day.iso)}
+                          onClick={(event) =>
+                            handleRemoveFromDate(event, record, day.iso, entry.occurrenceId)
+                          }
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
-                              handleRemoveFromDate(event, record, day.iso);
+                              handleRemoveFromDate(event, record, day.iso, entry.occurrenceId);
                             }
                           }}
                         >

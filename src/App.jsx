@@ -665,7 +665,7 @@ function App() {
     return historyId;
   }
 
-  function removeRecordDate(recordId, fieldKey, date) {
+  function removeRecordDate(recordId, fieldKey, date, historyId = "") {
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) {
@@ -673,15 +673,16 @@ function App() {
         }
 
         const dateHistory = record.dateHistory ?? {};
+        const nextHistory = historyId
+          ? (dateHistory[fieldKey] ?? []).filter((entry) => entry.id !== historyId)
+          : (dateHistory[fieldKey] ?? []).filter((entry) => entry.date !== date);
+        const shouldClearDate = record[fieldKey] === date && (!historyId || historyId.endsWith("-primary"));
         return {
           ...record,
-          [fieldKey]: "",
+          [fieldKey]: shouldClearDate ? "" : record[fieldKey],
           dateHistory: {
             ...dateHistory,
-            [fieldKey]: (dateHistory[fieldKey] ?? []).filter(
-              (entry) =>
-                entry.date !== date || !String(entry.item ?? "").includes("安排："),
-            ),
+            [fieldKey]: nextHistory,
           },
         };
       }),
