@@ -162,6 +162,33 @@ export const CATEGORIES = [
       },
     ],
   },
+  {
+    id: "activity",
+    name: "活动",
+    shortcut: "7",
+    accent: "#f59e0b",
+    tint: "#fef3c7",
+    fields: [
+      statusField,
+      titleField,
+      startDateField,
+      endDateField,
+      descriptionField,
+      todoField,
+      {
+        key: "platformUrl",
+        label: "活动链接",
+        type: "url",
+        width: "minmax(300px, 1fr)",
+      },
+      {
+        key: "officialUrl",
+        label: "官方页面",
+        type: "url",
+        width: "minmax(300px, 1fr)",
+      },
+    ],
+  },
 ];
 
 export const CATEGORY_BY_ID = Object.fromEntries(

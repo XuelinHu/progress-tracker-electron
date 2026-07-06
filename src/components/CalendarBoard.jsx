@@ -935,7 +935,7 @@ export default function CalendarBoard({
               return (
                 <div
                   key={entry.key}
-                  className="calendar-todo-card record-todo"
+                  className={`calendar-todo-card record-todo calendar-type-${record.categoryId}`}
                   draggable
                   onDragStart={(event) => handleRecordTodoDragStart(event, record, todo)}
                   onClick={() => openRecord?.(record)}
@@ -972,7 +972,7 @@ export default function CalendarBoard({
             return (
               <div
                 key={entry.key}
-                className="calendar-todo-card"
+                className={`calendar-todo-card calendar-type-${item.categoryId || "other"}`}
                 draggable
                 onDragStart={(event) => handleCalendarItemDragStart(event, item)}
                 onClick={(event) => handleEditCustomItem(event, item)}

@@ -68,7 +68,7 @@ const OTHER_ITEMS_PAGE = {
   id: "other-items",
   itemCategoryId: "other",
   name: "其他事项",
-  shortcut: "7",
+  shortcut: "8",
   accent: "#64748b",
   tint: "#f1f5f9",
 };
@@ -83,15 +83,23 @@ const CALENDAR_DONE_STATUS = {
   border: "#94a3b8",
 };
 const PROJECT_CATEGORY_ID = "project";
+const ACTIVITY_CATEGORY_ID = "activity";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
   ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "5" }
   : null;
+const ACTIVITY_NAVIGATION_ITEM = CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID]
+  ? { ...CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID], shortcut: "7" }
+  : null;
 const PROBLEM_NAVIGATION_ITEM = { ...PROBLEM_ITEMS_PAGE, shortcut: "6" };
-const OTHER_NAVIGATION_ITEM = { ...OTHER_ITEMS_PAGE, shortcut: "7" };
+const OTHER_NAVIGATION_ITEM = { ...OTHER_ITEMS_PAGE, shortcut: "8" };
 const NAVIGATION_ITEMS = [
-  ...CATEGORIES.filter((category) => category.id !== PROJECT_CATEGORY_ID),
+  ...CATEGORIES.filter(
+    (category) =>
+      category.id !== PROJECT_CATEGORY_ID && category.id !== ACTIVITY_CATEGORY_ID,
+  ),
   PROJECT_NAVIGATION_ITEM,
   PROBLEM_NAVIGATION_ITEM,
+  ACTIVITY_NAVIGATION_ITEM,
   OTHER_NAVIGATION_ITEM,
 ].filter(Boolean);
 
@@ -1515,7 +1523,19 @@ function App() {
       version: 5,
       exportedAt: new Date().toISOString(),
       scope: "pages-1-8",
-      includes: ["software", "patent", "paper", "contest", "graph", "calendar", "project", "status-config"],
+      includes: [
+        "software",
+        "patent",
+        "paper",
+        "contest",
+        "graph",
+        "calendar",
+        "project",
+        "problem",
+        "activity",
+        "other",
+        "status-config",
+      ],
       statusOptions,
       records,
       graph: {
@@ -2661,7 +2681,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 切换数据页，G 打开日历，F 打开知识图谱</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 / 8 切换数据页，G 打开日历，F 打开知识图谱</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新

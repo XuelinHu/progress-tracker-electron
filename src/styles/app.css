@@ -337,6 +337,16 @@ button {
   background: color-mix(in srgb, var(--record-tint) 24%, #ffffff);
 }
 
+.calendar-todo-card.calendar-type-activity {
+  animation: activityLegendPulse 1.45s ease-in-out infinite;
+  border-color: #f59e0b;
+  background:
+    linear-gradient(90deg, #facc15, #fef3c7 42%, #ffffff 72%, #f59e0b);
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.5),
+    0 0 14px rgba(245, 158, 11, 0.48);
+}
+
 .calendar-todo-source {
   color: #475569;
   font-size: 12px;
@@ -696,12 +706,43 @@ button {
   --record-type-bg: #f3e8ff;
 }
 
+.calendar-type-activity {
+  --record-type-bg: #fef3c7;
+}
+
+.calendar-day-record.calendar-type-activity {
+  animation: activityLegendPulse 1.45s ease-in-out infinite;
+  border-color: #f59e0b;
+  background:
+    linear-gradient(90deg, #facc15, #fef3c7 42%, #ffffff 72%, #f59e0b);
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.5),
+    0 0 14px rgba(245, 158, 11, 0.48);
+}
+
 .calendar-type-other {
   --record-type-bg: #f1f5f9;
 }
 
 .calendar-type-problem {
   --record-type-bg: #fee2e2;
+}
+
+@keyframes activityLegendPulse {
+  0%,
+  100% {
+    filter: brightness(1);
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.42),
+      0 0 10px rgba(245, 158, 11, 0.38);
+  }
+  50% {
+    filter: brightness(1.12);
+    box-shadow:
+      0 0 0 1px rgba(250, 204, 21, 0.78),
+      0 0 22px rgba(245, 158, 11, 0.78),
+      0 0 36px rgba(251, 191, 36, 0.48);
+  }
 }
 
 .calendar-day-record-category {

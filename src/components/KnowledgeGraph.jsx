@@ -193,7 +193,11 @@ function RecordNode({ data }) {
   return (
     <>
       <Handle type="target" position={Position.Left} />
-      <div className="graph-node-content">
+      <div
+        className={`graph-node-content ${
+          data.categoryId === "activity" ? "activity-legend" : ""
+        }`}
+      >
         <div
           className="graph-node-category-marker"
           style={{
@@ -706,6 +710,7 @@ function GraphCanvas({
           type: "record",
           data: {
             ...node.data,
+            categoryId: node.data.categoryId,
             categoryName: category.name,
             categoryAccent: category.accent,
             categoryTint: category.tint,
@@ -1264,7 +1269,9 @@ export default function KnowledgeGraph({
             return (
               <article
                 key={record.id}
-                className={`graph-source-item ${inGraph ? "in-graph" : ""}`}
+                className={`graph-source-item ${inGraph ? "in-graph" : ""} ${
+                  record.categoryId === "activity" ? "activity-legend" : ""
+                }`}
                 draggable={!inGraph}
                 onDragStart={(event) => {
                   event.dataTransfer.setData(DRAG_TYPE, record.id);
