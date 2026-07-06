@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
@@ -256,6 +256,7 @@ export default function CalendarBoard({
   const [dropTarget, setDropTarget] = useState("");
   const [tooltip, setTooltip] = useState(null);
   const [scheduleDraft, setScheduleDraft] = useState(null);
+  const scheduledRecordDateRef = useRef(new Set());
   const todayIso = today();
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -395,6 +396,12 @@ export default function CalendarBoard({
         const dateField = getPrimaryDateField(record);
         const todoItem = String(parsed.item ?? "").trim();
         if (record && dateField && todoItem) {
+          const alreadyScheduled = (record.dateHistory?.[dateField.key] ?? []).some(
+            (entry) => entry.date === dateIso && entry.item === todoItem,
+          );
+          if (alreadyScheduled) {
+            return;
+          }
           updateRecordDate?.(record.id, dateField.key, dateIso, todoItem);
           updateRecord?.(record.id, { status: ACTIVE_STATUS });
         }
@@ -412,6 +419,10 @@ export default function CalendarBoard({
     }
 
     const existsOnDate = recordHasDate(record, dateField, dateIso);
+    const recordDateKey = `${record.id}:${dateIso}`;
+    if (existsOnDate || scheduledRecordDateRef.current.has(recordDateKey)) {
+      return;
+    }
     const todoItem = `${dateIso} 日历事项：${getRecordTitle(record)}`;
     setScheduleDraft({
       recordId: record.id,
@@ -464,6 +475,7 @@ export default function CalendarBoard({
       ...(scheduleDraft.existsOnDate ? {} : { [scheduleDraft.fieldKey]: scheduleDraft.date }),
       status: nextStatus,
     });
+    scheduledRecordDateRef.current.add(`${scheduleDraft.recordId}:${scheduleDraft.date}`);
     closeScheduleDraft();
   }
 
