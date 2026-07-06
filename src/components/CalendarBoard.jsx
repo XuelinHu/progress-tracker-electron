@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
@@ -256,7 +256,6 @@ export default function CalendarBoard({
   const [dropTarget, setDropTarget] = useState("");
   const [tooltip, setTooltip] = useState(null);
   const [scheduleDraft, setScheduleDraft] = useState(null);
-  const scheduledRecordDateRef = useRef(new Set());
   const todayIso = today();
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -291,13 +290,32 @@ export default function CalendarBoard({
   const recordsByDate = useMemo(() => {
     const groups = new Map();
     for (const record of records) {
-      const date = getRecordDate(record);
-      if (!date) {
-        continue;
+      const dateField = getPrimaryDateField(record);
+      const seenPrimaryDate = new Set();
+      const historyEntries = record.dateHistory?.[dateField?.key] ?? [];
+      for (const entry of historyEntries) {
+        if (!entry?.date) {
+          continue;
+        }
+        seenPrimaryDate.add(entry.date);
+        const list = groups.get(entry.date) ?? [];
+        list.push({
+          record,
+          occurrenceId: entry.id || `${record.id}-${entry.date}-${list.length}`,
+          occurrenceItem: entry.item || "",
+        });
+        groups.set(entry.date, list);
       }
-      const list = groups.get(date) ?? [];
-      list.push(record);
-      groups.set(date, list);
+      const date = getRecordDate(record);
+      if (date && !seenPrimaryDate.has(date)) {
+        const list = groups.get(date) ?? [];
+        list.push({
+          record,
+          occurrenceId: `${record.id}-${date}-primary`,
+          occurrenceItem: "",
+        });
+        groups.set(date, list);
+      }
     }
     return groups;
   }, [records]);
@@ -396,12 +414,6 @@ export default function CalendarBoard({
         const dateField = getPrimaryDateField(record);
         const todoItem = String(parsed.item ?? "").trim();
         if (record && dateField && todoItem) {
-          const alreadyScheduled = (record.dateHistory?.[dateField.key] ?? []).some(
-            (entry) => entry.date === dateIso && entry.item === todoItem,
-          );
-          if (alreadyScheduled) {
-            return;
-          }
           updateRecordDate?.(record.id, dateField.key, dateIso, todoItem);
           updateRecord?.(record.id, { status: ACTIVE_STATUS });
         }
@@ -419,10 +431,6 @@ export default function CalendarBoard({
     }
 
     const existsOnDate = recordHasDate(record, dateField, dateIso);
-    const recordDateKey = `${record.id}:${dateIso}`;
-    if (existsOnDate || scheduledRecordDateRef.current.has(recordDateKey)) {
-      return;
-    }
     const todoItem = `${dateIso} 日历事项：${getRecordTitle(record)}`;
     setScheduleDraft({
       recordId: record.id,
@@ -475,7 +483,6 @@ export default function CalendarBoard({
       ...(scheduleDraft.existsOnDate ? {} : { [scheduleDraft.fieldKey]: scheduleDraft.date }),
       status: nextStatus,
     });
-    scheduledRecordDateRef.current.add(`${scheduleDraft.recordId}:${scheduleDraft.date}`);
     closeScheduleDraft();
   }
 
@@ -667,7 +674,7 @@ export default function CalendarBoard({
             const dayRecords = day.iso ? recordsByDate.get(day.iso) ?? [] : [];
             const dayCustomItems = day.iso ? calendarItemsByDate.get(day.iso) ?? [] : [];
             const visibleEntries = [
-              ...dayRecords.map((record) => ({ type: "record", record })),
+              ...dayRecords.map((occurrence) => ({ type: "record", ...occurrence })),
               ...dayCustomItems.map((item) => ({ type: "custom", item })),
             ];
             if (day.blank) {
@@ -823,7 +830,7 @@ export default function CalendarBoard({
                         <span>字段：{dateField?.label || "日期"}</span>
                         <DetailSection
                           title="今天做什么"
-                          items={details.arrangements}
+                          items={entry.occurrenceItem ? [entry.occurrenceItem] : details.arrangements}
                           emptyText="未填写安排"
                         />
                         <DetailSection
@@ -845,7 +852,7 @@ export default function CalendarBoard({
                     );
                     return (
                       <div
-                        key={record.id}
+                        key={entry.occurrenceId || record.id}
                         className={`calendar-day-record calendar-type-${record.categoryId} ${
                           calendarTodoDone ? "done" : ""
                         }`}
