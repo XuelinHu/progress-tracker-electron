@@ -1258,7 +1258,7 @@ button {
 .date-history-item-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 18px;
+  grid-template-columns: minmax(0, 1fr) 42px;
   align-items: center;
   gap: 4px;
 }
@@ -1685,11 +1685,19 @@ button {
 
 .date-item-copyable {
   min-width: 0;
-  grid-template-columns: 20px minmax(0, 1fr);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px;
 }
 
 .date-item-copyable > .copy-icon-button {
+  grid-column: 2;
+  grid-row: 1;
   margin-top: 6px;
+}
+
+.date-item-copyable > :not(.copy-icon-button) {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .history-item-copyable {

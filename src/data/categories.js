@@ -3,7 +3,7 @@ const todoField = {
   key: "todo",
   label: "Todo",
   type: "textarea",
-  width: "minmax(230px, 0.9fr)",
+  width: "minmax(340px, 1.35fr)",
 };
 const titleField = {
   key: "title",
@@ -33,25 +33,25 @@ const windowsPathField = {
   key: "windowsPath",
   label: "Windows路径",
   type: "path",
-  width: "minmax(280px, 1fr)",
+  width: "minmax(180px, 0.58fr)",
 };
 const linuxPathField = {
   key: "linuxPath",
   label: "Linux路径",
   type: "path",
-  width: "minmax(260px, 1fr)",
+  width: "minmax(170px, 0.55fr)",
 };
 const serverPathField = {
   key: "serverPath",
   label: "服务器绝对路径",
   type: "path",
-  width: "minmax(280px, 1fr)",
+  width: "minmax(190px, 0.62fr)",
 };
 const githubUrlField = {
   key: "githubUrl",
   label: "GitHub地址",
   type: "text",
-  width: "minmax(300px, 1fr)",
+  width: "minmax(190px, 0.62fr)",
 };
 
 export const CATEGORIES = [

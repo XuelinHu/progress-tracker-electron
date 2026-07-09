@@ -425,12 +425,17 @@ td.field-type-path,
 td.field-type-url,
 th.field-type-path,
 th.field-type-url {
-  min-width: 230px;
+  min-width: 170px;
 }
 
 td.field-type-longtext,
 th.field-type-longtext {
   min-width: 260px;
+}
+
+td.field-key-todo,
+th.field-key-todo {
+  min-width: 340px;
 }
 
 td.actions-cell {

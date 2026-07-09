@@ -266,7 +266,7 @@
     const headRow = document.createElement("tr");
     category.fields.forEach((field) => {
       const th = document.createElement("th");
-      th.className = `field-type-${field.type}`;
+      th.className = `field-type-${field.type} field-key-${field.key}`;
       th.textContent = field.label;
       headRow.appendChild(th);
     });
@@ -287,6 +287,7 @@
       category.fields.forEach((field) => {
         const td = document.createElement("td");
         td.classList.add(`field-type-${field.type}`);
+        td.classList.add(`field-key-${field.key}`);
         if (field.key === category.dueDateField) {
           const className = dateClass(item[field.key]);
           if (className) {
