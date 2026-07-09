@@ -326,7 +326,7 @@ function estimateTextRows(value, fieldKey = "") {
   const inferredRows = text
     .split(/\r\n|\r|\n/)
     .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
-  const minRows = fieldKey === "title" ? 3 : fieldKey === "description" ? 5 : 2;
+  const minRows = fieldKey === "title" ? 2 : fieldKey === "description" ? 5 : 2;
   return Math.max(minRows, inferredRows);
 }
 
@@ -353,20 +353,31 @@ function DaysSince({ dateField, record }) {
 }
 
 function buildDisplayFields(fields) {
-  if (!Array.isArray(fields) || fields.length < 8) {
+  if (!Array.isArray(fields) || fields.length < 7) {
     return fields;
   }
+  const mergeStartIndex = fields.length === 7 ? 5 : 6;
+  const firstField = fields[mergeStartIndex];
+  const secondField = fields[mergeStartIndex + 1];
+  if (!firstField || !secondField) {
+    return fields;
+  }
+  const tailFields = fields.slice(mergeStartIndex + 2);
+  const shouldHideTail =
+    tailFields.length === 1 &&
+    ((firstField.type === "path" && secondField.type === "path" && tailFields[0].type === "path") ||
+      (firstField.type === "url" && secondField.type === "url" && tailFields[0].type === "url"));
   return [
-    ...fields.slice(0, 6),
+    ...fields.slice(0, mergeStartIndex),
     {
-      key: `combined-${fields[6].key}-${fields[7].key}`,
+      key: `combined-${firstField.key}-${secondField.key}`,
       type: "combined",
-      label: `${fields[6].label} / ${fields[7].label}`,
+      label: `${firstField.label} / ${secondField.label}`,
       width: "minmax(360px, 1.2fr)",
-      fields: [fields[6], fields[7]],
-      displayLabel: `7/8. ${fields[6].label} / ${fields[7].label}`,
+      fields: [firstField, secondField],
+      displayLabel: `${mergeStartIndex + 1}/${mergeStartIndex + 2}. ${firstField.label} / ${secondField.label}`,
     },
-    ...fields.slice(8),
+    ...(shouldHideTail ? [] : tailFields),
   ];
 }
 
@@ -2714,7 +2725,7 @@ function App() {
         <div className="title-github-cell">
           <CopyableControl
             value={record.title}
-            label="GitHub项目名称"
+            label="项目名称"
             className="cell-copyable-control title-copyable-control"
           >
             <textarea
@@ -2723,12 +2734,12 @@ function App() {
               value={record.title ?? ""}
               onFocus={() => setSelectedId(record.id)}
               onChange={(event) => updateRecord(record.id, { title: event.target.value })}
-              aria-label={`${getRecordTitle(record)} GitHub项目名称`}
+              aria-label={`${getRecordTitle(record)} 项目名称`}
             />
           </CopyableControl>
           <CopyableControl
             value={record.githubUrl}
-            label="GitHub地址"
+            label="仓库地址"
             className="cell-copyable-control title-copyable-control"
           >
             <textarea
@@ -2737,8 +2748,8 @@ function App() {
               value={record.githubUrl ?? ""}
               onFocus={() => setSelectedId(record.id)}
               onChange={(event) => updateRecord(record.id, { githubUrl: event.target.value })}
-              aria-label={`${getRecordTitle(record)} GitHub地址`}
-              placeholder="GitHub地址"
+              aria-label={`${getRecordTitle(record)} 仓库地址`}
+              placeholder="仓库地址"
             />
           </CopyableControl>
         </div>

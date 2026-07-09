@@ -7,7 +7,7 @@ const todoField = {
 };
 const titleField = {
   key: "title",
-  label: "GitHub项目名称",
+  label: "项目名称",
   type: "text",
   width: "minmax(230px, 1fr)",
 };
