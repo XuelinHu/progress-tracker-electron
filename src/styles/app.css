@@ -1088,6 +1088,7 @@ button {
   min-height: 34px;
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0 8px;
   border-right: 1px solid #d9e0eb;
   color: #475569;
@@ -1114,7 +1115,7 @@ button {
   min-height: 26px;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 4px;
   padding: 0;
   border: 0;
@@ -1149,9 +1150,11 @@ button {
 .table-cell {
   min-width: 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  justify-content: center;
   padding: 5px 6px;
   border-right: 1px solid #edf1f6;
+  text-align: center;
 }
 
 .row-action-cell {
@@ -1216,6 +1219,7 @@ button {
   color: #172033;
   outline: 0;
   font-size: 12px;
+  text-align: center;
 }
 
 .cell-input {
@@ -1244,6 +1248,7 @@ button {
   display: grid;
   grid-template-rows: auto auto;
   gap: 4px;
+  width: 100%;
 }
 
 .date-history-row .date-input {
@@ -1257,8 +1262,9 @@ button {
 
 .date-history-item-row {
   min-width: 0;
+  width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) 40px;
   align-items: center;
   gap: 4px;
 }
@@ -1478,14 +1484,17 @@ button {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   font-size: 12px;
+  text-align: center;
 }
 
 .todo-cell {
   width: 100%;
   min-width: 0;
   display: grid;
+  align-content: center;
   gap: 4px;
   position: relative;
+  text-align: center;
 }
 
 .todo-done-popover {
@@ -1531,6 +1540,7 @@ button {
 .todo-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   min-width: 0;
   min-height: 24px;
@@ -1546,6 +1556,7 @@ button {
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-wrap;
+  text-align: center;
 }
 
 .todo-item:hover {
@@ -1687,6 +1698,7 @@ button {
   min-width: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 18px;
+  align-items: start;
 }
 
 .date-item-copyable > .copy-icon-button {

@@ -406,7 +406,7 @@ th,
 td {
   border-bottom: 1px solid var(--line);
   padding: 8px 9px;
-  text-align: left;
+  text-align: center;
   vertical-align: middle;
 }
 
@@ -459,6 +459,7 @@ tbody select {
   min-width: 116px;
   border-color: transparent;
   background: transparent;
+  text-align: center;
 }
 
 tbody input {

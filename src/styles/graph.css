@@ -823,6 +823,7 @@
   display: grid;
   align-items: center;
   gap: 4px;
+  width: 100%;
 }
 
 .graph-detail-form .date-history-row .graph-form-control {
@@ -831,12 +832,14 @@
 }
 
 .graph-detail-form .date-history-item-row {
-  grid-template-columns: minmax(0, 1fr) 50px;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 48px;
 }
 
 .graph-detail-form .date-item-copyable {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 22px;
+  align-items: start;
 }
 
 .graph-detail-form .date-item-copyable > .copy-icon-button {
