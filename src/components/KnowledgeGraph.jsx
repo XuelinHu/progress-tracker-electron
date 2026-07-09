@@ -47,8 +47,9 @@ function estimateTextRows(value, fieldKey = "") {
   const text = String(value ?? "");
   const charsPerLine =
     fieldKey === "title" ? 16 : fieldKey === "description" ? 18 : 42;
+  const minRows = fieldKey === "title" || fieldKey === "description" ? 5 : 2;
   return Math.max(
-    2,
+    minRows,
     text
       .split(/\r\n|\r|\n/)
       .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0),

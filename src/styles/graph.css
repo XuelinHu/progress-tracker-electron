@@ -833,18 +833,19 @@
 
 .graph-detail-form .date-history-item-row {
   width: 100%;
-  grid-template-columns: minmax(0, 1fr) 48px;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 1fr);
 }
 
 .graph-detail-form .date-item-copyable {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22px;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 1fr);
   align-items: start;
 }
 
 .graph-detail-form .date-item-copyable > .copy-icon-button {
   grid-column: 2;
   grid-row: 1;
+  width: 100%;
 }
 
 .graph-detail-form .date-item-copyable > :not(.copy-icon-button) {
@@ -854,7 +855,7 @@
 
 .graph-detail-form .date-confirm-btn {
   flex: 0 0 auto;
-  width: 22px;
+  width: 100%;
   height: 22px;
   display: inline-flex;
   align-items: center;
