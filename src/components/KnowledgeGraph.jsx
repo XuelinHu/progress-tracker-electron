@@ -561,6 +561,7 @@ function GraphField({
         resetKey={`${record.id}-${field.key}`}
         inputClassName="graph-form-control"
         itemClassName="graph-form-control"
+        onDateValueChange={(date) => onChange(field.key, date)}
         onDateChange={(date, item) => onDateChange(field.key, date, item)}
         onHistoryItemChange={(historyId, item) =>
           onHistoryItemChange(field.key, historyId, item)

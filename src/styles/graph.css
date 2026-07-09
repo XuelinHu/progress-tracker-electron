@@ -592,6 +592,14 @@
   display: block;
 }
 
+.react-flow__node:has(.graph-node-content:hover) {
+  z-index: 2147483000 !important;
+}
+
+.react-flow__node:hover {
+  z-index: 2147483000 !important;
+}
+
 .react-flow__handle {
   width: 6px;
   height: 6px;

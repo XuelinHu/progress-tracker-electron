@@ -1109,6 +1109,10 @@ button {
   line-height: 1.25;
 }
 
+.table-head.field-title::after {
+  content: " / GitHub地址";
+}
+
 .action-head {
   justify-content: center;
   padding: 0;
@@ -1671,10 +1675,10 @@ button {
   width: 18px;
   height: 18px;
   padding: 0;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #1d4ed8;
   border-radius: 4px;
-  background: #ffffff;
-  color: #1d4ed8;
+  background: #dbeafe;
+  color: #1e3a8a;
   cursor: pointer;
 }
 
@@ -1685,9 +1689,9 @@ button {
 }
 
 .copy-icon-button:hover:not(:disabled) {
-  border-color: #1e40af;
-  color: #1e40af;
-  background: #eff6ff;
+  border-color: #172554;
+  color: #ffffff;
+  background: #1d4ed8;
 }
 
 .copy-icon-button:disabled {
@@ -1705,7 +1709,31 @@ button {
 }
 
 .cell-copyable-control > .copy-icon-button {
-  margin-top: 6px;
+  align-self: center;
+  margin-top: 0;
+}
+
+.title-github-cell {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+}
+
+.title-copyable-control {
+  align-items: center;
+}
+
+.title-copyable-control > .copy-icon-button {
+  align-self: center;
+  margin-top: 0;
+}
+
+.title-github-url-input {
+  min-height: 32px;
+  max-height: 58px;
+  font-size: 11px;
 }
 
 .date-item-copyable {
@@ -1719,7 +1747,8 @@ button {
   grid-column: 2;
   grid-row: 1;
   width: 100%;
-  margin-top: 6px;
+  align-self: center;
+  margin-top: 0;
 }
 
 .date-item-copyable > :not(.copy-icon-button) {

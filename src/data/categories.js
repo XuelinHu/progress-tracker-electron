@@ -47,13 +47,6 @@ const serverPathField = {
   type: "path",
   width: "minmax(190px, 0.62fr)",
 };
-const githubUrlField = {
-  key: "githubUrl",
-  label: "GitHub地址",
-  type: "text",
-  width: "minmax(190px, 0.62fr)",
-};
-
 export const CATEGORIES = [
   {
     id: "software",
@@ -70,7 +63,6 @@ export const CATEGORIES = [
       todoField,
       windowsPathField,
       serverPathField,
-      githubUrlField,
     ],
   },
   {
@@ -89,7 +81,6 @@ export const CATEGORIES = [
       windowsPathField,
       linuxPathField,
       serverPathField,
-      githubUrlField,
     ],
   },
   {
@@ -107,7 +98,6 @@ export const CATEGORIES = [
       todoField,
       windowsPathField,
       linuxPathField,
-      githubUrlField,
     ],
   },
   {

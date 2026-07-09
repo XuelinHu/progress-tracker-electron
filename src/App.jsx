@@ -438,6 +438,7 @@ function App() {
       }
       const haystack = [
         ...activeCategory.fields.map((field) => record[field.key]),
+        record.githubUrl,
         ...Object.values(record.dateHistory ?? {}).flatMap((entries) =>
           (entries ?? []).flatMap((entry) => [entry.date, entry.item]),
         ),
@@ -953,6 +954,7 @@ function App() {
         example[field.key] = today();
       } else if (field.key === "title") {
         example[field.key] = "railway-example-project";
+        example.githubUrl = "https://github.com/XuelinHu/railway-example-project";
       } else if (field.key === "description") {
         example[field.key] = `${category.name}示例项目说明`;
       } else if (field.key === "todo") {
@@ -961,8 +963,6 @@ function App() {
         example[field.key] = "/ds1/workspace/ai/railway-example-project";
       } else if (field.key === "windowsPath") {
         example[field.key] = "D:\\workspace\\ai\\railway-example-project";
-      } else if (field.key === "githubUrl") {
-        example[field.key] = "https://github.com/XuelinHu/railway-example-project";
       } else if (field.key === "platformUrl") {
         example[field.key] = "https://example.com/platform";
       } else if (field.key === "officialUrl") {
@@ -1706,10 +1706,15 @@ function App() {
   }
 
   function exportCategoryCsv() {
+    const exportFields = activeCategory.fields.flatMap((field) =>
+      field.key === "title"
+        ? [field, { key: "githubUrl", label: "GitHub地址" }]
+        : [field],
+    );
     const rows = [
-      [...activeCategory.fields.map((field) => field.label), "历史记录数"],
+      [...exportFields.map((field) => field.label), "历史记录数"],
       ...categoryRecords.map((record) => [
-        ...activeCategory.fields.map((field) => record[field.key]),
+        ...exportFields.map((field) => record[field.key]),
         record.history?.length ?? 0,
       ]),
     ];
@@ -2532,6 +2537,7 @@ function App() {
           inputClassName="cell-input date-input"
           itemClassName="cell-input date-item-input"
           onFocus={() => setSelectedId(record.id)}
+          onDateValueChange={(date) => updateRecord(record.id, { [field.key]: date })}
           onDateChange={(date, item) =>
             updateRecordDate(record.id, field.key, date, item)
           }
@@ -2595,6 +2601,42 @@ function App() {
               onFocus={() => setSelectedId(record.id)}
               onChange={(event) => updateRecord(record.id, { [field.key]: event.target.value })}
               aria-label={`${getRecordTitle(record)} ${field.label}`}
+            />
+          </CopyableControl>
+        </div>
+      );
+    }
+
+    if (field.key === "title") {
+      return (
+        <div className="title-github-cell">
+          <CopyableControl
+            value={record.title}
+            label="GitHub项目名称"
+            className="cell-copyable-control title-copyable-control"
+          >
+            <textarea
+              className="cell-input cell-textarea"
+              rows={estimateTextRows(record.title, "title")}
+              value={record.title ?? ""}
+              onFocus={() => setSelectedId(record.id)}
+              onChange={(event) => updateRecord(record.id, { title: event.target.value })}
+              aria-label={`${getRecordTitle(record)} GitHub项目名称`}
+            />
+          </CopyableControl>
+          <CopyableControl
+            value={record.githubUrl}
+            label="GitHub地址"
+            className="cell-copyable-control title-copyable-control"
+          >
+            <textarea
+              className="cell-input cell-textarea title-github-url-input"
+              rows={2}
+              value={record.githubUrl ?? ""}
+              onFocus={() => setSelectedId(record.id)}
+              onChange={(event) => updateRecord(record.id, { githubUrl: event.target.value })}
+              aria-label={`${getRecordTitle(record)} GitHub地址`}
+              placeholder="GitHub地址"
             />
           </CopyableControl>
         </div>

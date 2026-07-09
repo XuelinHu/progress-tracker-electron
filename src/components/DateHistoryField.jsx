@@ -18,6 +18,7 @@ export default function DateHistoryField({
   inputClassName,
   itemClassName,
   onFocus,
+  onDateValueChange,
   onDateChange,
   onHistoryItemChange,
   onDeleteHistory,
@@ -39,6 +40,12 @@ export default function DateHistoryField({
     onDateChange(date, item.trim());
     setItem("");
     setDraftDate(date);
+  }
+
+  function handleDateInputChange(event) {
+    const nextDate = event.target.value;
+    setDraftDate(nextDate);
+    onDateValueChange?.(nextDate);
   }
 
   function handleItemKeydown(event) {
@@ -84,7 +91,7 @@ export default function DateHistoryField({
           type="date"
           value={draftDate}
           onFocus={onFocus}
-          onChange={(e) => setDraftDate(e.target.value)}
+          onChange={handleDateInputChange}
           aria-label={label}
         />
         <div className="date-history-item-row">
