@@ -286,7 +286,7 @@ function buildMonthDays(monthDate) {
 export default function CalendarBoard({
   records,
   calendarItems = [],
-  statusOptions,
+  statusOptions = [],
   updateRecord,
   updateRecordDate,
   removeRecordDate,
@@ -299,6 +299,7 @@ export default function CalendarBoard({
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [dropTarget, setDropTarget] = useState("");
   const [tooltip, setTooltip] = useState(null);
   const [scheduleDraft, setScheduleDraft] = useState(null);
@@ -313,6 +314,9 @@ export default function CalendarBoard({
     const keyword = searchTerm.trim().toLowerCase();
     return records.filter((record) => {
       if (categoryFilter !== "all" && record.categoryId !== categoryFilter) {
+        return false;
+      }
+      if (statusFilter !== "all" && record.status !== statusFilter) {
         return false;
       }
       if (!keyword) {
@@ -331,7 +335,7 @@ export default function CalendarBoard({
         .toLowerCase()
         .includes(keyword);
     });
-  }, [categoryFilter, records, searchTerm]);
+  }, [categoryFilter, records, searchTerm, statusFilter]);
 
   const recordsByDate = useMemo(() => {
     const groups = new Map();
@@ -551,7 +555,7 @@ export default function CalendarBoard({
   function handleAddUnscheduledItem() {
     openCalendarItemModal?.("", {
       categoryId: "other",
-      status: ACTIVE_STATUS,
+      status: DONE_STATUS,
       startDate: today(),
       endDate: today(),
       durationMinutes: "30",
@@ -582,6 +586,13 @@ export default function CalendarBoard({
     openCalendarItemModal?.(dateIso, {
       title: getRecordTitle(record),
       description: record.description || "",
+      todo: record.todo || "",
+      githubUrl: record.githubUrl || "",
+      platformUrl: record.platformUrl || "",
+      officialUrl: record.officialUrl || "",
+      windowsPath: record.windowsPath || "",
+      linuxPath: record.linuxPath || "",
+      serverPath: record.serverPath || "",
       categoryId: category.id,
       status: ACTIVE_STATUS,
     });
@@ -620,6 +631,13 @@ export default function CalendarBoard({
       durationMinutes: item.durationMinutes || "",
       startDate: item.startDate || "",
       endDate: item.endDate || "",
+      todo: item.todo || "",
+      githubUrl: item.githubUrl || "",
+      platformUrl: item.platformUrl || "",
+      officialUrl: item.officialUrl || "",
+      windowsPath: item.windowsPath || "",
+      linuxPath: item.linuxPath || "",
+      serverPath: item.serverPath || "",
     });
   }
 
@@ -655,6 +673,19 @@ export default function CalendarBoard({
           {CATEGORIES.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
+            </option>
+          ))}
+        </select>
+        <select
+          className="calendar-filter"
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value)}
+          aria-label="日历状态筛选"
+        >
+          <option value="all">全部状态</option>
+          {statusOptions.map((status) => (
+            <option key={status.id} value={status.id}>
+              {status.label}
             </option>
           ))}
         </select>

@@ -91,6 +91,15 @@ const CALENDAR_DONE_STATUS = {
   bg: "#e2e8f0",
   border: "#94a3b8",
 };
+const CALENDAR_ITEM_FIELD_KEYS = [
+  "todo",
+  "githubUrl",
+  "platformUrl",
+  "officialUrl",
+  "windowsPath",
+  "linuxPath",
+  "serverPath",
+];
 const PROJECT_CATEGORY_ID = "project";
 const ACTIVITY_CATEGORY_ID = "activity";
 const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
@@ -203,18 +212,25 @@ function loadGraph() {
 function normalizeCalendarItems(items) {
   return Array.isArray(items)
     ? items
-        .map((item) => ({
-          id: String(item?.id || createId("calendar-item")),
-          date: String(item?.date || ""),
-          startDate: String(item?.startDate || item?.date || today()),
-          endDate: String(item?.endDate || item?.startDate || item?.date || today()),
-          title: String(item?.title || "其他事项"),
-          description: String(item?.description || ""),
-          categoryId: item?.categoryId || "other",
-          status: item?.status || CALENDAR_DONE_STATUS.id,
-          durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
-          createdAt: item?.createdAt || new Date().toISOString(),
-        }))
+        .map((item) => {
+          const normalized = {
+            id: String(item?.id || createId("calendar-item")),
+            date: String(item?.date || ""),
+            startDate: String(item?.startDate || item?.date || today()),
+            endDate: String(item?.endDate || item?.startDate || item?.date || today()),
+            title: String(item?.title || "其他事项"),
+            description: String(item?.description || ""),
+            categoryId: item?.categoryId || "other",
+            status: item?.status || CALENDAR_DONE_STATUS.id,
+            durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
+            createdAt: item?.createdAt || new Date().toISOString(),
+            updatedAt: item?.updatedAt || item?.createdAt || new Date().toISOString(),
+          };
+          for (const key of CALENDAR_ITEM_FIELD_KEYS) {
+            normalized[key] = String(item?.[key] ?? "");
+          }
+          return normalized;
+        })
         .filter((item) => item.title)
     : [];
 }
@@ -226,6 +242,12 @@ function normalizeDurationMinutes(value) {
   }
   const minutes = Number.parseInt(raw, 10);
   return Number.isFinite(minutes) && minutes > 0 ? String(minutes) : "";
+}
+
+function getCalendarItemSharedFields(source = {}) {
+  return Object.fromEntries(
+    CALENDAR_ITEM_FIELD_KEYS.map((key) => [key, String(source?.[key] ?? "")]),
+  );
 }
 
 function getCalendarItemPage(categoryId) {
@@ -455,6 +477,27 @@ function App() {
     () => Object.fromEntries(calendarStatusOptions.map((status) => [status.id, status])),
     [calendarStatusOptions],
   );
+  const calendarQuickStatuses = useMemo(() => {
+    const pickStatus = (label, fallback) =>
+      calendarStatusOptions.find((status) => status.label === label || status.id === label) ?? fallback;
+    return [
+      pickStatus("进行中", {
+        id: "进行中",
+        label: "进行中",
+        color: "#92400e",
+        bg: "#fef3c7",
+        border: "#f59e0b",
+      }),
+      pickStatus("已完成", CALENDAR_DONE_STATUS),
+      pickStatus("结束", {
+        id: "结束",
+        label: "结束",
+        color: "#334155",
+        bg: "#f1f5f9",
+        border: "#94a3b8",
+      }),
+    ];
+  }, [calendarStatusOptions]);
   const statusPriority = useMemo(
     () => new Map(statusOptions.map((status) => [status.id, status.priority])),
     [statusOptions],
@@ -789,9 +832,11 @@ function App() {
         title,
         description: String(draft.description ?? ""),
         categoryId: draft.categoryId || "other",
-        status: draft.status || getDefaultCalendarStatusId(),
+        status: draft.status || CALENDAR_DONE_STATUS.id,
         durationMinutes: normalizeDurationMinutes(draft.durationMinutes),
+        ...getCalendarItemSharedFields(draft),
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       },
     ]);
   }
@@ -808,7 +853,7 @@ function App() {
                 patch.description === undefined
                   ? item.description
                   : String(patch.description ?? ""),
-              status: patch.status || item.status || getDefaultCalendarStatusId(),
+              status: patch.status || item.status || CALENDAR_DONE_STATUS.id,
               durationMinutes:
                 patch.durationMinutes === undefined
                   ? normalizeDurationMinutes(item.durationMinutes)
@@ -821,6 +866,12 @@ function App() {
                 patch.endDate === undefined
                   ? item.endDate || item.startDate || today()
                   : patch.endDate || patch.startDate || item.startDate || today(),
+              ...Object.fromEntries(
+                CALENDAR_ITEM_FIELD_KEYS.map((key) => [
+                  key,
+                  patch[key] === undefined ? String(item[key] ?? "") : String(patch[key] ?? ""),
+                ]),
+              ),
               updatedAt: new Date().toISOString(),
             }
           : item,
@@ -840,10 +891,11 @@ function App() {
       title: item.title,
       description: item.description,
       categoryId: item.categoryId,
-      status: item.status || getDefaultCalendarStatusId(),
+      status: item.status || CALENDAR_DONE_STATUS.id,
       durationMinutes: normalizeDurationMinutes(item.durationMinutes),
       startDate: item.startDate || "",
       endDate: item.endDate || "",
+      ...getCalendarItemSharedFields(item),
     });
   }
 
@@ -857,7 +909,7 @@ function App() {
       title,
       description: otherItemDraft.description.trim(),
       categoryId: "other",
-      status: getDefaultCalendarStatusId(),
+      status: CALENDAR_DONE_STATUS.id,
     });
     setOtherItemDraft((current) => ({
       ...current,
@@ -867,15 +919,17 @@ function App() {
   }
 
   function buildCalendarItemDraft(date = today(), overrides = {}) {
+    const defaultDate = date || today();
     return {
-      date: date || "",
+      date: defaultDate,
       startDate: today(),
       endDate: today(),
       title: "",
       description: "",
       categoryId: "other",
-      status: getDefaultCalendarStatusId(),
+      status: CALENDAR_DONE_STATUS.id,
       durationMinutes: "",
+      ...getCalendarItemSharedFields(overrides),
       ...overrides,
     };
   }
@@ -949,12 +1003,16 @@ function App() {
     if (createModal.mode === "calendar") {
       return JSON.stringify(
         {
-          status: getDefaultCalendarStatusId(),
+          status: CALENDAR_DONE_STATUS.id,
           date: today(),
           startDate: today(),
           endDate: today(),
           title: "今天要处理的事项",
           durationMinutes: "30",
+          todo: "待办事项1\n待办事项2",
+          platformUrl: "https://example.com/platform",
+          officialUrl: "https://example.com/official",
+          githubUrl: "https://github.com/example/project",
           description: "注意事项或补充说明",
         },
         null,
@@ -987,12 +1045,16 @@ function App() {
     if (createModal.mode === "calendar") {
       return JSON.stringify(
         {
-          status: getDefaultCalendarStatusId(),
+          status: CALENDAR_DONE_STATUS.id,
           date: today(),
           startDate: today(),
-          endDate: today(1),
+          endDate: today(),
           title: "完成铁路数据清洗",
           durationMinutes: "45",
+          todo: "核对异常样本\n记录未完成原因",
+          platformUrl: "https://example.com/platform",
+          officialUrl: "https://example.com/official",
+          githubUrl: "https://github.com/XuelinHu/railway-example-project",
           description: "今天重点核对异常样本，记录未完成原因",
         },
         null,
@@ -1065,8 +1127,18 @@ function App() {
       ? [
           { key: "status", label: "状态", type: "status" },
           { key: "date", label: "日期", type: "date" },
+          { key: "startDate", label: "开始日期", type: "date" },
+          { key: "endDate", label: "结束日期", type: "date" },
           { key: "title", label: "事项名称", type: "text" },
+          { key: "durationMinutes", label: "预计耗时", type: "number" },
           { key: "description", label: "注意事项", type: "textarea" },
+          { key: "todo", label: "Todo", type: "textarea" },
+          { key: "githubUrl", label: "仓库地址", type: "url" },
+          { key: "platformUrl", label: "平台网址", type: "url" },
+          { key: "officialUrl", label: "官网", type: "url" },
+          { key: "windowsPath", label: "Windows路径", type: "path" },
+          { key: "linuxPath", label: "Linux路径", type: "path" },
+          { key: "serverPath", label: "服务器绝对路径", type: "path" },
         ]
       : (CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0]).fields;
     const patch = {};
@@ -1120,6 +1192,10 @@ function App() {
         extractLabeledValue(lines, ["备注", "说明", "注意事项", "todo", "description"]) ||
         createDraft.description ||
         lines.slice(1).join("\n");
+      patch.todo =
+        extractLabeledValue(lines, ["Todo", "todo", "待办", "待办事项"]) ||
+        createDraft.todo ||
+        "";
       const duration =
         extractLabeledValue(lines, ["预计耗时", "耗时", "分钟", "durationMinutes", "duration"]) ||
         text.match(/(?:预计耗时|耗时)\s*[:：=]?\s*(\d+)\s*分钟?/i)?.[1] ||
@@ -1127,6 +1203,41 @@ function App() {
         "";
       if (duration) {
         patch.durationMinutes = normalizeDurationMinutes(duration);
+      }
+      if (urls.length > 0) {
+        patch.githubUrl =
+          extractLabeledValue(lines, ["GitHub", "GitHub地址", "仓库地址", "githubUrl"]) ||
+          urls.find((url) => url.toLowerCase().includes("github.com")) ||
+          createDraft.githubUrl ||
+          "";
+        patch.platformUrl =
+          extractLabeledValue(lines, ["平台网址", "平台链接", "platformUrl"]) ||
+          urls[0] ||
+          createDraft.platformUrl ||
+          "";
+        patch.officialUrl =
+          extractLabeledValue(lines, ["官网", "官方页面", "officialUrl"]) ||
+          urls[1] ||
+          createDraft.officialUrl ||
+          "";
+      }
+      if (paths.length > 0) {
+        patch.windowsPath =
+          extractLabeledValue(lines, ["Windows路径", "windowsPath"]) ||
+          paths.find((path) => /^[A-Za-z]:\\/.test(path)) ||
+          createDraft.windowsPath ||
+          "";
+        const unixPaths = paths.filter((path) => path.startsWith("/"));
+        patch.linuxPath =
+          extractLabeledValue(lines, ["Linux路径", "linuxPath"]) ||
+          unixPaths[0] ||
+          createDraft.linuxPath ||
+          "";
+        patch.serverPath =
+          extractLabeledValue(lines, ["服务器绝对路径", "服务器路径", "serverPath"]) ||
+          unixPaths[1] ||
+          createDraft.serverPath ||
+          "";
       }
       const meaningfulKeys = Object.entries(patch).filter(
         ([key, value]) => key !== "date" && String(value ?? "").trim(),
@@ -1224,20 +1335,22 @@ function App() {
           title,
           description: String(createDraft.description ?? "").trim(),
           categoryId: createDraft.categoryId || "other",
-          status: createDraft.status || getDefaultCalendarStatusId(),
+          status: createDraft.status || CALENDAR_DONE_STATUS.id,
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
           startDate: createDraft.startDate || today(),
           endDate: createDraft.endDate || createDraft.startDate || today(),
+          ...getCalendarItemSharedFields(createDraft),
         });
       } else {
         addCalendarItem(createDraft.date || "", {
           title,
           description: String(createDraft.description ?? "").trim(),
           categoryId: createDraft.categoryId || "other",
-          status: createDraft.status || getDefaultCalendarStatusId(),
+          status: createDraft.status || CALENDAR_DONE_STATUS.id,
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
           startDate: createDraft.startDate || today(),
           endDate: createDraft.endDate || createDraft.startDate || today(),
+          ...getCalendarItemSharedFields(createDraft),
         });
       }
       closeCreateModal();
@@ -2087,17 +2200,7 @@ function App() {
     const category = isCalendarItem
       ? getCalendarItemPage(createDraft.categoryId)
       : CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0];
-    const fields = isCalendarItem
-      ? [
-          { key: "status", label: "默认状态", type: "status" },
-          { key: "date", label: "日期", type: "date" },
-          { key: "startDate", label: "开始日期", type: "date" },
-          { key: "endDate", label: "结束日期", type: "date" },
-          { key: "title", label: "事项名称", type: "text" },
-          { key: "durationMinutes", label: "预计耗时（分钟）", type: "number" },
-          { key: "description", label: "注意事项", type: "textarea" },
-        ]
-      : category.fields;
+    const fields = isCalendarItem ? [] : category.fields;
     const jsonTemplate = buildCreateJsonTemplate();
     const jsonExample = buildCreateJsonExample();
 
@@ -2123,8 +2226,114 @@ function App() {
           </div>
 
           <div className="create-modal-body">
-            <div className="create-form-fields">
-              {fields.map((field) => {
+            <div className={`create-form-fields ${isCalendarItem ? "calendar-item-form" : ""}`}>
+              {isCalendarItem ? (
+                <>
+                  <div className="calendar-status-field">
+                    <span>默认状态</span>
+                    <div className="calendar-quick-statuses">
+                      {calendarQuickStatuses.map((status) => {
+                        const selected = createDraft.status === status.id;
+                        return (
+                          <button
+                            key={status.id}
+                            className={`calendar-status-button${selected ? " selected" : ""}`}
+                            type="button"
+                            onClick={() => updateCreateDraft("status", status.id)}
+                            style={{
+                              "--status-bg": status.bg || "#eef2ff",
+                              "--status-color": status.color || "#334155",
+                              "--status-border": status.border || "#cbd5e1",
+                            }}
+                          >
+                            {status.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="calendar-date-duration-row">
+                    {[
+                      { key: "date", label: "日期", type: "date" },
+                      { key: "startDate", label: "开始日期", type: "date" },
+                      { key: "endDate", label: "结束日期", type: "date" },
+                      { key: "durationMinutes", label: "预计耗时", type: "number" },
+                    ].map((field) => (
+                      <label className="create-field" key={field.key}>
+                        <span>{field.label}</span>
+                        <input
+                          className="form-control create-control"
+                          type={field.type}
+                          min={field.type === "number" ? "1" : undefined}
+                          step={field.type === "number" ? "1" : undefined}
+                          inputMode={field.type === "number" ? "numeric" : undefined}
+                          value={createDraft[field.key] ?? ""}
+                          onChange={(event) =>
+                            updateCreateDraft(
+                              field.key,
+                              field.type === "number"
+                                ? event.target.value.replace(/\D/g, "")
+                                : event.target.value,
+                            )
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="calendar-title-note-row">
+                    <label className="create-field">
+                      <span>事项名称</span>
+                      <input
+                        className="form-control create-control"
+                        value={createDraft.title ?? ""}
+                        onChange={(event) => updateCreateDraft("title", event.target.value)}
+                      />
+                    </label>
+                    <label className="create-field">
+                      <span>注意事项</span>
+                      <textarea
+                        className="form-control create-control create-textarea compact"
+                        rows={2}
+                        value={createDraft.description ?? ""}
+                        onChange={(event) => updateCreateDraft("description", event.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="create-field calendar-wide-field">
+                    <span>Todo</span>
+                    <textarea
+                      className="form-control create-control create-textarea"
+                      rows={4}
+                      value={createDraft.todo ?? ""}
+                      onChange={(event) => updateCreateDraft("todo", event.target.value)}
+                    />
+                  </label>
+
+                  <div className="calendar-project-fields-grid">
+                    {[
+                      { key: "githubUrl", label: "仓库地址" },
+                      { key: "platformUrl", label: "平台网址" },
+                      { key: "officialUrl", label: "官网" },
+                      { key: "windowsPath", label: "Windows路径" },
+                      { key: "linuxPath", label: "Linux路径" },
+                      { key: "serverPath", label: "服务器绝对路径" },
+                    ].map((field) => (
+                      <label className="create-field" key={field.key}>
+                        <span>{field.label}</span>
+                        <input
+                          className="form-control create-control"
+                          value={createDraft[field.key] ?? ""}
+                          onChange={(event) => updateCreateDraft(field.key, event.target.value)}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                fields.map((field) => {
                 if (field.type === "status") {
                   const selectStatusOptions = isCalendarItem ? calendarStatusOptions : statusOptions;
                   const selectStatusById = isCalendarItem ? calendarStatusById : statusById;
@@ -2206,7 +2415,8 @@ function App() {
                     )}
                   </label>
                 );
-              })}
+                })
+              )}
               <label className="create-field create-assist-input-field">
                 <span>自动识别文本</span>
                 <textarea

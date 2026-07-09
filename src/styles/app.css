@@ -260,7 +260,7 @@ button {
 
 .calendar-page {
   display: grid;
-  grid-template-columns: minmax(220px, 290px) minmax(0, 1fr) minmax(210px, 270px);
+  grid-template-columns: minmax(154px, 203px) minmax(0, 1fr) minmax(168px, 216px);
   gap: 0;
   height: calc(100vh - 226px);
   max-height: calc(100vh - 226px);
@@ -2134,6 +2134,78 @@ button {
   justify-self: start;
 }
 
+.calendar-item-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.calendar-item-form > .icon-button,
+.calendar-item-form .create-assist-input-field {
+  grid-column: span 1;
+}
+
+.calendar-status-field {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.calendar-status-field > span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.calendar-quick-statuses {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.calendar-status-button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 1px solid var(--status-border);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--status-bg) 78%, #ffffff);
+  color: var(--status-color);
+  font-size: 12px;
+  font-weight: 780;
+  cursor: pointer;
+}
+
+.calendar-status-button.selected {
+  background: var(--status-bg);
+  box-shadow:
+    inset 0 0 0 1px var(--status-border),
+    0 0 0 2px color-mix(in srgb, var(--status-border) 36%, transparent);
+}
+
+.calendar-date-duration-row,
+.calendar-title-note-row,
+.calendar-project-fields-grid {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.calendar-date-duration-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.calendar-title-note-row {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+}
+
+.calendar-project-fields-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.calendar-wide-field {
+  grid-column: span 1;
+}
+
 .create-field {
   min-width: 0;
   display: grid;
@@ -2159,9 +2231,18 @@ button {
   line-height: 1.35;
 }
 
+.create-textarea.compact {
+  min-height: 58px;
+}
+
 .create-field:has(.create-textarea),
 .create-field:has(.create-assist-textarea) {
   grid-column: span 2;
+}
+
+.calendar-item-form .create-field:has(.create-textarea),
+.calendar-item-form .create-field:has(.create-assist-textarea) {
+  grid-column: auto;
 }
 
 .create-assist-input-field .create-assist-textarea {
@@ -2804,6 +2885,11 @@ button {
     grid-template-columns: 1fr 1fr;
   }
 
+  .calendar-date-duration-row,
+  .calendar-project-fields-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .other-item-form,
   .other-item-row {
     grid-template-columns: 1fr 1fr;
@@ -2863,6 +2949,12 @@ button {
   .calendar-day {
     min-height: 118px;
     border-right: 0;
+  }
+
+  .calendar-date-duration-row,
+  .calendar-title-note-row,
+  .calendar-project-fields-grid {
+    grid-template-columns: 1fr;
   }
 
   .history-item {
