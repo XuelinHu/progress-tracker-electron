@@ -56,7 +56,7 @@ export default function PortalPopover({ className, popover, children }) {
             className="portal-popover"
             style={{
               position: "fixed",
-              zIndex: 100,
+              zIndex: 2147483000,
               maxWidth: pos.maxWidth,
               maxHeight: 220,
               overflow: "auto",

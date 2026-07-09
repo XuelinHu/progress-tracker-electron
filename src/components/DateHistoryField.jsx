@@ -117,7 +117,7 @@ export default function DateHistoryField({
             className="portal-popover"
             style={{
               position: "fixed",
-              zIndex: 100,
+              zIndex: 2147483000,
               maxWidth: popPos.maxWidth,
               maxHeight: 220,
               overflow: "auto",

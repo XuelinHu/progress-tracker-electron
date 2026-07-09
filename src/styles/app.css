@@ -154,6 +154,11 @@ button {
 }
 
 .import-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 2147483100;
+  transform: translate(-50%, -50%);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
@@ -175,8 +180,8 @@ button {
 }
 
 @keyframes toast-slide-in {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translate(-50%, calc(-50% - 8px)); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
 }
 
 .category-tabs {
@@ -1378,7 +1383,7 @@ button {
   position: fixed;
   top: -9999px;
   left: -9999px;
-  z-index: 20;
+  z-index: 2147483000;
   display: none;
   width: max(260px, 100%);
   max-width: 380px;
@@ -1508,7 +1513,7 @@ button {
 .todo-done-popover {
   display: none;
   position: fixed;
-  z-index: 100;
+  z-index: 2147483000;
   min-width: 160px;
   max-width: 240px;
   max-height: 180px;
@@ -1669,7 +1674,7 @@ button {
   border: 1px solid #cbd5e1;
   border-radius: 4px;
   background: #ffffff;
-  color: #64748b;
+  color: #1d4ed8;
   cursor: pointer;
 }
 
@@ -1680,8 +1685,9 @@ button {
 }
 
 .copy-icon-button:hover:not(:disabled) {
-  border-color: var(--category-accent, #2563eb);
-  color: var(--category-accent, #2563eb);
+  border-color: #1e40af;
+  color: #1e40af;
+  background: #eff6ff;
 }
 
 .copy-icon-button:disabled {

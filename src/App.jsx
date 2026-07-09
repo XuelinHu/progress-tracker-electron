@@ -27,6 +27,15 @@ import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
 import { STATUSES } from "./data/statuses.js";
+import {
+  BASE_RECORD_DEFAULTS,
+  RECORD_ITEM_TYPES,
+  buildRecordItemsFromLegacy,
+  createRecordItem,
+  syncDateItemsLegacy,
+  syncTodoItemsLegacy,
+  withSyncedRecordItems,
+} from "./models/progressRecord.js";
 
 const EMPTY_CONTEST_PLACEHOLDER_IDS = new Set([
   "contest-5",
@@ -121,7 +130,8 @@ function normalizeRecord(record) {
   const normalizedStartDate =
     record.startDate || record.registrationDate || record.stageDate || today();
   const normalizedEndDate = record.endDate || normalizedStartDate || today();
-  return {
+  const normalized = {
+    ...BASE_RECORD_DEFAULTS,
     ...record,
     startDate: normalizedStartDate,
     endDate: normalizedEndDate,
@@ -137,6 +147,7 @@ function normalizeRecord(record) {
       doneDate: e.doneDate || (!e.addedDate && e.date ? e.date : null),
     })),
   };
+  return withSyncedRecordItems(normalized, buildRecordItemsFromLegacy(normalized));
 }
 
 function hasText(value) {
@@ -373,6 +384,7 @@ function App() {
   const [serverStateReady, setServerStateReady] = useState(false);
   const [serverSaveError, setServerSaveError] = useState("");
   const saveTimerRef = useRef(null);
+  const operationStatusTimerRef = useRef(null);
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const isCalendarView = activeCategoryId === CALENDAR_CATEGORY.id;
@@ -631,7 +643,7 @@ function App() {
           ];
         }
 
-        return nextRecord;
+        return normalizeRecord(nextRecord);
       }),
     );
   }
@@ -644,8 +656,19 @@ function App() {
           return record;
         }
 
+        const nextItems = [
+          ...(record.items ?? buildRecordItemsFromLegacy(record)),
+          createRecordItem({
+            id: historyId,
+            recordId: record.id,
+            type: RECORD_ITEM_TYPES.DATE,
+            text: item,
+            date,
+            sourceField: fieldKey,
+          }),
+        ];
         const dateHistory = record.dateHistory ?? {};
-        return {
+        return syncDateItemsLegacy({
           ...record,
           [fieldKey]: date,
           dateHistory: {
@@ -659,7 +682,7 @@ function App() {
               },
             ],
           },
-        };
+        }, nextItems);
       }),
     );
     return historyId;
@@ -677,14 +700,20 @@ function App() {
           ? (dateHistory[fieldKey] ?? []).filter((entry) => entry.id !== historyId)
           : (dateHistory[fieldKey] ?? []).filter((entry) => entry.date !== date);
         const shouldClearDate = record[fieldKey] === date && (!historyId || historyId.endsWith("-primary"));
-        return {
+        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter((entry) => {
+          if (entry.type !== RECORD_ITEM_TYPES.DATE || entry.sourceField !== fieldKey) {
+            return true;
+          }
+          return historyId ? entry.id !== historyId : entry.date !== date;
+        });
+        return syncDateItemsLegacy({
           ...record,
           [fieldKey]: shouldClearDate ? "" : record[fieldKey],
           dateHistory: {
             ...dateHistory,
             [fieldKey]: nextHistory,
           },
-        };
+        }, nextItems);
       }),
     );
   }
@@ -1175,7 +1204,12 @@ function App() {
         }
 
         const dateHistory = record.dateHistory ?? {};
-        return {
+        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
+          entry.id === historyId && entry.type === RECORD_ITEM_TYPES.DATE
+            ? { ...entry, text: item, updatedAt: new Date().toISOString() }
+            : entry,
+        );
+        return syncDateItemsLegacy({
           ...record,
           dateHistory: {
             ...dateHistory,
@@ -1183,7 +1217,7 @@ function App() {
               entry.id === historyId ? { ...entry, item } : entry,
             ),
           },
-        };
+        }, nextItems);
       }),
     );
   }
@@ -1195,12 +1229,19 @@ function App() {
         if (record.id !== recordId) return record;
         const oldHistory = record.todoHistory ?? [];
         const oldById = new Map(oldHistory.map((e) => [e.item, e]));
-        const nextHistory = lines.map((item) => {
+        const nextItems = lines.map((item) => {
           const existing = oldById.get(item);
-          if (existing) return existing;
-          return { id: createId("todo-hist"), addedDate: today(), item, doneDate: null };
+          return createRecordItem({
+            id: existing?.id || createId("todo-hist"),
+            recordId: record.id,
+            type: RECORD_ITEM_TYPES.TODO,
+            text: item,
+            date: existing?.addedDate || today(),
+            status: existing?.doneDate ? "done" : "active",
+            doneDate: existing?.doneDate || null,
+          });
         });
-        return { ...record, todoHistory: nextHistory };
+        return syncTodoItemsLegacy(record, nextItems);
       }),
     );
   }
@@ -1211,10 +1252,17 @@ function App() {
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
-        const todoHistory = (record.todoHistory ?? []).map((e) =>
-          e.item === text ? { ...e, doneDate: e.doneDate ? null : today() } : e,
+        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
+          entry.type === RECORD_ITEM_TYPES.TODO && entry.text === text
+            ? {
+                ...entry,
+                status: entry.doneDate ? "active" : "done",
+                doneDate: entry.doneDate ? null : today(),
+                updatedAt: new Date().toISOString(),
+              }
+            : entry,
         );
-        return { ...record, todoHistory };
+        return syncTodoItemsLegacy(record, nextItems);
       }),
     );
   }
@@ -1228,8 +1276,10 @@ function App() {
         const todoText = record.todo ?? "";
         const lines = todoText.split(/\r?\n/);
         const newText = lines.filter((l) => l.trim() !== text).join("\n");
-        const todoHistory = (record.todoHistory ?? []).filter((e) => e.item !== text);
-        return { ...record, todo: newText, todoHistory };
+        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter(
+          (entry) => entry.type !== RECORD_ITEM_TYPES.TODO || entry.text !== text,
+        );
+        return syncTodoItemsLegacy({ ...record, todo: newText }, nextItems);
       }),
     );
   }
@@ -1239,13 +1289,16 @@ function App() {
       current.map((record) => {
         if (record.id !== recordId) return record;
         const dateHistory = record.dateHistory ?? {};
-        return {
+        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter(
+          (entry) => entry.id !== historyId || entry.type !== RECORD_ITEM_TYPES.DATE,
+        );
+        return syncDateItemsLegacy({
           ...record,
           dateHistory: {
             ...dateHistory,
             [fieldKey]: (dateHistory[fieldKey] ?? []).filter((e) => e.id !== historyId),
           },
-        };
+        }, nextItems);
       }),
     );
   }
@@ -1277,7 +1330,13 @@ function App() {
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
-        return { ...record, todoHistory: (record.todoHistory ?? []).filter((e) => e.id !== historyId) };
+        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter(
+          (entry) => entry.id !== historyId || entry.type !== RECORD_ITEM_TYPES.TODO,
+        );
+        return syncTodoItemsLegacy({
+          ...record,
+          todoHistory: (record.todoHistory ?? []).filter((e) => e.id !== historyId),
+        }, nextItems);
       }),
     );
   }
@@ -1294,8 +1353,13 @@ function App() {
               .map((line) => (line.trim() === oldItem ? item : line))
               .join("\n")
           : record.todo;
+        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
+          entry.id === historyId && entry.type === RECORD_ITEM_TYPES.TODO
+            ? { ...entry, text: item, updatedAt: new Date().toISOString() }
+            : entry,
+        );
         return {
-          ...record,
+          ...syncTodoItemsLegacy(record, nextItems),
           todo,
           todoHistory: (record.todoHistory ?? []).map((entry) =>
             entry.id === historyId ? { ...entry, item } : entry,
@@ -1397,6 +1461,7 @@ function App() {
       id: createId(sourceRecord.categoryId),
       title: `${getRecordTitle(sourceRecord)} 副本`,
       todo: "",
+      items: [],
       history: [
         ...(sourceRecord.history ?? []).map((entry) => ({
           ...entry,
@@ -1653,8 +1718,9 @@ function App() {
   }
 
   function showOperationStatus(success, message, timeout = 4000) {
+    window.clearTimeout(operationStatusTimerRef.current);
     setImportStatus({ success, message });
-    window.setTimeout(() => setImportStatus(null), timeout);
+    operationStatusTimerRef.current = window.setTimeout(() => setImportStatus(null), timeout);
   }
 
   function importJson(event) {
@@ -1743,7 +1809,7 @@ function App() {
       setStatusConfigMessage(
         `已同步到云端：${data.sync?.project || "progress-tracker"}/${data.sync?.latestName || "latest.json"}`,
       );
-      showOperationStatus(true, "已同步到云端");
+      showOperationStatus(true, "已同步云端", 2000);
     } catch (error) {
       setStatusConfigMessage(error.message || "WebDAV 同步失败");
       showOperationStatus(false, error.message || "WebDAV 同步失败", 5000);

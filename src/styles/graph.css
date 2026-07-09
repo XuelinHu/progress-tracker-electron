@@ -365,7 +365,7 @@
 .graph-node-todo-done-popover {
   display: none;
   position: fixed;
-  z-index: 50;
+  z-index: 2147483000;
   min-width: 130px;
   max-width: 170px;
   max-height: 120px;
@@ -574,7 +574,7 @@
   position: absolute;
   top: calc(100% + 4px);
   left: 50%;
-  z-index: 30;
+  z-index: 2147483000;
   display: none;
   width: 170px;
   max-height: 130px;
@@ -1036,7 +1036,7 @@
 
 .graph-context-menu {
   position: fixed;
-  z-index: 100;
+  z-index: 2147483000;
   min-width: 150px;
   padding: 10px;
   border: 1px solid #cbd5e1;

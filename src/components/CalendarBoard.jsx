@@ -2,6 +2,12 @@ import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
+import {
+  RECORD_ITEM_TYPES,
+  buildRecordItemsFromLegacy,
+  createRecordItem,
+  syncTodoItemsLegacy,
+} from "../models/progressRecord.js";
 
 const DRAG_TYPE = "application/progress-calendar-record";
 const CALENDAR_ITEM_DRAG_TYPE = "application/progress-calendar-item";
@@ -80,7 +86,19 @@ function buildTodoPatch(record, item, addedDate = today()) {
   const todo = lines.includes(text) ? String(record?.todo ?? "") : [...lines, text].join("\n");
   const history = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
   const hasHistory = history.some((entry) => entry.item === text);
-  return {
+  const nextItems = hasHistory
+    ? record?.items ?? buildRecordItemsFromLegacy(record)
+    : [
+        ...(record?.items ?? buildRecordItemsFromLegacy(record)),
+        createRecordItem({
+          recordId: record?.id,
+          type: RECORD_ITEM_TYPES.TODO,
+          text,
+          date: addedDate,
+        }),
+      ];
+  const synced = syncTodoItemsLegacy({
+    ...record,
     todo,
     todoHistory: hasHistory
       ? history
@@ -93,6 +111,11 @@ function buildTodoPatch(record, item, addedDate = today()) {
             doneDate: null,
           },
         ],
+  }, nextItems);
+  return {
+    todo: synced.todo,
+    todoHistory: synced.todoHistory,
+    items: synced.items,
   };
 }
 
@@ -147,7 +170,25 @@ function buildTodoCompletionPatch(record, item, dateIso, completed) {
   const history = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
   const hasHistory = history.some((entry) => entry.item === text);
   const doneDate = completed ? dateIso : null;
-  return {
+  const nextItems = hasHistory
+    ? (record?.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
+        entry.type === RECORD_ITEM_TYPES.TODO && entry.text === text
+          ? { ...entry, status: completed ? "done" : "active", doneDate }
+          : entry,
+      )
+    : [
+        ...(record?.items ?? buildRecordItemsFromLegacy(record)),
+        createRecordItem({
+          recordId: record?.id,
+          type: RECORD_ITEM_TYPES.TODO,
+          text,
+          date: dateIso,
+          status: completed ? "done" : "active",
+          doneDate,
+        }),
+      ];
+  const synced = syncTodoItemsLegacy({
+    ...record,
     todo,
     todoHistory: hasHistory
       ? history.map((entry) =>
@@ -164,6 +205,11 @@ function buildTodoCompletionPatch(record, item, dateIso, completed) {
             doneDate,
           },
         ],
+  }, nextItems);
+  return {
+    todo: synced.todo,
+    todoHistory: synced.todoHistory,
+    items: synced.items,
   };
 }
 

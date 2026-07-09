@@ -1,0 +1,200 @@
+export const RECORD_ITEM_TYPES = {
+  TODO: "todo",
+  DATE: "date",
+  CALENDAR: "calendar",
+  NOTE: "note",
+};
+
+export const BASE_RECORD_DEFAULTS = {
+  status: "",
+  title: "",
+  description: "",
+  todo: "",
+  startDate: "",
+  endDate: "",
+  windowsPath: "",
+  linuxPath: "",
+  serverPath: "",
+  githubUrl: "",
+  platformUrl: "",
+  officialUrl: "",
+};
+
+export function createRecordItem({
+  id,
+  recordId = "",
+  type = RECORD_ITEM_TYPES.TODO,
+  text = "",
+  date = "",
+  sourceField = "",
+  status = "active",
+  doneDate = null,
+  createdAt = "",
+  updatedAt = "",
+}) {
+  const now = new Date().toISOString();
+  return {
+    id: String(id || `${type}-item-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`),
+    recordId: String(recordId || ""),
+    type,
+    text: String(text ?? "").trim(),
+    date: String(date || ""),
+    sourceField: String(sourceField || ""),
+    status,
+    doneDate: doneDate || null,
+    createdAt: createdAt || now,
+    updatedAt: updatedAt || now,
+  };
+}
+
+function normalizeRecordItem(item, recordId) {
+  return createRecordItem({
+    ...item,
+    id: item?.id,
+    recordId: item?.recordId || recordId,
+    type: item?.type || RECORD_ITEM_TYPES.TODO,
+    text: item?.text ?? item?.item ?? "",
+    date: item?.date ?? item?.addedDate ?? "",
+    sourceField: item?.sourceField ?? "",
+    status: item?.status || (item?.doneDate ? "done" : "active"),
+    doneDate: item?.doneDate ?? null,
+    createdAt: item?.createdAt,
+    updatedAt: item?.updatedAt,
+  });
+}
+
+export function buildRecordItemsFromLegacy(record) {
+  const recordId = record?.id || "";
+  const items = [];
+  const seen = new Set();
+
+  const pushItem = (item) => {
+    if (!item.text) {
+      return;
+    }
+    const key = [item.type, item.sourceField, item.date, item.text].join("|");
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    items.push(item);
+  };
+
+  if (Array.isArray(record?.items)) {
+    record.items.forEach((item) => pushItem(normalizeRecordItem(item, recordId)));
+  }
+
+  const todoLines = String(record?.todo ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const todoHistory = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
+  const todoByText = new Map(todoHistory.map((entry) => [entry.item, entry]));
+  todoLines.forEach((text) => {
+    const history = todoByText.get(text);
+    pushItem(
+      createRecordItem({
+        id: history?.id,
+        recordId,
+        type: RECORD_ITEM_TYPES.TODO,
+        text,
+        date: history?.addedDate || "",
+        status: history?.doneDate ? "done" : "active",
+        doneDate: history?.doneDate || null,
+        createdAt: history?.createdAt,
+        updatedAt: history?.updatedAt,
+      }),
+    );
+  });
+  todoHistory.forEach((history) => {
+    pushItem(
+      createRecordItem({
+        id: history.id,
+        recordId,
+        type: RECORD_ITEM_TYPES.TODO,
+        text: history.item,
+        date: history.addedDate || "",
+        status: history.doneDate ? "done" : "active",
+        doneDate: history.doneDate || null,
+        createdAt: history.createdAt,
+        updatedAt: history.updatedAt,
+      }),
+    );
+  });
+
+  Object.entries(record?.dateHistory ?? {}).forEach(([sourceField, entries]) => {
+    if (!Array.isArray(entries)) {
+      return;
+    }
+    entries.forEach((entry) => {
+      pushItem(
+        createRecordItem({
+          id: entry.id,
+          recordId,
+          type: RECORD_ITEM_TYPES.DATE,
+          text: entry.item,
+          date: entry.date,
+          sourceField,
+          status: "active",
+          createdAt: entry.createdAt,
+          updatedAt: entry.updatedAt,
+        }),
+      );
+    });
+  });
+
+  return items;
+}
+
+export function withSyncedRecordItems(record, items = buildRecordItemsFromLegacy(record)) {
+  return {
+    ...record,
+    items,
+  };
+}
+
+export function syncTodoItemsLegacy(record, items = record?.items ?? []) {
+  const todoItems = items.filter((item) => item.type === RECORD_ITEM_TYPES.TODO && item.text);
+  const otherItems = (record?.items ?? []).filter((item) => item.type !== RECORD_ITEM_TYPES.TODO);
+  const nextItems = [...otherItems, ...todoItems];
+  return {
+    ...record,
+    todo: todoItems.map((item) => item.text).join("\n"),
+    todoHistory: todoItems.map((item) => ({
+      id: item.id,
+      addedDate: item.date || "",
+      item: item.text,
+      doneDate: item.doneDate || null,
+    })),
+    items: nextItems,
+  };
+}
+
+export function syncDateItemsLegacy(record, items = record?.items ?? []) {
+  const dateItems = items.filter((item) => item.type === RECORD_ITEM_TYPES.DATE);
+  const otherItems = (record?.items ?? []).filter((item) => item.type !== RECORD_ITEM_TYPES.DATE);
+  const nextItems = [...otherItems, ...dateItems];
+  const nextDateHistory = { ...(record?.dateHistory ?? {}) };
+  Object.keys(nextDateHistory).forEach((fieldKey) => {
+    nextDateHistory[fieldKey] = (nextDateHistory[fieldKey] ?? []).filter(
+      (entry) => !dateItems.some((item) => item.id === entry.id),
+    );
+  });
+  dateItems
+    .filter((item) => item.sourceField)
+    .forEach((item) => {
+      nextDateHistory[item.sourceField] = [
+        ...(nextDateHistory[item.sourceField] ?? []).filter((entry) => entry.id !== item.id),
+        {
+          id: item.id,
+          date: item.date,
+          item: item.text,
+        },
+      ];
+    });
+  return {
+    ...record,
+    dateHistory: nextDateHistory,
+    items: nextItems,
+  };
+}
