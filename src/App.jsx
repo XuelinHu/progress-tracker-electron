@@ -352,6 +352,24 @@ function DaysSince({ dateField, record }) {
   );
 }
 
+function buildDisplayFields(fields) {
+  if (!Array.isArray(fields) || fields.length < 8) {
+    return fields;
+  }
+  return [
+    ...fields.slice(0, 6),
+    {
+      key: `combined-${fields[6].key}-${fields[7].key}`,
+      type: "combined",
+      label: `${fields[6].label} / ${fields[7].label}`,
+      width: "minmax(360px, 1.2fr)",
+      fields: [fields[6], fields[7]],
+      displayLabel: `7/8. ${fields[6].label} / ${fields[7].label}`,
+    },
+    ...fields.slice(8),
+  ];
+}
+
 function App() {
   const [records, setRecords] = useState(loadRecords);
   const [activeCategoryId, setActiveCategoryId] = useState(CATEGORIES[0].id);
@@ -359,6 +377,8 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [statusSortDirection, setStatusSortDirection] = useState("asc");
+  const [dateSortKey, setDateSortKey] = useState(null);
+  const [dateSortDirection, setDateSortDirection] = useState("none");
   const [initialGraph] = useState(loadGraph);
   const [graphNodes, setGraphNodes] = useState(initialGraph.nodes);
   const [graphEdges, setGraphEdges] = useState(initialGraph.edges);
@@ -404,7 +424,11 @@ function App() {
           : isStatusConfigView
             ? STATUS_CONFIG_PAGE
             : activeCategory;
-  const tableTemplate = ["58px", ...activeCategory.fields.map((field) => field.width)].join(" ");
+  const displayFields = useMemo(
+    () => buildDisplayFields(activeCategory.fields),
+    [activeCategory.fields],
+  );
+  const tableTemplate = ["58px", ...displayFields.map((field) => field.width)].join(" ");
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
     [statusOptions],
@@ -455,6 +479,17 @@ function App() {
       return matchStatus && haystack.includes(keyword);
     });
 
+    if (dateSortKey && dateSortDirection !== "none") {
+      return [...filteredRecords].sort((left, right) => {
+        const leftDate = String(left[dateSortKey] ?? "");
+        const rightDate = String(right[dateSortKey] ?? "");
+        const orderDiff =
+          leftDate.localeCompare(rightDate) ||
+          String(left.title ?? "").localeCompare(String(right.title ?? ""), "zh-Hans-CN");
+        return dateSortDirection === "asc" ? orderDiff : -orderDiff;
+      });
+    }
+
     if (statusSortDirection === "none") {
       return filteredRecords;
     }
@@ -476,6 +511,8 @@ function App() {
     statusFilter,
     statusSortDirection,
     statusPriority,
+    dateSortKey,
+    dateSortDirection,
   ]);
 
   const categoryStats = useMemo(() => {
@@ -495,6 +532,12 @@ function App() {
 
   function getDefaultCalendarStatusId() {
     return getDefaultStatusId();
+  }
+
+  function resetTableSort() {
+    setStatusSortDirection("asc");
+    setDateSortKey(null);
+    setDateSortDirection("none");
   }
 
   useEffect(() => {
@@ -588,13 +631,13 @@ function App() {
       if (shortcut === "g") {
         setActiveCategoryId(CALENDAR_CATEGORY.id);
         setStatusFilter("all");
-        setStatusSortDirection("asc");
+        resetTableSort();
         return;
       }
       if (shortcut === "f") {
         setActiveCategoryId(GRAPH_CATEGORY.id);
         setStatusFilter("all");
-        setStatusSortDirection("asc");
+        resetTableSort();
         return;
       }
 
@@ -602,7 +645,7 @@ function App() {
       if (category) {
         setActiveCategoryId(category.id);
         setStatusFilter("all");
-        setStatusSortDirection("asc");
+        resetTableSort();
       }
     }
 
@@ -1509,7 +1552,7 @@ function App() {
     setActiveCategoryId(record.categoryId);
     setSelectedId(record.id);
     setStatusFilter("all");
-    setStatusSortDirection("asc");
+    resetTableSort();
   }
 
   function addRecordFromGraph(categoryId, position, sourceNodeId) {
@@ -1542,6 +1585,8 @@ function App() {
   }
 
   function cycleStatusSort() {
+    setDateSortKey(null);
+    setDateSortDirection("none");
     setStatusSortDirection((current) => {
       if (current === "none") {
         return "asc";
@@ -1551,6 +1596,35 @@ function App() {
       }
       return "none";
     });
+  }
+
+  function cycleDateSort(fieldKey) {
+    setStatusSortDirection("none");
+    setDateSortKey((currentKey) => {
+      if (currentKey !== fieldKey) {
+        setDateSortDirection("asc");
+        return fieldKey;
+      }
+      setDateSortDirection((currentDirection) => {
+        if (currentDirection === "none") {
+          return "asc";
+        }
+        if (currentDirection === "asc") {
+          return "desc";
+        }
+        return "none";
+      });
+      return fieldKey;
+    });
+  }
+
+  function getDateSortTitle(field) {
+    if (dateSortKey !== field.key || dateSortDirection === "none") {
+      return `点击按${field.label}排序`;
+    }
+    return dateSortDirection === "asc"
+      ? `${field.label}升序，点击切换为降序`
+      : `${field.label}降序，点击取消排序`;
   }
 
   async function openExternalUrl(value) {
@@ -1582,7 +1656,7 @@ function App() {
     setSelectedId(null);
     setSearchTerm("");
     setStatusFilter("all");
-    setStatusSortDirection("asc");
+    resetTableSort();
   }
 
   function buildFullDataPayload() {
@@ -1646,7 +1720,7 @@ function App() {
     }
 
     setStatusFilter("all");
-    setStatusSortDirection("asc");
+    resetTableSort();
     return { recordCount, graphNodeCount, graphEdgeCount };
   }
 
@@ -2486,6 +2560,33 @@ function App() {
   }
 
   function renderCell(record, field) {
+    if (field.type === "combined") {
+      return (
+        <div className="combined-field-cell">
+          {field.fields.map((childField) => (
+            <CopyableControl
+              key={childField.key}
+              value={record[childField.key]}
+              label={childField.label}
+              className="cell-copyable-control combined-copyable-control"
+            >
+              <textarea
+                className="cell-input cell-textarea combined-field-input"
+                rows={childField.type === "textarea" ? estimateTextRows(record[childField.key], childField.key) : 2}
+                value={record[childField.key] ?? ""}
+                onFocus={() => setSelectedId(record.id)}
+                onChange={(event) =>
+                  updateRecord(record.id, { [childField.key]: event.target.value })
+                }
+                aria-label={`${getRecordTitle(record)} ${childField.label}`}
+                placeholder={childField.label}
+              />
+            </CopyableControl>
+          ))}
+        </div>
+      );
+    }
+
     if (field.type === "status") {
       const status = statusById[record.status] ?? statusOptions[0];
       return (
@@ -2854,7 +2955,7 @@ function App() {
               onClick={() => {
                 setActiveCategoryId(STATUS_CONFIG_PAGE.id);
                 setStatusFilter("all");
-                setStatusSortDirection("asc");
+                resetTableSort();
               }}
               title="打开优先级配置"
             >
@@ -2867,7 +2968,7 @@ function App() {
               onClick={() => {
                 setActiveCategoryId(CALENDAR_CATEGORY.id);
                 setStatusFilter("all");
-                setStatusSortDirection("asc");
+                resetTableSort();
               }}
               title="打开日历排期"
             >
@@ -2880,7 +2981,7 @@ function App() {
               onClick={() => {
                 setActiveCategoryId(GRAPH_CATEGORY.id);
                 setStatusFilter("all");
-                setStatusSortDirection("asc");
+                resetTableSort();
               }}
               title="打开知识图谱"
             >
@@ -2916,7 +3017,7 @@ function App() {
               onClick={() => {
                 setActiveCategoryId(category.id);
                 setStatusFilter("all");
-                setStatusSortDirection("asc");
+                resetTableSort();
               }}
             >
               <span className="shortcut-key">{category.shortcut}</span>
@@ -3035,7 +3136,7 @@ function App() {
           <div className="table-wrap">
             <div className="table-grid header-row" style={{ gridTemplateColumns: tableTemplate }}>
               <div className="table-head action-head" aria-hidden="true" />
-              {activeCategory.fields.map((field, index) => (
+              {displayFields.map((field, index) => (
                 <div key={field.key} className={`table-head field-${field.key}`}>
                   {field.type === "status" ? (
                     <button
@@ -3050,9 +3151,24 @@ function App() {
                       </span>
                       <ArrowDownUp size={13} />
                     </button>
+                  ) : field.type === "date" ? (
+                    <button
+                      className={`head-sort-button ${
+                        dateSortKey === field.key && dateSortDirection !== "none" ? "active" : ""
+                      }`}
+                      type="button"
+                      onClick={() => cycleDateSort(field.key)}
+                      title={getDateSortTitle(field)}
+                      aria-label={getDateSortTitle(field)}
+                    >
+                      <span>
+                        {index + 1}. {field.label}
+                      </span>
+                      <ArrowDownUp size={13} />
+                    </button>
                   ) : (
                     <>
-                      {index + 1}. {field.label}
+                      {field.displayLabel ?? `${index + 1}. ${field.label}`}
                     </>
                   )}
                 </div>
@@ -3094,7 +3210,7 @@ function App() {
                 </button>
                 <DaysSince dateField={activeCategory.fields.find((f) => f.type === "date")} record={record} />
               </div>
-                {activeCategory.fields.map((field) => (
+                {displayFields.map((field) => (
                   <div key={field.key} className={`table-cell field-${field.key}`}>
                       {renderCell(record, field)}
                     </div>

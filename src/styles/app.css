@@ -1721,7 +1721,19 @@ button {
   gap: 6px;
 }
 
+.combined-field-cell {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+}
+
 .title-copyable-control {
+  align-items: center;
+}
+
+.combined-copyable-control {
   align-items: center;
 }
 
@@ -1730,7 +1742,18 @@ button {
   margin-top: 0;
 }
 
+.combined-copyable-control > .copy-icon-button {
+  align-self: center;
+  margin-top: 0;
+}
+
 .title-github-url-input {
+  min-height: 32px;
+  max-height: 58px;
+  font-size: 11px;
+}
+
+.combined-field-input {
   min-height: 32px;
   max-height: 58px;
   font-size: 11px;
