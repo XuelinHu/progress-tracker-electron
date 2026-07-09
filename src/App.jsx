@@ -326,7 +326,8 @@ function estimateTextRows(value, fieldKey = "") {
   const inferredRows = text
     .split(/\r\n|\r|\n/)
     .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
-  return Math.max(fieldKey === "title" || fieldKey === "description" ? 5 : 2, inferredRows);
+  const minRows = fieldKey === "title" ? 3 : fieldKey === "description" ? 5 : 2;
+  return Math.max(minRows, inferredRows);
 }
 
 function daysFromToday(dateStr) {
