@@ -2994,7 +2994,7 @@ function App() {
               const trimmed = line.trim();
               if (!trimmed) return null;
               return (
-                <label key={`a-${idx}-${trimmed.substring(0, 12)}`} className="todo-item">
+                <div key={`a-${idx}-${trimmed.substring(0, 12)}`} className="todo-item">
                   <button
                     className="todo-delete-btn"
                     type="button"
@@ -3009,11 +3009,12 @@ function App() {
                   <input
                     type="checkbox"
                     className="todo-checkbox"
+                    onClick={(event) => event.stopPropagation()}
                     onChange={() => toggleTodoItem(record.id, trimmed)}
                   />
                   <span className="todo-text">{trimmed}</span>
                   <span className="todo-date">{histByItem.get(trimmed)?.addedDate || ""}</span>
-                </label>
+                </div>
               );
             })}
           </div>
@@ -3043,7 +3044,7 @@ function App() {
                 if (!trimmed) return null;
                 const hist = histByItem.get(trimmed);
                 return (
-                  <label key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
+                  <div key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
                     <CopyIconButton
                       value={trimmed}
                       label="Todo"
@@ -3053,11 +3054,12 @@ function App() {
                       type="checkbox"
                       className="todo-checkbox"
                       checked={true}
+                      onClick={(event) => event.stopPropagation()}
                       onChange={() => toggleTodoItem(record.id, trimmed)}
                     />
                     <span className="todo-text">{trimmed}</span>
                     <span className="todo-date">{hist?.doneDate || ""}</span>
-                  </label>
+                  </div>
                 );
               })}
             </div>

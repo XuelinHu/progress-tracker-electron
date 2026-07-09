@@ -244,7 +244,7 @@ function RecordNode({ data }) {
             const done = hist?.doneDate != null;
             if (done) return null;
             return (
-              <label key={idx} className="graph-node-todo-item">
+              <div key={idx} className="graph-node-todo-item">
                 <CopyIconButton
                   value={line}
                   label="Todo"
@@ -252,14 +252,16 @@ function RecordNode({ data }) {
                 />
                 <input
                   type="checkbox"
+                  onClick={(event) => event.stopPropagation()}
                   onChange={() => h.toggleTodo?.(line)}
                 />
                 <span className="graph-node-todo-text">{line}</span>
                 <button
                   className="graph-node-todo-del"
+                  type="button"
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); h.deleteTodo?.(line); }}
                 >×</button>
-              </label>
+              </div>
             );
           })}
           <CopyableControl
@@ -299,7 +301,7 @@ function RecordNode({ data }) {
                 const hist = todoHistByItem.get(line);
                 if (hist?.doneDate == null) return null;
                 return (
-                  <label key={idx} className="graph-node-todo-item done">
+                  <div key={idx} className="graph-node-todo-item done">
                     <CopyIconButton
                       value={line}
                       label="Todo"
@@ -308,11 +310,12 @@ function RecordNode({ data }) {
                     <input
                       type="checkbox"
                       checked={true}
+                      onClick={(event) => event.stopPropagation()}
                       onChange={() => h.toggleTodo?.(line)}
                     />
                     <span className="graph-node-todo-text">{line}</span>
                     <span className="graph-node-todo-done-date">{hist.doneDate}</span>
-                  </label>
+                  </div>
                 );
               })}
             </div>
@@ -453,7 +456,7 @@ function GraphField({
               const trimmed = line.trim();
               if (!trimmed) return null;
               return (
-                <label key={`a-${idx}-${trimmed.substring(0, 12)}`} className="todo-item">
+                <div key={`a-${idx}-${trimmed.substring(0, 12)}`} className="todo-item">
                   <button
                     className="todo-delete-btn"
                     type="button"
@@ -468,11 +471,12 @@ function GraphField({
                   <input
                     type="checkbox"
                     className="todo-checkbox"
+                    onClick={(event) => event.stopPropagation()}
                     onChange={() => onToggleTodo(field.key, trimmed)}
                   />
                   <span className="todo-text">{trimmed}</span>
                   <span className="todo-date">{histByItem.get(trimmed)?.addedDate || ""}</span>
-                </label>
+                </div>
               );
             })}
           </div>
@@ -502,7 +506,7 @@ function GraphField({
                 if (!trimmed) return null;
                 const hist = histByItem.get(trimmed);
                 return (
-                  <label key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
+                  <div key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
                     <CopyIconButton
                       value={trimmed}
                       label="Todo"
@@ -512,11 +516,12 @@ function GraphField({
                       type="checkbox"
                       className="todo-checkbox"
                       checked={true}
+                      onClick={(event) => event.stopPropagation()}
                       onChange={() => onToggleTodo(field.key, trimmed)}
                     />
                     <span className="todo-text">{trimmed}</span>
                     <span className="todo-date">{hist?.doneDate || ""}</span>
-                  </label>
+                  </div>
                 );
               })}
             </div>

@@ -854,6 +854,8 @@ export default function CalendarBoard({
                             onClick={(event) => handleCopyCustomItem(event, item)}
                             onKeyDown={(event) => {
                               if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                event.stopPropagation();
                                 handleCopyCustomItem(event, item);
                               }
                             }}
@@ -881,6 +883,8 @@ export default function CalendarBoard({
                             onClick={(event) => handleDeleteCustomItem(event, item.id)}
                             onKeyDown={(event) => {
                               if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                event.stopPropagation();
                                 handleDeleteCustomItem(event, item.id);
                               }
                             }}
@@ -966,6 +970,8 @@ export default function CalendarBoard({
                           onClick={(event) => handleCopyRecord(event, record, day.iso)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
                               handleCopyRecord(event, record, day.iso);
                             }
                           }}
@@ -995,6 +1001,8 @@ export default function CalendarBoard({
                           }
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              event.stopPropagation();
                               handleRemoveFromDate(event, record, day.iso, entry.occurrenceId);
                             }
                           }}
