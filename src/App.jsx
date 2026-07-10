@@ -159,6 +159,80 @@ function normalizeRecord(record) {
   return withSyncedRecordItems(normalized, buildRecordItemsFromLegacy(normalized));
 }
 
+function createHistoryEntry({ date = today(), status = "", summary = "" } = {}) {
+  return {
+    id: createId("history"),
+    date,
+    status,
+    owner: "",
+    summary,
+  };
+}
+
+function getFieldLabel(record, fieldKey) {
+  const category = CATEGORY_BY_ID[record?.categoryId] ?? CATEGORIES[0];
+  return category.fields.find((field) => field.key === fieldKey)?.label || fieldKey;
+}
+
+function buildAddedTodoHistoryEntries(record, nextTodoHistory = []) {
+  const oldIds = new Set((record?.todoHistory ?? []).map((entry) => entry.id).filter(Boolean));
+  const oldItems = new Set((record?.todoHistory ?? []).map((entry) => entry.item).filter(Boolean));
+  return nextTodoHistory
+    .filter((entry) => {
+      const item = String(entry?.item ?? "").trim();
+      return item && !(entry.id && oldIds.has(entry.id)) && !oldItems.has(item);
+    })
+    .map((entry) =>
+      createHistoryEntry({
+        date: entry.addedDate || today(),
+        status: record?.status || "",
+        summary: `新增Todo：${entry.item}`,
+      }),
+    );
+}
+
+function buildAddedDateHistoryEntries(record, nextDateHistory = {}) {
+  const entries = [];
+  const oldIds = new Set(
+    Object.values(record?.dateHistory ?? {})
+      .flatMap((items) => (Array.isArray(items) ? items : []))
+      .map((entry) => entry.id)
+      .filter(Boolean),
+  );
+
+  Object.entries(nextDateHistory ?? {}).forEach(([fieldKey, items]) => {
+    if (!Array.isArray(items)) {
+      return;
+    }
+    items.forEach((entry) => {
+      if (entry?.id && oldIds.has(entry.id)) {
+        return;
+      }
+      const item = String(entry?.item ?? "").trim();
+      entries.push(
+        createHistoryEntry({
+          date: today(),
+          status: record?.status || "",
+          summary: `新增${getFieldLabel(record, fieldKey)}事项：${item || entry?.date || "未填写事项"}`,
+        }),
+      );
+    });
+  });
+
+  return entries;
+}
+
+function appendRecordHistory(record, entries = []) {
+  const usefulEntries = entries.filter((entry) => String(entry.summary ?? "").trim());
+  if (usefulEntries.length === 0) {
+    return record;
+  }
+  return {
+    ...record,
+    history: [...(record.history ?? []), ...usefulEntries],
+  };
+}
+
 function hasText(value) {
   return String(value ?? "").trim().length > 0;
 }
@@ -223,6 +297,7 @@ function normalizeCalendarItems(items) {
             categoryId: item?.categoryId || "other",
             status: item?.status || CALENDAR_DONE_STATUS.id,
             durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
+            history: Array.isArray(item?.history) ? item.history : [],
             createdAt: item?.createdAt || new Date().toISOString(),
             updatedAt: item?.updatedAt || item?.createdAt || new Date().toISOString(),
           };
@@ -732,17 +807,24 @@ function App() {
           const nextStatus = statusById[patch.status]?.label || patch.status;
           nextRecord.history = [
             ...(record.history ?? []),
-            {
-              id: createId("history"),
+            createHistoryEntry({
               date: today(),
               status: patch.status,
-              owner: "",
               summary: `状态由"${previousStatus}"变更为"${nextStatus}"`,
-            },
+            }),
           ];
         }
 
-        return normalizeRecord(nextRecord);
+        return normalizeRecord(
+          appendRecordHistory(nextRecord, [
+            ...(Array.isArray(patch.todoHistory)
+              ? buildAddedTodoHistoryEntries(record, patch.todoHistory)
+              : []),
+            ...(patch.dateHistory
+              ? buildAddedDateHistoryEntries(record, patch.dateHistory)
+              : []),
+          ]),
+        );
       }),
     );
   }
@@ -769,6 +851,14 @@ function App() {
         const dateHistory = record.dateHistory ?? {};
         return syncDateItemsLegacy({
           ...record,
+          history: [
+            ...(record.history ?? []),
+            createHistoryEntry({
+              date: today(),
+              status: record.status || "",
+              summary: `新增${getFieldLabel(record, fieldKey)}事项：${item || date || "未填写事项"}`,
+            }),
+          ],
           [fieldKey]: date,
           dateHistory: {
             ...dateHistory,
@@ -834,6 +924,13 @@ function App() {
         categoryId: draft.categoryId || "other",
         status: draft.status || CALENDAR_DONE_STATUS.id,
         durationMinutes: normalizeDurationMinutes(draft.durationMinutes),
+        history: [
+          createHistoryEntry({
+            date: today(),
+            status: draft.status || CALENDAR_DONE_STATUS.id,
+            summary: `新增事项：${title}`,
+          }),
+        ],
         ...getCalendarItemSharedFields(draft),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -859,6 +956,7 @@ function App() {
                   ? normalizeDurationMinutes(item.durationMinutes)
                   : normalizeDurationMinutes(patch.durationMinutes),
               categoryId: patch.categoryId || item.categoryId || "other",
+              history: Array.isArray(item.history) ? item.history : [],
               date: patch.date === undefined ? item.date || "" : patch.date || "",
               startDate:
                 patch.startDate === undefined ? item.startDate || today() : patch.startDate || today(),
@@ -1409,7 +1507,16 @@ function App() {
             doneDate: existing?.doneDate || null,
           });
         });
-        return syncTodoItemsLegacy(record, nextItems);
+        const nextTodoHistory = nextItems.map((item) => ({
+          id: item.id,
+          addedDate: item.date || "",
+          item: item.text,
+          doneDate: item.doneDate || null,
+        }));
+        return syncTodoItemsLegacy(
+          appendRecordHistory(record, buildAddedTodoHistoryEntries(record, nextTodoHistory)),
+          nextItems,
+        );
       }),
     );
   }
@@ -1560,13 +1667,11 @@ function App() {
         categoryId,
         dateHistory: {},
         history: [
-          {
-            id: createId("history"),
+          createHistoryEntry({
             date: today(),
             status: defaultStatus,
-            owner: "",
             summary: `新建科研元素：${category.name}新记录`,
-          },
+          }),
         ],
       },
     );
@@ -1601,8 +1706,19 @@ function App() {
   }
 
   function insertRecord(record, graphContext = null) {
+    const category = CATEGORY_BY_ID[record.categoryId] ?? CATEGORIES[0];
+    const recordHistory = Array.isArray(record.history) && record.history.length > 0
+      ? record.history
+      : [
+          createHistoryEntry({
+            date: today(),
+            status: record.status || getDefaultStatusId(),
+            summary: `新建科研元素：${category.name}${String(record.title ?? "").trim() || "未命名记录"}`,
+          }),
+        ];
     const normalizedRecord = normalizeRecord({
       ...record,
+      history: recordHistory,
       title: String(record.title ?? "").trim() || "未命名记录",
       todo: String(record.todo ?? "").trim(),
     });
