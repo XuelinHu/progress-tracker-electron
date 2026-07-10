@@ -567,9 +567,9 @@ function App() {
       pickStatus("结束", {
         id: "结束",
         label: "结束",
-        color: "#334155",
-        bg: "#f1f5f9",
-        border: "#94a3b8",
+        color: "#44403c",
+        bg: "#f5f5f4",
+        border: "#a8a29e",
       }),
     ];
   }, [calendarStatusOptions]);
@@ -3437,17 +3437,17 @@ function App() {
               ))}
             </select>
 
-            <button className="icon-button primary" type="button" onClick={addRecord} title="新增记录">
+            <button className="icon-button primary toolbar-add" type="button" onClick={addRecord} title="新增记录">
               <Plus size={18} />
               <span>新增</span>
             </button>
 
-            <button className="icon-button" type="button" onClick={exportCategoryCsv} title="导出当前类别 CSV">
+            <button className="icon-button toolbar-export" type="button" onClick={exportCategoryCsv} title="导出当前类别 CSV">
               <FileDown size={18} />
               <span>CSV</span>
             </button>
 
-            <button className="icon-button muted" type="button" onClick={resetRecords} title="恢复默认数据">
+            <button className="icon-button muted toolbar-reset" type="button" onClick={resetRecords} title="恢复默认数据">
               <RotateCcw size={18} />
               <span>重置</span>
             </button>

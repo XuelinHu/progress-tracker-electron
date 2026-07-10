@@ -98,7 +98,7 @@ button {
 }
 
 .data-export {
-  --action-color: #2563eb;
+  --action-color: #1d4ed8;
 }
 
 .data-csv {
@@ -110,7 +110,7 @@ button {
 }
 
 .cloud-sync {
-  --action-color: #0891b2;
+  --action-color: #0e7490;
 }
 
 .cloud-restore {
@@ -126,7 +126,7 @@ button {
 }
 
 .graph-action {
-  --action-color: #0891b2;
+  --action-color: #4d7c0f;
 }
 
 .shortcut-hint {
@@ -999,6 +999,18 @@ button {
 
 .icon-button.muted {
   color: #697386;
+}
+
+.toolbar-export {
+  border-color: #5eead4;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.toolbar-reset {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #a16207;
 }
 
 .danger-button {
@@ -1891,6 +1903,24 @@ button {
   display: inline;
 }
 
+.config-actions .icon-button:nth-child(1) {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.config-actions .icon-button:nth-child(2) {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.config-actions .icon-button:nth-child(3) {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
 .backup-panel {
   display: flex;
   align-items: center;
@@ -1930,6 +1960,24 @@ button {
 
 .backup-actions .icon-button span {
   display: inline;
+}
+
+.backup-actions > .icon-button:nth-of-type(1) {
+  border-color: #a5b4fc;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.backup-actions > .icon-button:nth-of-type(2) {
+  border-color: #67e8f9;
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.backup-actions > .text-button {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #15803d;
 }
 
 .backup-dropdown {
