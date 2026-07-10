@@ -1097,7 +1097,7 @@ button {
   padding: 0 8px;
   border-right: 2px solid #cbd5e1;
   color: #475569;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 720;
   white-space: nowrap;
 }
@@ -1163,6 +1163,7 @@ button {
   justify-content: center;
   padding: 5px 6px;
   border-right: 2px solid #d6dee8;
+  font-size: 13.5px;
   text-align: center;
 }
 
@@ -1232,7 +1233,7 @@ button {
   background: transparent;
   color: #172033;
   outline: 0;
-  font-size: 12px;
+  font-size: 13.5px;
   text-align: center;
 }
 
@@ -1247,9 +1248,17 @@ button {
   min-height: 42px;
   max-height: 96px;
   line-height: 1.3;
+  align-content: center;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   overflow-y: auto;
+}
+
+.field-title .cell-input,
+.field-title .cell-textarea,
+.field-description .cell-input,
+.field-description .cell-textarea {
+  font-size: 14.5px;
 }
 
 .field-title .cell-textarea,
@@ -1501,11 +1510,12 @@ button {
   min-height: 42px;
   padding: 5px 6px;
   line-height: 1.3;
+  align-content: center;
   resize: vertical;
   overflow: hidden;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
-  font-size: 12px;
+  font-size: 13.5px;
   text-align: center;
 }
 
@@ -1568,7 +1578,7 @@ button {
   min-height: 24px;
   padding: 2px 3px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 13.5px;
   color: #334155;
 }
 
@@ -1617,7 +1627,7 @@ button {
 .todo-date {
   margin-left: auto;
   color: #94a3b8;
-  font-size: 10px;
+  font-size: 11.5px;
   white-space: nowrap;
 }
 
@@ -1730,6 +1740,7 @@ button {
 .combined-field-cell textarea {
   display: block;
   align-content: center;
+  font-size: 14.5px;
   text-align: center;
 }
 
@@ -1762,13 +1773,13 @@ button {
 .title-github-url-input {
   min-height: 32px;
   max-height: 58px;
-  font-size: 11px;
+  font-size: 13.5px;
 }
 
 .combined-field-input {
   min-height: 32px;
   max-height: 58px;
-  font-size: 11px;
+  font-size: 13.5px;
 }
 
 .date-item-copyable {
