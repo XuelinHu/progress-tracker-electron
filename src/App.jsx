@@ -922,8 +922,8 @@ function App() {
     const defaultDate = date || today();
     return {
       date: defaultDate,
-      startDate: today(),
-      endDate: today(),
+      startDate: defaultDate,
+      endDate: defaultDate,
       title: "",
       description: "",
       categoryId: "other",

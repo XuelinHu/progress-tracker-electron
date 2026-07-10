@@ -262,8 +262,8 @@ button {
   display: grid;
   grid-template-columns: minmax(154px, 203px) minmax(0, 1fr) minmax(168px, 216px);
   gap: 0;
-  height: calc(100vh - 226px);
-  max-height: calc(100vh - 226px);
+  height: calc(100vh - 154px);
+  max-height: calc(100vh - 154px);
   min-height: 560px;
   overflow: hidden;
 }
