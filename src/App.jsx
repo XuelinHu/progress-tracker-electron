@@ -2900,26 +2900,51 @@ function App() {
     if (field.type === "combined") {
       return (
         <div className="combined-field-cell">
-          {field.fields.map((childField) => (
-            <CopyableControl
-              key={childField.key}
-              value={record[childField.key]}
-              label={childField.label}
-              className="cell-copyable-control combined-copyable-control"
-            >
-              <textarea
-                className="cell-input cell-textarea combined-field-input"
-                rows={childField.type === "textarea" ? estimateTextRows(record[childField.key], childField.key) : 2}
-                value={record[childField.key] ?? ""}
-                onFocus={() => setSelectedId(record.id)}
-                onChange={(event) =>
-                  updateRecord(record.id, { [childField.key]: event.target.value })
-                }
-                aria-label={`${getRecordTitle(record)} ${childField.label}`}
-                placeholder={childField.label}
-              />
-            </CopyableControl>
-          ))}
+          {field.fields.map((childField) => {
+            const externalUrl =
+              childField.type === "url"
+                ? normalizeExternalUrl(record[childField.key])
+                : "";
+            return (
+              <div
+                className={`combined-field-row${childField.type === "url" ? " has-open-button" : ""}`}
+                key={childField.key}
+              >
+                <CopyableControl
+                  value={record[childField.key]}
+                  label={childField.label}
+                  className="cell-copyable-control combined-copyable-control"
+                >
+                  <textarea
+                    className="cell-input cell-textarea combined-field-input"
+                    rows={childField.type === "textarea" ? estimateTextRows(record[childField.key], childField.key) : 2}
+                    value={record[childField.key] ?? ""}
+                    onFocus={() => setSelectedId(record.id)}
+                    onChange={(event) =>
+                      updateRecord(record.id, { [childField.key]: event.target.value })
+                    }
+                    aria-label={`${getRecordTitle(record)} ${childField.label}`}
+                    placeholder={childField.label}
+                  />
+                </CopyableControl>
+                {childField.type === "url" && (
+                  <button
+                    className="url-open-button"
+                    type="button"
+                    disabled={!externalUrl}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      openExternalUrl(record[childField.key]);
+                    }}
+                    title={externalUrl ? `打开${childField.label}` : "没有可打开的网址"}
+                    aria-label={`打开 ${getRecordTitle(record)} ${childField.label}`}
+                  >
+                    <ExternalLink size={13} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       );
     }

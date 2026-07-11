@@ -1765,6 +1765,21 @@ button {
   gap: 6px;
 }
 
+.combined-field-row {
+  min-width: 0;
+}
+
+.combined-field-row.has-open-button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px;
+  gap: 4px;
+  align-items: center;
+}
+
+.combined-field-row.has-open-button .url-open-button {
+  align-self: center;
+}
+
 .title-copyable-control {
   align-items: center;
 }
