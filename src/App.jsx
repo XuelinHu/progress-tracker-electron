@@ -2907,13 +2907,30 @@ function App() {
                 : "";
             return (
               <div
-                className={`combined-field-row${childField.type === "url" ? " has-open-button" : ""}`}
+                className="combined-field-row"
                 key={childField.key}
               >
                 <CopyableControl
                   value={record[childField.key]}
                   label={childField.label}
                   className="cell-copyable-control combined-copyable-control"
+                  action={
+                    childField.type === "url" ? (
+                      <button
+                        className="url-open-button"
+                        type="button"
+                        disabled={!externalUrl}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openExternalUrl(record[childField.key]);
+                        }}
+                        title={externalUrl ? `打开${childField.label}` : "没有可打开的网址"}
+                        aria-label={`打开 ${getRecordTitle(record)} ${childField.label}`}
+                      >
+                        <ExternalLink size={13} />
+                      </button>
+                    ) : null
+                  }
                 >
                   <textarea
                     className="cell-input cell-textarea combined-field-input"
@@ -2927,21 +2944,6 @@ function App() {
                     placeholder={childField.label}
                   />
                 </CopyableControl>
-                {childField.type === "url" && (
-                  <button
-                    className="url-open-button"
-                    type="button"
-                    disabled={!externalUrl}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      openExternalUrl(record[childField.key]);
-                    }}
-                    title={externalUrl ? `打开${childField.label}` : "没有可打开的网址"}
-                    aria-label={`打开 ${getRecordTitle(record)} ${childField.label}`}
-                  >
-                    <ExternalLink size={13} />
-                  </button>
-                )}
               </div>
             );
           })}
@@ -3023,6 +3025,21 @@ function App() {
             value={record[field.key]}
             label={field.label}
             className="cell-copyable-control"
+            action={
+              <button
+                className="url-open-button"
+                type="button"
+                disabled={!externalUrl}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openExternalUrl(record[field.key]);
+                }}
+                title={externalUrl ? "用默认浏览器打开" : "没有可打开的网址"}
+                aria-label={`打开 ${getRecordTitle(record)} ${field.label}`}
+              >
+                <ExternalLink size={13} />
+              </button>
+            }
           >
             <textarea
               className="cell-input cell-textarea"
@@ -3033,19 +3050,6 @@ function App() {
               aria-label={`${getRecordTitle(record)} ${field.label}`}
             />
           </CopyableControl>
-          <button
-            className="url-open-button"
-            type="button"
-            disabled={!externalUrl}
-            onClick={(event) => {
-              event.stopPropagation();
-              openExternalUrl(record[field.key]);
-            }}
-            title={externalUrl ? "用默认浏览器打开" : "没有可打开的网址"}
-            aria-label={`打开 ${getRecordTitle(record)} ${field.label}`}
-          >
-            <ExternalLink size={13} />
-          </button>
         </div>
       );
     }
@@ -3072,6 +3076,7 @@ function App() {
     }
 
     if (field.key === "title") {
+      const githubUrl = normalizeExternalUrl(record.githubUrl);
       return (
         <div className="title-github-cell">
           <CopyableControl
@@ -3092,6 +3097,21 @@ function App() {
             value={record.githubUrl}
             label="仓库地址"
             className="cell-copyable-control title-copyable-control"
+            action={
+              <button
+                className="url-open-button"
+                type="button"
+                disabled={!githubUrl}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openExternalUrl(record.githubUrl);
+                }}
+                title={githubUrl ? "打开仓库地址" : "没有可打开的网址"}
+                aria-label={`打开 ${getRecordTitle(record)} 仓库地址`}
+              >
+                <ExternalLink size={13} />
+              </button>
+            }
           >
             <textarea
               className="cell-input cell-textarea title-github-url-input"

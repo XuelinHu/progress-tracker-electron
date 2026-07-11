@@ -971,9 +971,7 @@
 }
 
 .graph-url-field {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
-  gap: 6px;
+  min-width: 0;
 }
 
 .graph-path-field {
@@ -989,6 +987,10 @@
 .graph-copyable-control {
   grid-template-columns: 24px minmax(0, 1fr);
   align-items: start;
+}
+
+.graph-copyable-control.has-action {
+  grid-template-columns: 24px 38px minmax(0, 1fr);
 }
 
 .graph-copyable-control > .copy-icon-button {

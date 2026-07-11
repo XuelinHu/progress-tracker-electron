@@ -584,6 +584,18 @@ function GraphField({
           value={record[field.key]}
           label={field.label}
           className="graph-copyable-control"
+          action={
+            <button
+              className="graph-icon-button"
+              type="button"
+              disabled={!url}
+              onClick={() => onOpenExternal(record[field.key])}
+              title={url ? "用默认浏览器打开" : "没有可打开的网址"}
+              aria-label={`打开${field.label}`}
+            >
+              <ExternalLink size={15} />
+            </button>
+          }
         >
           <input
             className="graph-form-control"
@@ -592,15 +604,6 @@ function GraphField({
             onChange={(event) => onChange(field.key, event.target.value)}
           />
         </CopyableControl>
-        <button
-          className="graph-icon-button"
-          type="button"
-          disabled={!url}
-          onClick={() => onOpenExternal(record[field.key])}
-          title={url ? "用默认浏览器打开" : "没有可打开的网址"}
-        >
-          <ExternalLink size={15} />
-        </button>
       </div>
     );
   }

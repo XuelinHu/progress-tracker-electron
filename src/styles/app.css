@@ -1685,9 +1685,6 @@ button {
 .url-cell {
   width: 100%;
   min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
-  gap: 6px;
 }
 
 .path-cell {
@@ -1736,6 +1733,10 @@ button {
   align-items: start;
 }
 
+.copyable-control.has-action {
+  grid-template-columns: 20px 24px minmax(0, 1fr);
+}
+
 .cell-copyable-control > .copy-icon-button {
   align-self: center;
   margin-top: 0;
@@ -1769,14 +1770,7 @@ button {
   min-width: 0;
 }
 
-.combined-field-row.has-open-button {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 24px;
-  gap: 4px;
-  align-items: center;
-}
-
-.combined-field-row.has-open-button .url-open-button {
+.combined-field-row .url-open-button {
   align-self: center;
 }
 
