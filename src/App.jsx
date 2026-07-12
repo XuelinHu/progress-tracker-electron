@@ -7,6 +7,7 @@ import {
   ExternalLink,
   FileDown,
   Keyboard,
+  Pencil,
   Plus,
   RotateCcw,
   Search,
@@ -2596,8 +2597,8 @@ function App() {
               取消
             </button>
             <button className="icon-button primary" type="submit">
-              <Plus size={16} />
-              <span>新增</span>
+              {isCalendarItem && createModal.itemId ? <Save size={16} /> : <Plus size={16} />}
+              <span>{isCalendarItem && createModal.itemId ? "更新" : "新增"}</span>
             </button>
           </div>
         </form>
@@ -2612,6 +2613,11 @@ function App() {
       : backupList.length === 0
         ? "暂无服务器本地备份"
         : "请选择服务器本地备份";
+    const statusColumnSize = Math.ceil(statusDraft.length / 2);
+    const statusColumns = [
+      statusDraft.slice(0, statusColumnSize),
+      statusDraft.slice(statusColumnSize),
+    ].filter((column) => column.length > 0);
 
     return (
       <section className="workspace status-config-page">
@@ -2719,17 +2725,19 @@ function App() {
       {statusConfigMessage && <div className="config-message">{statusConfigMessage}</div>}
 
           <div className="status-config-table">
-            <div className="status-config-row status-config-head">
-              <span>状态名称</span>
-              <span>优先级</span>
-              <span>文字</span>
-              <span>背景</span>
-              <span>边框</span>
-              <span>预览</span>
-              <span>操作</span>
-            </div>
-            {statusDraft.map((status) => (
-              <div className="status-config-row" key={status.id}>
+            {statusColumns.map((column, columnIndex) => (
+              <div className="status-config-column" key={`status-column-${columnIndex}`}>
+                <div className="status-config-row status-config-head">
+                  <span>状态名称</span>
+                  <span>优先级</span>
+                  <span>文字</span>
+                  <span>背景</span>
+                  <span>边框</span>
+                  <span>预览</span>
+                  <span>操作</span>
+                </div>
+                {column.map((status) => (
+                  <div className="status-config-row" key={status.id}>
                 <input
                   className="config-input"
                   value={status.label}
@@ -2796,6 +2804,8 @@ function App() {
                     <Copy size={16} />
                   </button>
                 </div>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -2863,6 +2873,18 @@ function App() {
                   .join(" · ")}
               </span>
               <div className="other-item-actions">
+                <button
+                  className="row-edit-button"
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openCalendarItemModal(item.date, item, { itemId: item.id });
+                  }}
+                  title="编辑这个事项"
+                  aria-label={`编辑 ${item.title}`}
+                >
+                  <Pencil size={12} />
+                </button>
                 <button
                   className="row-copy-button"
                   type="button"

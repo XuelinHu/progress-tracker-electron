@@ -564,7 +564,7 @@ export default function CalendarBoard({
 
   function openTooltip(event, content) {
     const rect = event.currentTarget.getBoundingClientRect();
-    const width = Math.min(320, window.innerWidth - 20);
+    const width = Math.min(360, window.innerWidth - 20);
     const estimatedHeight = 260;
     const left = Math.min(Math.max(10, rect.left), window.innerWidth - width - 10);
     const belowTop = rect.bottom + 6;

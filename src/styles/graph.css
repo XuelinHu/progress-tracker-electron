@@ -576,8 +576,8 @@
   left: 50%;
   z-index: 2147483000;
   display: none;
-  width: 170px;
-  max-height: 130px;
+  width: 280px;
+  max-height: 220px;
   overflow: auto;
   transform: translateX(-50%);
   border: 1px solid #cbd5e1;
@@ -780,17 +780,18 @@
 
 /* compact popover overrides */
 .graph-node-history-popover .graph-history-group > strong {
-  font-size: 8px;
-  margin-bottom: 2px;
+  font-size: 12px;
+  margin-bottom: 4px;
 }
 
 .graph-node-history-popover .graph-history-row span {
-  font-size: 7px;
-  padding: 2px 3px;
+  font-size: 11px;
+  padding: 5px 6px;
+  line-height: 1.35;
 }
 
 .graph-node-history-popover .graph-history-group + .graph-history-group {
-  margin-top: 3px;
+  margin-top: 7px;
 }
 
 .graph-node-history-popover .graph-history-table {
@@ -798,7 +799,7 @@
 }
 
 .graph-node-history-popover .graph-history-row {
-  grid-template-columns: 60px minmax(0, 1fr);
+  grid-template-columns: 88px minmax(0, 1fr);
 }
 
 .graph-node-history-popover .history-type-status span:first-child::before,
