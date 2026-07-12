@@ -1734,7 +1734,7 @@ button {
 }
 
 .copyable-control.has-action {
-  grid-template-columns: 20px 24px minmax(0, 1fr);
+  grid-template-columns: 20px 20px minmax(0, 1fr);
 }
 
 .cell-copyable-control > .copy-icon-button {
@@ -1837,11 +1837,14 @@ button {
 }
 
 .url-open-button {
-  width: 24px;
-  min-height: 32px;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  padding: 0;
   align-self: start;
   color: var(--category-accent);
-  border-color: #cfd8e6;
+  border-color: var(--category-accent);
+  border-radius: 4px;
   background: #ffffff;
 }
 

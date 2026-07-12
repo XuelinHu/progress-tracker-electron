@@ -593,7 +593,7 @@ function GraphField({
               title={url ? "用默认浏览器打开" : "没有可打开的网址"}
               aria-label={`打开${field.label}`}
             >
-              <ExternalLink size={15} />
+              <ExternalLink size={10} />
             </button>
           }
         >

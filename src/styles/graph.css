@@ -990,7 +990,7 @@
 }
 
 .graph-copyable-control.has-action {
-  grid-template-columns: 24px 38px minmax(0, 1fr);
+  grid-template-columns: 24px 24px minmax(0, 1fr);
 }
 
 .graph-copyable-control > .copy-icon-button {
@@ -998,8 +998,11 @@
 }
 
 .graph-icon-button {
-  width: 38px;
-  height: 38px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin-top: 8px;
+  border-radius: 4px;
   color: #2563eb;
 }
 

@@ -2927,7 +2927,7 @@ function App() {
                         title={externalUrl ? `打开${childField.label}` : "没有可打开的网址"}
                         aria-label={`打开 ${getRecordTitle(record)} ${childField.label}`}
                       >
-                        <ExternalLink size={13} />
+                        <ExternalLink size={10} />
                       </button>
                     ) : null
                   }
@@ -3037,7 +3037,7 @@ function App() {
                 title={externalUrl ? "用默认浏览器打开" : "没有可打开的网址"}
                 aria-label={`打开 ${getRecordTitle(record)} ${field.label}`}
               >
-                <ExternalLink size={13} />
+                <ExternalLink size={10} />
               </button>
             }
           >
@@ -3109,7 +3109,7 @@ function App() {
                 title={githubUrl ? "打开仓库地址" : "没有可打开的网址"}
                 aria-label={`打开 ${getRecordTitle(record)} 仓库地址`}
               >
-                <ExternalLink size={13} />
+                <ExternalLink size={10} />
               </button>
             }
           >
