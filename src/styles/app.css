@@ -515,8 +515,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 2px 8px;
   border-bottom: 1px solid #e2e8f0;
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
 }
@@ -524,17 +524,24 @@ button {
 .calendar-toolbar h2 {
   margin: 0;
   color: #172033;
-  font-size: 16px;
-  line-height: 1.25;
+  font-size: 14px;
+  line-height: 1.05;
   text-align: center;
 }
 
 .calendar-toolbar p {
-  margin: 1px 0 0;
+  margin: 0;
   color: #647084;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: 9px;
+  line-height: 1.05;
   text-align: center;
+}
+
+.calendar-toolbar > .icon-button {
+  min-height: 24px;
+  height: 24px;
+  padding: 0 7px;
+  font-size: 11px;
 }
 
 .calendar-week-head {
