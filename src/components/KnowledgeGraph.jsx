@@ -20,6 +20,7 @@ import StatusHistoryPopover from "./StatusHistoryPopover.jsx";
 import PortalPopover from "./PortalPopover.jsx";
 import CopyIconButton from "./CopyIconButton.jsx";
 import CopyableControl from "./CopyableControl.jsx";
+import InlineEditableText from "./InlineEditableText.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 import { STATUSES } from "../data/statuses.js";
 import "../styles/graph.css";
@@ -47,13 +48,19 @@ function estimateTextRows(value, fieldKey = "") {
   const text = String(value ?? "");
   const charsPerLine =
     fieldKey === "title" ? 16 : fieldKey === "description" ? 18 : 42;
-  const minRows = fieldKey === "title" ? 2 : fieldKey === "description" ? 5 : 2;
-  return Math.max(
-    minRows,
+  return Math.min(
+    3,
+    Math.max(
+    2,
     text
       .split(/\r\n|\r|\n/)
       .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0),
+    ),
   );
+}
+
+function itemAddedDate(item, fallback = "") {
+  return String(item?.addedAt || item?.createdAt || item?.addedDate || fallback || "").slice(0, 10);
 }
 
 function getDateHistoryGroups(record, category) {
@@ -83,6 +90,8 @@ function getRecordHistoryGroups(record, category) {
         id: entry.id,
         date: entry.date,
         item: entry.summary || entry.status || "状态更新",
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt,
       })),
     },
     {
@@ -95,6 +104,9 @@ function getRecordHistoryGroups(record, category) {
           id: entry.id,
           date: entry.doneDate,
           item: entry.item || "完成Todo项",
+          addedAt: entry.addedAt,
+          createdAt: entry.createdAt,
+          doneAt: entry.doneAt,
         })),
     },
     ...getDateHistoryGroups(record, category),
@@ -123,15 +135,12 @@ function DateHistorySummary({ groups, compact = false, onDeleteEntry, onUpdateEn
                       <span>{entry.date || "-"}</span>
                       <span className="history-item-cell">
                       {onUpdateEntry ? (
-                        <input
-                          className="history-item-input"
+                        <InlineEditableText
                           value={entry.item || ""}
-                          title={entry.item || "未填写事项"}
-                          onChange={(event) =>
-                            onUpdateEntry(group.key, entry.id, event.target.value)
-                          }
-                          onClick={(event) => event.stopPropagation()}
-                          aria-label="编辑历史事项"
+                          className="history-item-text"
+                          inputClassName="history-item-input"
+                          title={`${entry.item || "未填写事项"}；添加日期：${itemAddedDate(entry, entry.date) || "未知"}；双击编辑`}
+                          onCommit={(nextItem) => onUpdateEntry(group.key, entry.id, nextItem)}
                         />
                       ) : (
                         <span className="history-item-text" title={entry.item || "未填写事项"}>
@@ -255,7 +264,13 @@ function RecordNode({ data }) {
                   onClick={(event) => event.stopPropagation()}
                   onChange={() => h.toggleTodo?.(line)}
                 />
-                <span className="graph-node-todo-text">{line}</span>
+                <InlineEditableText
+                  value={line}
+                  className="graph-node-todo-text"
+                  inputClassName="graph-node-todo-edit"
+                  title={`添加日期：${itemAddedDate(hist) || "未知"}；双击编辑`}
+                  onCommit={(nextText) => hist?.id && h.updateTodo?.(hist.id, nextText)}
+                />
                 <button
                   className="graph-node-todo-del"
                   type="button"
@@ -313,8 +328,16 @@ function RecordNode({ data }) {
                       onClick={(event) => event.stopPropagation()}
                       onChange={() => h.toggleTodo?.(line)}
                     />
-                    <span className="graph-node-todo-text">{line}</span>
-                    <span className="graph-node-todo-done-date">{hist.doneDate}</span>
+                    <InlineEditableText
+                      value={line}
+                      className="graph-node-todo-text"
+                      inputClassName="graph-node-todo-edit"
+                      title={`添加日期：${itemAddedDate(hist) || "未知"}；完成日期：${hist.doneDate}；双击编辑`}
+                      onCommit={(nextText) => h.updateTodo?.(hist.id, nextText)}
+                    />
+                    <span className="graph-node-todo-done-date" title={`添加日期：${itemAddedDate(hist) || "未知"}`}>
+                      添 {itemAddedDate(hist) || "-"} / 完 {hist.doneDate}
+                    </span>
                   </div>
                 );
               })}
@@ -455,8 +478,13 @@ function GraphField({
             {activeItems.map((line, idx) => {
               const trimmed = line.trim();
               if (!trimmed) return null;
+              const hist = histByItem.get(trimmed);
               return (
-                <div key={`a-${idx}-${trimmed.substring(0, 12)}`} className="todo-item">
+                <div
+                  key={`a-${idx}-${trimmed.substring(0, 12)}`}
+                  className="todo-item"
+                  title={`添加日期：${itemAddedDate(hist) || "未知"}`}
+                >
                   <button
                     className="todo-delete-btn"
                     type="button"
@@ -474,8 +502,14 @@ function GraphField({
                     onClick={(event) => event.stopPropagation()}
                     onChange={() => onToggleTodo(field.key, trimmed)}
                   />
-                  <span className="todo-text">{trimmed}</span>
-                  <span className="todo-date">{histByItem.get(trimmed)?.addedDate || ""}</span>
+                  <InlineEditableText
+                    value={trimmed}
+                    className="todo-text"
+                    inputClassName="todo-inline-edit"
+                    title={`添加日期：${itemAddedDate(hist) || "未知"}；双击编辑`}
+                    onCommit={(nextText) => hist?.id && onUpdateTodoHistory?.(hist.id, nextText)}
+                  />
+                  <span className="todo-date">{itemAddedDate(hist)}</span>
                 </div>
               );
             })}
@@ -519,8 +553,17 @@ function GraphField({
                       onClick={(event) => event.stopPropagation()}
                       onChange={() => onToggleTodo(field.key, trimmed)}
                     />
-                    <span className="todo-text">{trimmed}</span>
-                    <span className="todo-date">{hist?.doneDate || ""}</span>
+                    <InlineEditableText
+                      value={trimmed}
+                      className="todo-text"
+                      inputClassName="todo-inline-edit"
+                      title={`添加日期：${itemAddedDate(hist) || "未知"}；完成日期：${hist?.doneDate || "未知"}；双击编辑`}
+                      onCommit={(nextText) => hist?.id && onUpdateTodoHistory?.(hist.id, nextText)}
+                    />
+                    <span className="todo-date todo-date-stack">
+                      <span>添 {itemAddedDate(hist) || "-"}</span>
+                      <span>完 {hist?.doneDate || "-"}</span>
+                    </span>
                   </div>
                 );
               })}
@@ -747,6 +790,7 @@ function GraphCanvas({
               },
               toggleTodo: (text) => toggleTodoItem?.(record?.id, text),
               deleteTodo: (text) => deleteTodoItem?.(record?.id, text),
+              updateTodo: (historyId, text) => updateTodoHistoryItem?.(record?.id, historyId, text),
               addDate: (date, item) => {
                 if (dateKey && record) updateRecordDate?.(record.id, dateKey, date, item);
               },
@@ -777,6 +821,7 @@ function GraphCanvas({
       selectedElement,
       toggleTodoItem,
       deleteTodoItem,
+      updateTodoHistoryItem,
       updateRecord,
       updateRecordDate,
       syncTodoItems,

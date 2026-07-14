@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import CopyableControl from "./CopyableControl.jsx";
+import InlineEditableText from "./InlineEditableText.jsx";
+
+function addedDate(entry) {
+  return String(entry?.addedAt || entry?.createdAt || entry?.date || "").slice(0, 10);
+}
 
 function today() {
   const date = new Date();
@@ -144,26 +149,28 @@ export default function DateHistoryField({
           >
             <div className="date-history-title">历史记录</div>
             <div className="date-history-table date-history-head">
-              <span>日期</span>
+              <span>日期 / 添加</span>
               <span>事项</span>
             </div>
             {history.length > 0 ? (
               [...history].reverse().map((entry) => (
                 <div key={entry.id} className="date-history-table">
-                  <span>{entry.date || "-"}</span>
+                  <span title={`添加日期：${addedDate(entry) || "未知"}`}>
+                    {entry.date || "-"}
+                    <small className="history-added-date">添加 {addedDate(entry) || "-"}</small>
+                  </span>
                   <span className="history-item-cell">
                       <CopyableControl
                         value={entry.item || ""}
                         label="历史事项"
                         className="history-item-copyable"
                       >
-                        <input
-                          className="history-item-input"
+                        <InlineEditableText
                           value={entry.item || ""}
-                          title={entry.item || "未填写事项"}
-                          onChange={(event) => onHistoryItemChange?.(entry.id, event.target.value)}
-                          onClick={(event) => event.stopPropagation()}
-                          aria-label="编辑历史事项"
+                          className="history-item-text"
+                          inputClassName="history-item-input"
+                          title={`${entry.item || "未填写事项"}；添加日期：${addedDate(entry) || "未知"}；双击编辑`}
+                          onCommit={(nextItem) => onHistoryItemChange?.(entry.id, nextItem)}
                         />
                       </CopyableControl>
                     <button

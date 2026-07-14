@@ -170,10 +170,17 @@ function buildTodoCompletionPatch(record, item, dateIso, completed) {
   const history = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
   const hasHistory = history.some((entry) => entry.item === text);
   const doneDate = completed ? dateIso : null;
+  const changedAt = new Date().toISOString();
   const nextItems = hasHistory
     ? (record?.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
         entry.type === RECORD_ITEM_TYPES.TODO && entry.text === text
-          ? { ...entry, status: completed ? "done" : "active", doneDate }
+          ? {
+              ...entry,
+              status: completed ? "done" : "active",
+              doneDate,
+              doneAt: completed ? changedAt : null,
+              updatedAt: changedAt,
+            }
           : entry,
       )
     : [
@@ -193,7 +200,7 @@ function buildTodoCompletionPatch(record, item, dateIso, completed) {
     todoHistory: hasHistory
       ? history.map((entry) =>
           entry.item === text
-            ? { ...entry, doneDate }
+            ? { ...entry, doneDate, doneAt: completed ? changedAt : null, updatedAt: changedAt }
             : entry,
         )
       : [
@@ -203,6 +210,10 @@ function buildTodoCompletionPatch(record, item, dateIso, completed) {
             item: text,
             addedDate: dateIso,
             doneDate,
+            addedAt: changedAt,
+            doneAt: completed ? changedAt : null,
+            createdAt: changedAt,
+            updatedAt: changedAt,
           },
         ],
   }, nextItems);
@@ -353,6 +364,7 @@ export default function CalendarBoard({
           record,
           occurrenceId: entry.id || `${record.id}-${entry.date}-${list.length}`,
           occurrenceItem: entry.item || "",
+          occurrenceAddedAt: entry.createdAt || entry.addedAt || entry.date,
         });
         groups.set(entry.date, list);
       }
@@ -801,6 +813,7 @@ export default function CalendarBoard({
                           <span>类别：{category.name}</span>
                           <span>状态：{status?.label || item.status || "其他"}</span>
                           <span>日期：{item.date}</span>
+                          <span>添加日期：{String(item.createdAt || item.date || "").slice(0, 10) || "未知"}</span>
                           {item.startDate && <span>开始日期：{item.startDate}</span>}
                           {item.endDate && <span>结束日期：{item.endDate}</span>}
                           {item.durationMinutes && <span>预计耗时：{item.durationMinutes}分钟</span>}
@@ -908,6 +921,9 @@ export default function CalendarBoard({
                         <span>类别：{category.name}</span>
                         <span>状态：{status?.label || record.status || "未设置"}</span>
                         <span>日期：{day.iso}</span>
+                        <span>
+                          添加日期：{String(entry.occurrenceAddedAt || record.createdAt || day.iso).slice(0, 10)}
+                        </span>
                         <span>字段：{dateField?.label || "日期"}</span>
                         <DetailSection
                           title="今天做什么"

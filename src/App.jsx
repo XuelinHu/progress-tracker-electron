@@ -23,6 +23,7 @@ import StatusHistoryPopover from "./components/StatusHistoryPopover.jsx";
 import PortalPopover from "./components/PortalPopover.jsx";
 import CopyIconButton from "./components/CopyIconButton.jsx";
 import CopyableControl from "./components/CopyableControl.jsx";
+import InlineEditableText from "./components/InlineEditableText.jsx";
 import CalendarBoard from "./components/CalendarBoard.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
@@ -155,18 +156,25 @@ function normalizeRecord(record) {
       addedDate: e.addedDate || e.date || today(),
       item: e.item || "",
       doneDate: e.doneDate || (!e.addedDate && e.date ? e.date : null),
+      addedAt: e.addedAt || e.createdAt || e.addedDate || e.date || today(),
+      doneAt: e.doneAt || null,
+      createdAt: e.createdAt || e.addedAt || e.addedDate || e.date || today(),
+      updatedAt: e.updatedAt || e.doneAt || e.createdAt || e.addedDate || e.date || today(),
     })),
   };
   return withSyncedRecordItems(normalized, buildRecordItemsFromLegacy(normalized));
 }
 
 function createHistoryEntry({ date = today(), status = "", summary = "" } = {}) {
+  const now = new Date().toISOString();
   return {
     id: createId("history"),
     date,
     status,
     owner: "",
     summary,
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
@@ -424,8 +432,11 @@ function estimateTextRows(value, fieldKey = "") {
   const inferredRows = text
     .split(/\r\n|\r|\n/)
     .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0);
-  const minRows = fieldKey === "title" ? 2 : fieldKey === "description" ? 5 : 2;
-  return Math.max(minRows, inferredRows);
+  return Math.min(3, Math.max(2, inferredRows));
+}
+
+function itemAddedDate(item, fallback = "") {
+  return String(item?.addedAt || item?.createdAt || item?.addedDate || fallback || "").slice(0, 10);
 }
 
 function daysFromToday(dateStr) {
@@ -1506,6 +1517,9 @@ function App() {
             date: existing?.addedDate || today(),
             status: existing?.doneDate ? "done" : "active",
             doneDate: existing?.doneDate || null,
+            doneAt: existing?.doneAt || null,
+            createdAt: existing?.createdAt || existing?.addedAt || existing?.addedDate,
+            updatedAt: existing?.updatedAt,
           });
         });
         const nextTodoHistory = nextItems.map((item) => ({
@@ -1513,6 +1527,10 @@ function App() {
           addedDate: item.date || "",
           item: item.text,
           doneDate: item.doneDate || null,
+          addedAt: item.createdAt,
+          doneAt: item.doneAt || null,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
         }));
         return syncTodoItemsLegacy(
           appendRecordHistory(record, buildAddedTodoHistoryEntries(record, nextTodoHistory)),
@@ -1528,13 +1546,15 @@ function App() {
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
+        const changedAt = new Date().toISOString();
         const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
           entry.type === RECORD_ITEM_TYPES.TODO && entry.text === text
             ? {
                 ...entry,
                 status: entry.doneDate ? "active" : "done",
                 doneDate: entry.doneDate ? null : today(),
-                updatedAt: new Date().toISOString(),
+                doneAt: entry.doneDate ? null : changedAt,
+                updatedAt: changedAt,
               }
             : entry,
         );
@@ -1595,7 +1615,7 @@ function App() {
         return {
           ...record,
           history: (record.history ?? []).map((entry) =>
-            entry.id === historyId ? { ...entry, summary } : entry,
+            entry.id === historyId ? { ...entry, summary, updatedAt: new Date().toISOString() } : entry,
           ),
         };
       }),
@@ -1638,7 +1658,7 @@ function App() {
           ...syncTodoItemsLegacy(record, nextItems),
           todo,
           todoHistory: (record.todoHistory ?? []).map((entry) =>
-            entry.id === historyId ? { ...entry, item } : entry,
+            entry.id === historyId ? { ...entry, item, updatedAt: new Date().toISOString() } : entry,
           ),
         };
       }),
@@ -3176,8 +3196,14 @@ function App() {
             {activeItems.map((line, idx) => {
               const trimmed = line.trim();
               if (!trimmed) return null;
+              const hist = histByItem.get(trimmed);
+              const addedDate = itemAddedDate(hist);
               return (
-                <div key={`a-${idx}-${trimmed.substring(0, 12)}`} className="todo-item">
+                <div
+                  key={`a-${idx}-${trimmed.substring(0, 12)}`}
+                  className="todo-item"
+                  title={`添加日期：${addedDate || "未知"}`}
+                >
                   <button
                     className="todo-delete-btn"
                     type="button"
@@ -3195,8 +3221,14 @@ function App() {
                     onClick={(event) => event.stopPropagation()}
                     onChange={() => toggleTodoItem(record.id, trimmed)}
                   />
-                  <span className="todo-text">{trimmed}</span>
-                  <span className="todo-date">{histByItem.get(trimmed)?.addedDate || ""}</span>
+                  <InlineEditableText
+                    value={trimmed}
+                    className="todo-text"
+                    inputClassName="todo-inline-edit"
+                    title={`添加日期：${addedDate || "未知"}；双击编辑`}
+                    onCommit={(nextText) => hist?.id && updateTodoHistoryItem(record.id, hist.id, nextText)}
+                  />
+                  <span className="todo-date">{addedDate}</span>
                 </div>
               );
             })}
@@ -3226,8 +3258,13 @@ function App() {
                 const trimmed = line.trim();
                 if (!trimmed) return null;
                 const hist = histByItem.get(trimmed);
+                const addedDate = itemAddedDate(hist);
                 return (
-                  <div key={`d-${idx}-${trimmed.substring(0, 12)}`} className="todo-item done">
+                  <div
+                    key={`d-${idx}-${trimmed.substring(0, 12)}`}
+                    className="todo-item done"
+                    title={`添加日期：${addedDate || "未知"}；完成日期：${hist?.doneDate || "未知"}`}
+                  >
                     <CopyIconButton
                       value={trimmed}
                       label="Todo"
@@ -3240,8 +3277,17 @@ function App() {
                       onClick={(event) => event.stopPropagation()}
                       onChange={() => toggleTodoItem(record.id, trimmed)}
                     />
-                    <span className="todo-text">{trimmed}</span>
-                    <span className="todo-date">{hist?.doneDate || ""}</span>
+                    <InlineEditableText
+                      value={trimmed}
+                      className="todo-text"
+                      inputClassName="todo-inline-edit"
+                      title={`添加日期：${addedDate || "未知"}；完成日期：${hist?.doneDate || "未知"}；双击编辑`}
+                      onCommit={(nextText) => hist?.id && updateTodoHistoryItem(record.id, hist.id, nextText)}
+                    />
+                    <span className="todo-date todo-date-stack">
+                      <span>添 {addedDate || "-"}</span>
+                      <span>完 {hist?.doneDate || "-"}</span>
+                    </span>
                   </div>
                 );
               })}

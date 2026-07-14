@@ -426,6 +426,17 @@
   overflow: visible;
   overflow-wrap: anywhere;
   white-space: normal;
+  max-height: 3.9em;
+  overflow-y: auto;
+  cursor: text;
+}
+
+.graph-node-todo-edit {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 18px;
+  padding: 1px 3px;
+  font-size: 9px;
 }
 
 .graph-node-todo-del {
@@ -667,6 +678,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: text;
 }
 
 .graph-history-summary .history-item-input {
@@ -996,6 +1008,12 @@
 
 .graph-copyable-control > .copy-icon-button {
   margin-top: 8px;
+}
+
+.graph-textarea {
+  max-height: 62px;
+  overflow-y: auto;
+  resize: none;
 }
 
 .graph-icon-button {

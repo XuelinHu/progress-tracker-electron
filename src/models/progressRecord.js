@@ -29,6 +29,7 @@ export function createRecordItem({
   sourceField = "",
   status = "active",
   doneDate = null,
+  doneAt = null,
   createdAt = "",
   updatedAt = "",
 }) {
@@ -42,6 +43,7 @@ export function createRecordItem({
     sourceField: String(sourceField || ""),
     status,
     doneDate: doneDate || null,
+    doneAt: doneAt || null,
     createdAt: createdAt || now,
     updatedAt: updatedAt || now,
   };
@@ -58,6 +60,7 @@ function normalizeRecordItem(item, recordId) {
     sourceField: item?.sourceField ?? "",
     status: item?.status || (item?.doneDate ? "done" : "active"),
     doneDate: item?.doneDate ?? null,
+    doneAt: item?.doneAt ?? null,
     createdAt: item?.createdAt,
     updatedAt: item?.updatedAt,
   });
@@ -101,7 +104,8 @@ export function buildRecordItemsFromLegacy(record) {
         date: history?.addedDate || "",
         status: history?.doneDate ? "done" : "active",
         doneDate: history?.doneDate || null,
-        createdAt: history?.createdAt,
+        doneAt: history?.doneAt,
+        createdAt: history?.createdAt || history?.addedAt || history?.addedDate,
         updatedAt: history?.updatedAt,
       }),
     );
@@ -116,7 +120,8 @@ export function buildRecordItemsFromLegacy(record) {
         date: history.addedDate || "",
         status: history.doneDate ? "done" : "active",
         doneDate: history.doneDate || null,
-        createdAt: history.createdAt,
+        doneAt: history.doneAt,
+        createdAt: history.createdAt || history.addedAt || history.addedDate,
         updatedAt: history.updatedAt,
       }),
     );
@@ -136,7 +141,7 @@ export function buildRecordItemsFromLegacy(record) {
           date: entry.date,
           sourceField,
           status: "active",
-          createdAt: entry.createdAt,
+          createdAt: entry.createdAt || entry.date,
           updatedAt: entry.updatedAt,
         }),
       );
@@ -165,6 +170,10 @@ export function syncTodoItemsLegacy(record, items = record?.items ?? []) {
       addedDate: item.date || "",
       item: item.text,
       doneDate: item.doneDate || null,
+      addedAt: item.createdAt,
+      doneAt: item.doneAt || null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
     })),
     items: nextItems,
   };
@@ -189,6 +198,8 @@ export function syncDateItemsLegacy(record, items = record?.items ?? []) {
           id: item.id,
           date: item.date,
           item: item.text,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
         },
       ];
     });

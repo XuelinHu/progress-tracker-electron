@@ -1,4 +1,5 @@
 import CopyableControl from "./CopyableControl.jsx";
+import InlineEditableText from "./InlineEditableText.jsx";
 
 export default function StatusHistoryPopover({
   history = [],
@@ -11,6 +12,7 @@ export default function StatusHistoryPopover({
   const statusEntries = [...history].reverse().map((entry) => ({
     id: entry.id,
     date: entry.date,
+    addedDate: String(entry.createdAt || entry.date || "").slice(0, 10),
     text: entry.summary || entry.status || "状态更新",
     type: "status",
   }));
@@ -20,6 +22,7 @@ export default function StatusHistoryPopover({
     .map((entry) => ({
       id: entry.id,
       date: entry.doneDate,
+      addedDate: String(entry.addedAt || entry.createdAt || entry.addedDate || "").slice(0, 10),
       text: `完成: ${entry.item}`,
       type: "todo",
     }));
@@ -33,32 +36,31 @@ export default function StatusHistoryPopover({
     <>
       <div className="date-history-title">历史记录</div>
       <div className="date-history-table date-history-head">
-        <span>日期</span>
+        <span>日期 / 添加</span>
         <span>事项</span>
       </div>
       {allEntries.length > 0 ? (
         allEntries.map((entry) => (
           <div key={entry.id} className={`date-history-table history-type-${entry.type}`}>
-          <span>{entry.date || "-"}</span>
+          <span title={`添加日期：${entry.addedDate || "未知"}`}>
+            {entry.date || "-"}
+            <small className="history-added-date">添加 {entry.addedDate || "-"}</small>
+          </span>
           <span className="history-item-cell">
             <CopyableControl
               value={entry.text}
               label="历史事项"
               className="history-item-copyable"
             >
-              <input
-                className="history-item-input"
+              <InlineEditableText
                 value={entry.text}
-                title={entry.text}
-                onChange={(event) => {
-                  if (entry.type === "status") onUpdateStatus?.(entry.id, event.target.value);
-                  if (entry.type === "todo") {
-                    const next = event.target.value.replace(/^完成:\s*/, "");
-                    onUpdateTodo?.(entry.id, next);
-                  }
+                className="history-item-text"
+                inputClassName="history-item-input"
+                title={`${entry.text}；添加日期：${entry.addedDate || "未知"}；双击编辑`}
+                onCommit={(nextText) => {
+                  if (entry.type === "status") onUpdateStatus?.(entry.id, nextText);
+                  if (entry.type === "todo") onUpdateTodo?.(entry.id, nextText.replace(/^完成:\s*/, ""));
                 }}
-                onClick={(event) => event.stopPropagation()}
-                aria-label="编辑历史事项"
               />
             </CopyableControl>
             <button
