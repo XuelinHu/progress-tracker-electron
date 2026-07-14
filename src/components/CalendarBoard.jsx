@@ -459,6 +459,30 @@ export default function CalendarBoard({
     return (record.dateHistory?.[dateField.key] ?? []).some((entry) => entry.date === dateIso);
   }
 
+  function openRecordScheduleDraft(record, dateIso, sourceTodoItem = "") {
+    const dateField = getPrimaryDateField(record);
+    if (!record || !dateField) {
+      return;
+    }
+    const referenceTodos = (record.todoHistory ?? [])
+      .filter((entry) => entry.item && !entry.doneDate)
+      .map((entry) => entry.item);
+    setScheduleDraft({
+      recordId: record.id,
+      recordTitle: getRecordTitle(record),
+      categoryName: getCategory(record.categoryId).name,
+      date: dateIso,
+      fieldKey: dateField.key,
+      fieldLabel: dateField.label,
+      existsOnDate: recordHasDate(record, dateField, dateIso),
+      sourceTodoItem,
+      referenceTodos,
+      item: sourceTodoItem,
+      durationMinutes: "",
+      status: ACTIVE_STATUS,
+    });
+  }
+
   function handleDrop(event, dateIso) {
     event.preventDefault();
     setDropTarget("");
@@ -476,8 +500,7 @@ export default function CalendarBoard({
         const dateField = getPrimaryDateField(record);
         const todoItem = String(parsed.item ?? "").trim();
         if (record && dateField && todoItem) {
-          updateRecordDate?.(record.id, dateField.key, dateIso, todoItem);
-          updateRecord?.(record.id, { status: ACTIVE_STATUS });
+          openRecordScheduleDraft(record, dateIso, todoItem);
         }
       } catch {
         // Ignore malformed drag payloads from outside the app.
@@ -487,26 +510,7 @@ export default function CalendarBoard({
 
     const recordId = event.dataTransfer.getData(DRAG_TYPE);
     const record = records.find((item) => item.id === recordId);
-    const dateField = getPrimaryDateField(record);
-    if (!record || !dateField) {
-      return;
-    }
-
-    const existsOnDate = recordHasDate(record, dateField, dateIso);
-    const todoItem = `${dateIso} 日历事项：${getRecordTitle(record)}`;
-    setScheduleDraft({
-      recordId: record.id,
-      recordTitle: getRecordTitle(record),
-      categoryName: getCategory(record.categoryId).name,
-      date: dateIso,
-      fieldKey: dateField.key,
-      fieldLabel: dateField.label,
-      existsOnDate,
-      defaultTodoItem: todoItem,
-      item: "",
-      durationMinutes: "",
-      status: ACTIVE_STATUS,
-    });
+    openRecordScheduleDraft(record, dateIso);
   }
 
   function closeScheduleDraft() {
@@ -520,28 +524,34 @@ export default function CalendarBoard({
     }
     const item = scheduleDraft.item.trim() || `${scheduleDraft.recordTitle} 今日事项`;
     const durationMinutes = normalizeDurationMinutes(scheduleDraft.durationMinutes);
+    const existingTodoItem = scheduleDraft.referenceTodos?.includes(item) ? item : "";
+    const dateHistoryItem = existingTodoItem
+      ? formatScheduleItem("", item, durationMinutes)
+      : formatScheduleItem(
+          `${scheduleDraft.date === todayIso ? "今天" : "日历"}事项：`,
+          item,
+          durationMinutes,
+        );
     updateRecordDate?.(
       scheduleDraft.recordId,
       scheduleDraft.fieldKey,
       scheduleDraft.date,
-      formatScheduleItem(
-        `${scheduleDraft.date === todayIso ? "今天" : "日历"}事项：`,
-        item,
-        durationMinutes,
-      ),
+      dateHistoryItem,
     );
     const record = records.find((entry) => entry.id === scheduleDraft.recordId);
-    const todoItem = formatScheduleItem(
-      `${scheduleDraft.date} 日历事项：`,
-      item,
-      durationMinutes,
+    const todoItem = existingTodoItem || formatScheduleItem(
+      `${scheduleDraft.date} 日历事项：`, item, durationMinutes,
     );
     const nextStatus = scheduleDraft.status || ACTIVE_STATUS;
     const isDone = nextStatus === DONE_STATUS;
     updateRecord?.(scheduleDraft.recordId, {
-      ...(isDone
-        ? buildTodoCompletionPatch(record, todoItem, scheduleDraft.date, true)
-        : buildTodoPatch(record, todoItem, scheduleDraft.date)),
+      ...(existingTodoItem
+        ? isDone
+          ? buildTodoCompletionPatch(record, todoItem, scheduleDraft.date, true)
+          : {}
+        : isDone
+          ? buildTodoCompletionPatch(record, todoItem, scheduleDraft.date, true)
+          : buildTodoPatch(record, todoItem, scheduleDraft.date)),
       ...(scheduleDraft.existsOnDate ? {} : { [scheduleDraft.fieldKey]: scheduleDraft.date }),
       status: nextStatus,
     });
@@ -1154,7 +1164,13 @@ export default function CalendarBoard({
             >
               <div className="calendar-schedule-head">
                 <div>
-                  <strong>{scheduleDraft.existsOnDate ? "新增今天事项" : "安排到日历"}</strong>
+                  <strong>
+                    {scheduleDraft.sourceTodoItem
+                      ? "安排待办到日历"
+                      : scheduleDraft.existsOnDate
+                        ? "新增今天事项"
+                        : "安排到日历"}
+                  </strong>
                   <span>
                     {scheduleDraft.categoryName} · {scheduleDraft.recordTitle} · {scheduleDraft.date}
                   </span>
@@ -1176,6 +1192,28 @@ export default function CalendarBoard({
                   autoFocus
                 />
               </label>
+              {scheduleDraft.referenceTodos?.length > 0 && (
+                <div className="calendar-schedule-references">
+                  <span>参考待办</span>
+                  <div>
+                    {scheduleDraft.referenceTodos.map((todo) => (
+                      <button
+                        key={todo}
+                        type="button"
+                        className={scheduleDraft.item === todo ? "selected" : ""}
+                        onClick={() =>
+                          setScheduleDraft((current) =>
+                            current ? { ...current, item: todo } : current,
+                          )
+                        }
+                        title={todo}
+                      >
+                        {todo}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <label className="calendar-schedule-field compact">
                 <span>默认状态</span>
                 <select
@@ -1212,7 +1250,9 @@ export default function CalendarBoard({
                 />
               </label>
               <div className="calendar-schedule-note">
-                {scheduleDraft.existsOnDate
+                {scheduleDraft.sourceTodoItem
+                  ? "提交后会把该待办安排到所选日期；状态选为已完成时，会同时记录完成日期。"
+                  : scheduleDraft.existsOnDate
                   ? "这条记录当天已存在，提交后会继续追加一条当天事项。"
                   : `已先放入 ${scheduleDraft.fieldLabel}，提交后会记录今天的具体事项。`}
               </div>
