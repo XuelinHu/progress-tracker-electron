@@ -784,6 +784,10 @@ function App() {
 
   useEffect(() => {
     function handleKeydown(event) {
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
       const target = event.target;
       const isEditing =
         target instanceof HTMLElement &&
