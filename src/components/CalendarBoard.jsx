@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
@@ -264,6 +264,63 @@ function DetailSection({ title, items, emptyText }) {
   );
 }
 
+function CalendarTooltipEditor({
+  status,
+  statusOptions,
+  text,
+  onStatusChange,
+  onTextSave,
+}) {
+  const [draft, setDraft] = useState(text || "");
+  const savedTextRef = useRef(String(text || ""));
+
+  function saveText() {
+    const nextText = draft.trim();
+    if (nextText && nextText !== savedTextRef.current) {
+      savedTextRef.current = nextText;
+      onTextSave?.(nextText);
+    }
+  }
+
+  return (
+    <div
+      className="calendar-tooltip-editor"
+      onClick={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+    >
+      <label>
+        <span>状态</span>
+        <select
+          defaultValue={status || ""}
+          onChange={(event) => onStatusChange?.(event.target.value)}
+        >
+          {statusOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>事项文本</span>
+        <textarea
+          rows={3}
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onBlur={saveText}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+              event.preventDefault();
+              saveText();
+              event.currentTarget.blur();
+            }
+          }}
+        />
+      </label>
+    </div>
+  );
+}
+
 function buildMonthDays(monthDate) {
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
@@ -300,6 +357,7 @@ export default function CalendarBoard({
   statusOptions = [],
   updateRecord,
   updateRecordDate,
+  updateDateHistoryItem,
   removeRecordDate,
   addCalendarItem,
   updateCalendarItem,
@@ -314,6 +372,7 @@ export default function CalendarBoard({
   const [dropTarget, setDropTarget] = useState("");
   const [tooltip, setTooltip] = useState(null);
   const [scheduleDraft, setScheduleDraft] = useState(null);
+  const tooltipCloseTimerRef = useRef(null);
   const todayIso = today();
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -585,9 +644,10 @@ export default function CalendarBoard({
   }
 
   function openTooltip(event, content) {
+    window.clearTimeout(tooltipCloseTimerRef.current);
     const rect = event.currentTarget.getBoundingClientRect();
     const width = Math.min(360, window.innerWidth - 20);
-    const estimatedHeight = 260;
+    const estimatedHeight = 380;
     const left = Math.min(Math.max(10, rect.left), window.innerWidth - width - 10);
     const belowTop = rect.bottom + 6;
     const top =
@@ -598,7 +658,8 @@ export default function CalendarBoard({
   }
 
   function closeTooltip() {
-    setTooltip(null);
+    window.clearTimeout(tooltipCloseTimerRef.current);
+    tooltipCloseTimerRef.current = window.setTimeout(() => setTooltip(null), 180);
   }
 
   function handleCopyRecord(event, record, dateIso) {
@@ -820,6 +881,15 @@ export default function CalendarBoard({
                       const tooltipContent = (
                         <>
                           <strong>{item.title}</strong>
+                          <CalendarTooltipEditor
+                            status={item.status}
+                            statusOptions={statusOptions}
+                            text={item.title}
+                            onStatusChange={(nextStatus) =>
+                              updateCalendarItem?.(item.id, { status: nextStatus })
+                            }
+                            onTextSave={(title) => updateCalendarItem?.(item.id, { title })}
+                          />
                           <span>类别：{category.name}</span>
                           <span>状态：{status?.label || item.status || "其他"}</span>
                           <span>日期：{item.date}</span>
@@ -928,6 +998,26 @@ export default function CalendarBoard({
                     const tooltipContent = (
                       <>
                         <strong>{getRecordTitle(record)}</strong>
+                        <CalendarTooltipEditor
+                          status={record.status}
+                          statusOptions={statusOptions}
+                          text={entry.occurrenceItem || getRecordTitle(record)}
+                          onStatusChange={(nextStatus) =>
+                            updateRecord?.(record.id, { status: nextStatus })
+                          }
+                          onTextSave={(itemText) => {
+                            if (entry.occurrenceItem && !entry.occurrenceId?.endsWith("-primary")) {
+                              updateDateHistoryItem?.(
+                                record.id,
+                                dateField.key,
+                                entry.occurrenceId,
+                                itemText,
+                              );
+                            } else {
+                              updateRecordDate?.(record.id, dateField.key, day.iso, itemText);
+                            }
+                          }}
+                        />
                         <span>类别：{category.name}</span>
                         <span>状态：{status?.label || record.status || "未设置"}</span>
                         <span>日期：{day.iso}</span>
@@ -1147,7 +1237,7 @@ export default function CalendarBoard({
             className="calendar-record-info portal-calendar-record-info"
             role="tooltip"
             style={{ left: tooltip.left, top: tooltip.top, width: tooltip.width }}
-            onMouseEnter={() => setTooltip(tooltip)}
+            onMouseEnter={() => window.clearTimeout(tooltipCloseTimerRef.current)}
             onMouseLeave={closeTooltip}
           >
             {tooltip.content}

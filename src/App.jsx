@@ -3534,6 +3534,7 @@ function App() {
             statusOptions={calendarStatusOptions}
             updateRecord={updateRecord}
             updateRecordDate={updateRecordDate}
+            updateDateHistoryItem={updateDateHistoryItem}
             removeRecordDate={removeRecordDate}
             addCalendarItem={addCalendarItem}
             updateCalendarItem={updateCalendarItem}
