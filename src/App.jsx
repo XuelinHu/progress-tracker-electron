@@ -720,19 +720,44 @@ function App() {
 
     window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(async () => {
+      const requestId = globalThis.crypto?.randomUUID?.() || `save-${Date.now()}`;
+      const payload = buildFullDataPayload();
+      const summary = {
+        records: payload.records?.length || 0,
+        calendarItems: payload.calendarItems?.length || 0,
+        graphNodes: payload.graph?.nodes?.length || 0,
+        graphEdges: payload.graph?.edges?.length || 0,
+      };
       try {
         const response = await fetch("/api/state", {
           method: "PUT",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(buildFullDataPayload()),
+          headers: { "content-type": "application/json", "x-request-id": requestId },
+          body: JSON.stringify(payload),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.ok) {
-          throw new Error(data.error || "写入数据库状态失败");
+          const error = new Error(data.error || `写入数据库状态失败（HTTP ${response.status}）`);
+          error.status = response.status;
+          throw error;
         }
         setServerSaveError("");
       } catch (error) {
-        setServerSaveError(error.message || "写入数据库状态失败");
+        const message = error.message || "写入数据库状态失败";
+        console.error("Database state save failed", { requestId, message, status: error.status || 0, summary });
+        setServerSaveError(`${message}（请求 ${requestId}）`);
+        fetch("/api/client-log", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            event: "state.save.failure",
+            requestId,
+            status: error.status || 0,
+            message,
+            summary,
+          }),
+          keepalive: true,
+        }).catch(() => {});
       }
     }, 450);
 

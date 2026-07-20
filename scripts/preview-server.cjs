@@ -38,6 +38,59 @@ function sendJson(res, statusCode, payload) {
   res.end(body);
 }
 
+function createRequestId(req) {
+  if (!req.requestId) {
+    req.requestId = String(
+      req.headers["x-request-id"] || `req-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    );
+  }
+  return req.requestId;
+}
+
+function requestContext(req, requestId) {
+  return {
+    requestId,
+    method: req.method,
+    path: req.url,
+    remoteAddress: req.headers["x-forwarded-for"] || req.socket.remoteAddress || "",
+    contentLength: Number(req.headers["content-length"] || 0),
+    userAgent: String(req.headers["user-agent"] || "").slice(0, 180),
+  };
+}
+
+function errorContext(error) {
+  return {
+    name: error?.name || "Error",
+    message: error?.message || "Unknown error",
+    code: error?.code || "",
+    detail: error?.detail || "",
+    constraint: error?.constraint || "",
+    table: error?.table || "",
+    stack: String(error?.stack || "").split("\n").slice(0, 8).join("\n"),
+  };
+}
+
+function stateSummary(state) {
+  return {
+    version: state?.version || null,
+    records: Array.isArray(state?.records) ? state.records.length : 0,
+    calendarItems: Array.isArray(state?.calendarItems) ? state.calendarItems.length : 0,
+    graphNodes: Array.isArray(state?.graph?.nodes) ? state.graph.nodes.length : 0,
+    graphEdges: Array.isArray(state?.graph?.edges) ? state.graph.edges.length : 0,
+    statuses: Array.isArray(state?.statusOptions) ? state.statusOptions.length : 0,
+  };
+}
+
+function logEvent(level, event, details = {}) {
+  const line = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level,
+    event,
+    ...details,
+  });
+  (level === "error" ? console.error : console.log)(line);
+}
+
 function loadEnvFile(filePath) {
   try {
     const content = fsSync.readFileSync(filePath, "utf8");
@@ -266,20 +319,69 @@ async function listBackups() {
 }
 
 async function handleApi(req, res, pathname) {
+  const requestId = createRequestId(req);
+  const context = requestContext(req, requestId);
   if (pathname === "/api/state" && req.method === "GET") {
+    const startedAt = Date.now();
     const state = await readAppState();
+    logEvent("info", "state.read.success", {
+      ...context,
+      durationMs: Date.now() - startedAt,
+      ...stateSummary(state.data),
+    });
     sendJson(res, 200, { ok: true, state: state.data, updatedAt: state.updatedAt });
     return;
   }
 
   if (pathname === "/api/state" && ["POST", "PUT", "PATCH"].includes(req.method)) {
-    const parsed = JSON.parse(await readBody(req));
-    const updatedAt = await writeAppState({
-      ...parsed,
-      version: parsed.version || 5,
-      persistedAt: new Date().toISOString(),
+    const startedAt = Date.now();
+    const rawBody = await readBody(req);
+    const parsed = JSON.parse(rawBody);
+    const summary = stateSummary(parsed);
+    logEvent("info", "state.write.started", {
+      ...context,
+      payloadBytes: Buffer.byteLength(rawBody),
+      ...summary,
     });
-    sendJson(res, 200, { ok: true, updatedAt });
+    try {
+      const updatedAt = await writeAppState({
+        ...parsed,
+        version: parsed.version || 5,
+        persistedAt: new Date().toISOString(),
+      });
+      logEvent("info", "state.write.success", {
+        ...context,
+        durationMs: Date.now() - startedAt,
+        payloadBytes: Buffer.byteLength(rawBody),
+        updatedAt,
+        ...summary,
+      });
+      sendJson(res, 200, { ok: true, updatedAt, requestId });
+    } catch (error) {
+      logEvent("error", "state.write.failure", {
+        ...context,
+        durationMs: Date.now() - startedAt,
+        payloadBytes: Buffer.byteLength(rawBody),
+        ...summary,
+        error: errorContext(error),
+      });
+      throw error;
+    }
+    return;
+  }
+
+  if (pathname === "/api/client-log" && req.method === "POST") {
+    const rawBody = await readBody(req);
+    const parsed = JSON.parse(rawBody || "{}");
+    logEvent(parsed.level === "error" ? "error" : "info", "client.report", {
+      ...context,
+      clientEvent: String(parsed.event || "unknown").slice(0, 80),
+      clientRequestId: String(parsed.requestId || "").slice(0, 100),
+      status: Number(parsed.status || 0),
+      message: String(parsed.message || "").slice(0, 500),
+      summary: parsed.summary && typeof parsed.summary === "object" ? parsed.summary : {},
+    });
+    sendJson(res, 202, { ok: true, requestId });
     return;
   }
 
@@ -385,6 +487,7 @@ async function serveStatic(req, res, pathname) {
 }
 
 const server = http.createServer(async (req, res) => {
+  const requestId = createRequestId(req);
   try {
     const url = new URL(req.url, `http://${req.headers.host || "127.0.0.1"}`);
     if (url.pathname.startsWith("/api/")) {
@@ -393,7 +496,15 @@ const server = http.createServer(async (req, res) => {
     }
     await serveStatic(req, res, url.pathname);
   } catch (error) {
-    sendJson(res, 500, { ok: false, error: error.message || "服务器错误" });
+    logEvent("error", "request.failure", {
+      ...requestContext(req, requestId),
+      error: errorContext(error),
+    });
+    if (!res.headersSent) {
+      sendJson(res, 500, { ok: false, error: error.message || "服务器错误", requestId });
+    } else {
+      res.end();
+    }
   }
 });
 
@@ -403,6 +514,16 @@ server.listen(port, host, () => {
 });
 
 process.on("SIGTERM", async () => {
+  logEvent("info", "process.sigterm", { pid: process.pid });
   await dbPool?.end().catch(() => {});
   process.exit(0);
+});
+
+process.on("unhandledRejection", (error) => {
+  logEvent("error", "process.unhandledRejection", { pid: process.pid, error: errorContext(error) });
+});
+
+process.on("uncaughtException", (error) => {
+  logEvent("error", "process.uncaughtException", { pid: process.pid, error: errorContext(error) });
+  process.exitCode = 1;
 });
