@@ -943,6 +943,32 @@ button {
   overflow-y: auto;
 }
 
+.calendar-tooltip-text-control {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  gap: 4px;
+  align-items: start;
+}
+
+.calendar-tooltip-text-control button {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #86efac;
+  border-radius: 5px;
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.calendar-tooltip-text-control button:hover {
+  border-color: #16a34a;
+  background: #dcfce7;
+}
+
 .calendar-tooltip-editor select:focus,
 .calendar-tooltip-editor textarea:focus {
   border-color: var(--record-accent, #7c3aed);

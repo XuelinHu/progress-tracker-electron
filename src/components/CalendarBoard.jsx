@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Search, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, Plus, Save, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 import {
   RECORD_ITEM_TYPES,
@@ -303,19 +303,24 @@ function CalendarTooltipEditor({
       </label>
       <label>
         <span>事项文本</span>
-        <textarea
-          rows={3}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onBlur={saveText}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-              event.preventDefault();
-              saveText();
-              event.currentTarget.blur();
-            }
-          }}
-        />
+        <div className="calendar-tooltip-text-control">
+          <textarea
+            rows={3}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={saveText}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                saveText();
+                event.currentTarget.blur();
+              }
+            }}
+          />
+          <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={saveText} title="保存文本">
+            <Save size={13} />
+          </button>
+        </div>
       </label>
     </div>
   );
@@ -357,7 +362,6 @@ export default function CalendarBoard({
   statusOptions = [],
   updateRecord,
   updateRecordDate,
-  updateDateHistoryItem,
   removeRecordDate,
   addCalendarItem,
   updateCalendarItem,
@@ -1001,22 +1005,11 @@ export default function CalendarBoard({
                         <CalendarTooltipEditor
                           status={record.status}
                           statusOptions={statusOptions}
-                          text={entry.occurrenceItem || getRecordTitle(record)}
+                          text={getRecordTitle(record)}
                           onStatusChange={(nextStatus) =>
                             updateRecord?.(record.id, { status: nextStatus })
                           }
-                          onTextSave={(itemText) => {
-                            if (entry.occurrenceItem && !entry.occurrenceId?.endsWith("-primary")) {
-                              updateDateHistoryItem?.(
-                                record.id,
-                                dateField.key,
-                                entry.occurrenceId,
-                                itemText,
-                              );
-                            } else {
-                              updateRecordDate?.(record.id, dateField.key, day.iso, itemText);
-                            }
-                          }}
+                          onTextSave={(title) => updateRecord?.(record.id, { title })}
                         />
                         <span>类别：{category.name}</span>
                         <span>状态：{status?.label || record.status || "未设置"}</span>
