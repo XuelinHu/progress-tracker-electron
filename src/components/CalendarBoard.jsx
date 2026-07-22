@@ -649,16 +649,49 @@ export default function CalendarBoard({
 
   function openTooltip(event, content) {
     window.clearTimeout(tooltipCloseTimerRef.current);
-    const rect = event.currentTarget.getBoundingClientRect();
+    const triggerRect = event.currentTarget.getBoundingClientRect();
+    const dayElement = event.currentTarget.closest(".calendar-day");
+    const anchorRect = dayElement?.getBoundingClientRect() ?? triggerRect;
+    const dateHeaderRect = dayElement
+      ?.querySelector(".calendar-day-head")
+      ?.getBoundingClientRect() ?? anchorRect;
+    const viewportGap = 10;
+    const anchorGap = 8;
     const width = Math.min(360, window.innerWidth - 20);
-    const estimatedHeight = 380;
-    const left = Math.min(Math.max(10, rect.left), window.innerWidth - width - 10);
-    const belowTop = rect.bottom + 6;
-    const top =
-      belowTop + estimatedHeight > window.innerHeight && rect.top > estimatedHeight
-        ? Math.max(10, rect.top - estimatedHeight - 6)
-        : Math.min(belowTop, window.innerHeight - 80);
-    setTooltip({ left, top, width, content });
+    const preferredHeight = Math.min(520, window.innerHeight - viewportGap * 2);
+    const clampLeft = (value) =>
+      Math.min(Math.max(viewportGap, value), window.innerWidth - width - viewportGap);
+    const clampTop = (value, height) =>
+      Math.min(Math.max(viewportGap, value), window.innerHeight - height - viewportGap);
+    const roomRight = window.innerWidth - anchorRect.right - anchorGap - viewportGap;
+    const roomLeft = anchorRect.left - anchorGap - viewportGap;
+    const roomBelow = window.innerHeight - anchorRect.bottom - anchorGap - viewportGap;
+    const roomAbove = anchorRect.top - anchorGap - viewportGap;
+
+    let left;
+    let top;
+    let maxHeight = preferredHeight;
+    if (roomRight >= width) {
+      left = anchorRect.right + anchorGap;
+      top = clampTop(triggerRect.top, maxHeight);
+    } else if (roomLeft >= width) {
+      left = anchorRect.left - width - anchorGap;
+      top = clampTop(triggerRect.top, maxHeight);
+    } else if (roomBelow >= 180) {
+      left = clampLeft(triggerRect.left);
+      top = anchorRect.bottom + anchorGap;
+      maxHeight = Math.min(maxHeight, roomBelow);
+    } else if (roomAbove >= 180) {
+      left = clampLeft(triggerRect.left);
+      maxHeight = Math.min(maxHeight, roomAbove);
+      top = anchorRect.top - maxHeight - anchorGap;
+    } else {
+      left = clampLeft(triggerRect.left);
+      top = dateHeaderRect.bottom + anchorGap;
+      maxHeight = Math.max(80, window.innerHeight - top - viewportGap);
+    }
+
+    setTooltip({ left, top, width, maxHeight, content });
   }
 
   function closeTooltip() {
@@ -1229,7 +1262,12 @@ export default function CalendarBoard({
           <div
             className="calendar-record-info portal-calendar-record-info"
             role="tooltip"
-            style={{ left: tooltip.left, top: tooltip.top, width: tooltip.width }}
+            style={{
+              left: tooltip.left,
+              top: tooltip.top,
+              width: tooltip.width,
+              maxHeight: tooltip.maxHeight,
+            }}
             onMouseEnter={() => window.clearTimeout(tooltipCloseTimerRef.current)}
             onMouseLeave={closeTooltip}
           >
