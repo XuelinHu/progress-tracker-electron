@@ -546,12 +546,32 @@ export default function CalendarBoard({
     });
   }
 
+  function openCalendarItemScheduleDraft(item, dateIso) {
+    if (!item) {
+      return;
+    }
+    setScheduleDraft({
+      calendarItemId: item.id,
+      recordTitle: item.title || "未命名事项",
+      categoryName: getCategory(item.categoryId).name,
+      date: dateIso,
+      fieldLabel: "日历日期",
+      existsOnDate: false,
+      sourceTodoItem: "",
+      referenceTodos: [],
+      item: item.title || "",
+      durationMinutes: String(item.durationMinutes || ""),
+      status: ACTIVE_STATUS,
+    });
+  }
+
   function handleDrop(event, dateIso) {
     event.preventDefault();
     setDropTarget("");
     const calendarItemId = event.dataTransfer.getData(CALENDAR_ITEM_DRAG_TYPE);
     if (calendarItemId) {
-      updateCalendarItem?.(calendarItemId, { date: dateIso, status: ACTIVE_STATUS });
+      const calendarItem = calendarItems.find((item) => String(item.id) === calendarItemId);
+      openCalendarItemScheduleDraft(calendarItem, dateIso);
       return;
     }
 
@@ -587,6 +607,17 @@ export default function CalendarBoard({
     }
     const item = scheduleDraft.item.trim() || `${scheduleDraft.recordTitle} 今日事项`;
     const durationMinutes = normalizeDurationMinutes(scheduleDraft.durationMinutes);
+    const nextStatus = scheduleDraft.status || ACTIVE_STATUS;
+    if (scheduleDraft.calendarItemId) {
+      updateCalendarItem?.(scheduleDraft.calendarItemId, {
+        date: scheduleDraft.date,
+        title: item,
+        durationMinutes,
+        status: nextStatus,
+      });
+      closeScheduleDraft();
+      return;
+    }
     const existingTodoItem = scheduleDraft.referenceTodos?.includes(item) ? item : "";
     const dateHistoryItem = existingTodoItem
       ? formatScheduleItem("", item, durationMinutes)
@@ -605,7 +636,6 @@ export default function CalendarBoard({
     const todoItem = existingTodoItem || formatScheduleItem(
       `${scheduleDraft.date} 日历事项：`, item, durationMinutes,
     );
-    const nextStatus = scheduleDraft.status || ACTIVE_STATUS;
     const isDone = nextStatus === DONE_STATUS;
     updateRecord?.(scheduleDraft.recordId, {
       ...(existingTodoItem
@@ -853,7 +883,7 @@ export default function CalendarBoard({
             <h2>
               {monthDate.getFullYear()}年{monthDate.getMonth() + 1}月
             </h2>
-            <p>拖到日期格后，记录状态会变为“进行中”，日期历史会自动追加。</p>
+            <p>拖到日期格后可选择“进行中”或“已完成”，日期历史会自动追加。</p>
           </div>
           <button className="icon-button" type="button" onClick={() => moveMonth(1)}>
             <span>下月</span>
@@ -1286,7 +1316,9 @@ export default function CalendarBoard({
               <div className="calendar-schedule-head">
                 <div>
                   <strong>
-                    {scheduleDraft.sourceTodoItem
+                    {scheduleDraft.calendarItemId
+                      ? "安排事项到日历"
+                      : scheduleDraft.sourceTodoItem
                       ? "安排待办到日历"
                       : scheduleDraft.existsOnDate
                         ? "新增今天事项"
@@ -1336,23 +1368,38 @@ export default function CalendarBoard({
                   </div>
                 </div>
               )}
-              <label className="calendar-schedule-field compact">
-                <span>默认状态</span>
-                <select
-                  value={scheduleDraft.status}
-                  onChange={(event) =>
-                    setScheduleDraft((current) =>
-                      current ? { ...current, status: event.target.value } : current,
-                    )
-                  }
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status.id} value={status.id}>
-                      {status.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <fieldset className="calendar-schedule-status-field">
+                <legend>默认状态</legend>
+                <div className="calendar-schedule-statuses">
+                  {[ACTIVE_STATUS, DONE_STATUS].map((statusId) => {
+                    const status = statusById[statusId];
+                    return (
+                      <label
+                        key={statusId}
+                        className={scheduleDraft.status === statusId ? "selected" : ""}
+                        style={{
+                          "--status-bg": status?.bg || "#f1f5f9",
+                          "--status-color": status?.color || "#334155",
+                          "--status-border": status?.border || "#cbd5e1",
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="calendar-schedule-status"
+                          value={statusId}
+                          checked={scheduleDraft.status === statusId}
+                          onChange={() =>
+                            setScheduleDraft((current) =>
+                              current ? { ...current, status: statusId } : current,
+                            )
+                          }
+                        />
+                        <span>{statusId}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
               <label className="calendar-schedule-field compact">
                 <span>预计耗时（分钟）</span>
                 <input
