@@ -801,7 +801,7 @@ export default function CalendarBoard({
                 <strong>{getRecordTitle(record)}</strong>
                 <span className="calendar-record-meta">
                   <span>{status?.label || record.status || "未设置"}</span>
-                  <span>{getRecordDate(record) || "未排期"}</span>
+                  <span className="calendar-date-text">{getRecordDate(record) || "未排期"}</span>
                 </span>
               </button>
             );
@@ -896,10 +896,10 @@ export default function CalendarBoard({
                           />
                           <span>类别：{category.name}</span>
                           <span>状态：{status?.label || item.status || "其他"}</span>
-                          <span>日期：{item.date}</span>
-                          <span>添加日期：{String(item.createdAt || item.date || "").slice(0, 10) || "未知"}</span>
-                          {item.startDate && <span>开始日期：{item.startDate}</span>}
-                          {item.endDate && <span>结束日期：{item.endDate}</span>}
+                          <span className="calendar-date-text">日期：{item.date}</span>
+                          <span className="calendar-date-text">添加日期：{String(item.createdAt || item.date || "").slice(0, 10) || "未知"}</span>
+                          {item.startDate && <span className="calendar-date-text">开始日期：{item.startDate}</span>}
+                          {item.endDate && <span className="calendar-date-text">结束日期：{item.endDate}</span>}
                           {item.durationMinutes && <span>预计耗时：{item.durationMinutes}分钟</span>}
                           <DetailSection
                             title="今天事项"
@@ -1013,8 +1013,8 @@ export default function CalendarBoard({
                         />
                         <span>类别：{category.name}</span>
                         <span>状态：{status?.label || record.status || "未设置"}</span>
-                        <span>日期：{day.iso}</span>
-                        <span>
+                        <span className="calendar-date-text">日期：{day.iso}</span>
+                        <span className="calendar-date-text">
                           添加日期：{String(entry.occurrenceAddedAt || record.createdAt || day.iso).slice(0, 10)}
                         </span>
                         <span>字段：{dateField?.label || "日期"}</span>
@@ -1176,7 +1176,7 @@ export default function CalendarBoard({
                   <span className="calendar-todo-source">{getRecordTitle(record)}</span>
                   <span className="calendar-todo-meta">
                     <span>{status?.label || record.status || ACTIVE_STATUS}</span>
-                    <span>{todo.addedDate || record.startDate || "未记录时间"}</span>
+                    <span className="calendar-date-text">{todo.addedDate || record.startDate || "未记录时间"}</span>
                   </span>
                 </div>
               );
@@ -1211,8 +1211,8 @@ export default function CalendarBoard({
                 <strong>{item.title}</strong>
                 <span className="calendar-todo-meta">
                   <span>{status?.label || item.status || ACTIVE_STATUS}</span>
-                  {item.startDate && <span>{item.startDate} 起</span>}
-                  {item.endDate && <span>{item.endDate} 止</span>}
+                  {item.startDate && <span className="calendar-date-text">{item.startDate} 起</span>}
+                  {item.endDate && <span className="calendar-date-text">{item.endDate} 止</span>}
                   {item.durationMinutes && <span>{item.durationMinutes}分钟</span>}
                 </span>
                 {item.description && <em>{item.description}</em>}
@@ -1255,7 +1255,8 @@ export default function CalendarBoard({
                         : "安排到日历"}
                   </strong>
                   <span>
-                    {scheduleDraft.categoryName} · {scheduleDraft.recordTitle} · {scheduleDraft.date}
+                    {scheduleDraft.categoryName} · {scheduleDraft.recordTitle} ·{" "}
+                    <span className="calendar-date-text">{scheduleDraft.date}</span>
                   </span>
                 </div>
                 <button className="calendar-schedule-close" type="button" onClick={closeScheduleDraft}>

@@ -482,6 +482,12 @@ button {
   font-size: 11px;
 }
 
+.calendar-date-text {
+  font-size: 16px !important;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
 .calendar-record-meta span:first-child {
   max-width: 58%;
   padding: 2px 5px;
@@ -524,7 +530,7 @@ button {
 .calendar-toolbar h2 {
   margin: 0;
   color: #172033;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.05;
   text-align: center;
 }
@@ -620,7 +626,7 @@ button {
 .calendar-day-head strong {
   margin-right: auto;
   color: #273449;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .calendar-day-add {
@@ -894,6 +900,10 @@ button {
 
 .calendar-record-info span {
   overflow-wrap: anywhere;
+}
+
+.calendar-record-info .calendar-date-text {
+  color: #1e3a5f;
 }
 
 .calendar-tooltip-editor {
@@ -1447,7 +1457,7 @@ button {
 
 .portal-popover .date-history-table {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr);
+  grid-template-columns: 138px minmax(0, 1fr);
   border-top: 1px solid #e2e8f0;
   font-size: 11px;
 }
@@ -1458,6 +1468,12 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.portal-popover .date-history-table > span:first-child {
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.25;
 }
 
 .portal-popover .date-history-table span + span {
@@ -1492,7 +1508,7 @@ button {
   min-height: 30px;
   background: #ffffff;
   border-color: #d9e0eb;
-  font-size: 11px;
+  font-size: 16px;
 }
 
 .date-item-input {
@@ -1563,7 +1579,7 @@ button {
   display: block;
   margin-top: 2px;
   color: #94a3b8;
-  font-size: 9px;
+  font-size: 16px;
   line-height: 1.1;
   white-space: nowrap;
 }
@@ -1769,7 +1785,7 @@ button {
 .todo-date {
   margin-left: auto;
   color: #94a3b8;
-  font-size: 11.5px;
+  font-size: 16px;
   white-space: nowrap;
 }
 
@@ -2780,8 +2796,13 @@ button {
   border-radius: 999px;
   background: #f1f5f9;
   color: #475569;
-  font-size: 11px;
+  font-size: 16px;
   font-weight: 750;
+}
+
+.create-control[type="date"] {
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .other-item-row strong,
