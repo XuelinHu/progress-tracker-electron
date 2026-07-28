@@ -905,7 +905,11 @@ export default function CalendarBoard({
             const visibleEntries = [
               ...dayRecords.map((occurrence) => ({ type: "record", ...occurrence })),
               ...dayCustomItems.map((item) => ({ type: "custom", item })),
-            ];
+            ].sort((left, right) => {
+              const leftCategoryId = left.type === "record" ? left.record.categoryId : left.item.categoryId;
+              const rightCategoryId = right.type === "record" ? right.record.categoryId : right.item.categoryId;
+              return Number(rightCategoryId === "activity") - Number(leftCategoryId === "activity");
+            });
             if (day.blank) {
               return <div key={day.key} className="calendar-day blank" aria-hidden="true" />;
             }
