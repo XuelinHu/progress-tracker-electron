@@ -477,10 +477,7 @@ function GraphField({
           <div className="todo-list">
             {doneItems.length > 0 && (
               <div className="todo-completed-summary" title={`已完成 ${doneItems.length} 项 Todo`}>
-                <strong>已完成</strong>
-                {doneItems.map((line, idx) => (
-                  <span key={`summary-${idx}-${line}`}>{line.trim()}</span>
-                ))}
+                <strong>已完成 {doneItems.length} 项</strong>
               </div>
             )}
             {activeItems.map((line, idx) => {

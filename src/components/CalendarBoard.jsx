@@ -492,6 +492,8 @@ export default function CalendarBoard({
   }
 
   function handleDragStart(event, record) {
+    window.clearTimeout(tooltipCloseTimerRef.current);
+    setTooltip(null);
     event.dataTransfer.effectAllowed = "copyMove";
     event.dataTransfer.setData(DRAG_TYPE, record.id);
     event.dataTransfer.setData("text/plain", getRecordTitle(record));
@@ -687,8 +689,8 @@ export default function CalendarBoard({
       ?.getBoundingClientRect() ?? anchorRect;
     const viewportGap = 10;
     const anchorGap = 8;
-    const width = Math.min(360, window.innerWidth - 20);
-    const preferredHeight = Math.min(520, window.innerHeight - viewportGap * 2);
+    const width = Math.min(480, window.innerWidth - 20);
+    const preferredHeight = Math.min(620, window.innerHeight - viewportGap * 2);
     const clampLeft = (value) =>
       Math.min(Math.max(viewportGap, value), window.innerWidth - width - viewportGap);
     const clampTop = (value, height) =>
@@ -1111,6 +1113,7 @@ export default function CalendarBoard({
                         }`}
                         role="button"
                         tabIndex={0}
+                        draggable
                         style={{
                           "--record-accent": category.accent,
                           "--record-tint": category.tint,
@@ -1122,6 +1125,8 @@ export default function CalendarBoard({
                         onMouseLeave={closeTooltip}
                         onFocus={(event) => openTooltip(event, tooltipContent)}
                         onBlur={closeTooltip}
+                        onDragStart={(event) => handleDragStart(event, record)}
+                        onDragEnd={() => setDropTarget("")}
                         onClick={() => openRecord?.(record)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {

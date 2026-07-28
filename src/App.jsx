@@ -3221,10 +3221,7 @@ function App() {
           <div className="todo-list">
             {doneItems.length > 0 && (
               <div className="todo-completed-summary" title={`已完成 ${doneItems.length} 项 Todo`}>
-                <strong>已完成</strong>
-                {doneItems.map((line, idx) => (
-                  <span key={`summary-${idx}-${line}`}>{line.trim()}</span>
-                ))}
+                <strong>已完成 {doneItems.length} 项</strong>
               </div>
             )}
             {activeItems.map((line, idx) => {
@@ -3696,7 +3693,7 @@ function App() {
                         title="删除这一行"
                         aria-label={`删除 ${getRecordTitle(record)}`}
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={15} />
                       </button>
                       <button
                         className="row-copy-button"
@@ -3708,7 +3705,7 @@ function App() {
                         title="复制这一行"
                         aria-label={`复制 ${getRecordTitle(record)}`}
                       >
-                        <Copy size={12} />
+                        <Copy size={15} />
                       </button>
                       <DaysSince
                         dateField={activeCategory.fields.find((field) => field.type === "date")}
