@@ -1333,6 +1333,12 @@ button {
 
 .row-delete-button,
 .row-copy-button {
+  width: 22px;
+  height: 22px;
+}
+
+.row-action-buttons .row-delete-button,
+.row-action-buttons .row-copy-button {
   width: 28px;
   height: 28px;
 }
