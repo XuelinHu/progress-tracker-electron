@@ -3216,12 +3216,16 @@ function App() {
       }
       const doneItems = lines.filter((l) => histByItem.get(l)?.doneDate != null);
       const activeItems = lines.filter((l) => !histByItem.get(l)?.doneDate);
+      const completionRate = lines.length ? Math.round((doneItems.length / lines.length) * 100) : 0;
       return (
         <div className="todo-cell">
           <div className="todo-list">
-            {doneItems.length > 0 && (
-              <div className="todo-completed-summary" title={`已完成 ${doneItems.length} 项 Todo`}>
-                <strong>已完成 {doneItems.length} 项</strong>
+            {lines.length > 0 && (
+              <div
+                className="todo-completed-summary"
+                title={`已完成 ${doneItems.length} / 共 ${lines.length} 项 Todo，完成率 ${completionRate}%`}
+              >
+                <strong>已完成 {doneItems.length} / 共 {lines.length} 项 · 完成率 {completionRate}%</strong>
               </div>
             )}
             {activeItems.map((line, idx) => {
