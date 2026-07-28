@@ -391,17 +391,30 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/backups" && req.method === "POST") {
-    const parsed = JSON.parse(await readBody(req));
+    const state = await readAppState();
+    if (!state.data) {
+      sendJson(res, 404, { ok: false, error: "数据库中没有可备份的应用数据" });
+      return;
+    }
     const payload = {
-      ...parsed,
-      version: parsed.version || 5,
+      ...state.data,
+      version: state.data.version || 5,
       createdAt: new Date().toISOString(),
+      backupSource: "postgresql",
+      databaseUpdatedAt: state.updatedAt,
     };
     await fs.mkdir(backupDir, { recursive: true });
     const name = createBackupName();
     const filePath = path.join(backupDir, name);
     await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
     const stat = await fs.stat(filePath);
+    logEvent("info", "backup.create.success", {
+      ...context,
+      source: "postgresql",
+      databaseUpdatedAt: state.updatedAt,
+      backup: name,
+      ...stateSummary(state.data),
+    });
     sendJson(res, 201, {
       ok: true,
       backup: { name, size: stat.size, createdAt: payload.createdAt },

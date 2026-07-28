@@ -129,7 +129,7 @@ export const CATEGORIES = [
   {
     id: "project",
     name: "项目",
-    shortcut: "6",
+    shortcut: "5",
     accent: "#7c3aed",
     tint: "#f3e8ff",
     fields: [
@@ -155,7 +155,7 @@ export const CATEGORIES = [
   {
     id: "activity",
     name: "活动",
-    shortcut: "7",
+    shortcut: "6",
     accent: "#f59e0b",
     tint: "#fef3c7",
     fields: [

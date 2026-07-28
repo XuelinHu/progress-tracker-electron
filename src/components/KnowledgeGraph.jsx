@@ -475,6 +475,14 @@ function GraphField({
       return (
         <div className="todo-cell">
           <div className="todo-list">
+            {doneItems.length > 0 && (
+              <div className="todo-completed-summary" title={`已完成 ${doneItems.length} 项 Todo`}>
+                <strong>已完成</strong>
+                {doneItems.map((line, idx) => (
+                  <span key={`summary-${idx}-${line}`}>{line.trim()}</span>
+                ))}
+              </div>
+            )}
             {activeItems.map((line, idx) => {
               const trimmed = line.trim();
               if (!trimmed) return null;
@@ -523,11 +531,12 @@ function GraphField({
                 if (!rect) return;
                 const vw = window.innerWidth;
                 const vh = window.innerHeight;
-                const pw = 240;
+                const pw = Math.min(480, vw - 20);
                 const ph = Math.min(180, doneItems.length * 28 + 30);
                 let left = rect.right + 6;
                 let top = rect.top;
                 if (left + pw > vw - 10) left = rect.left - pw - 6;
+                left = Math.min(Math.max(10, left), vw - pw - 10);
                 if (top + ph > vh - 10) top = vh - ph - 10;
                 if (top < 0) top = 4;
                 el.style.top = top + "px";

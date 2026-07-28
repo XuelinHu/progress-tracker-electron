@@ -71,7 +71,7 @@ const PROBLEM_ITEMS_PAGE = {
   id: "problem-items",
   itemCategoryId: "problem",
   name: "问题记录",
-  shortcut: "6",
+  shortcut: "7",
   accent: "#dc2626",
   tint: "#fee2e2",
 };
@@ -108,9 +108,9 @@ const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
   ? { ...CATEGORY_BY_ID[PROJECT_CATEGORY_ID], shortcut: "5" }
   : null;
 const ACTIVITY_NAVIGATION_ITEM = CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID]
-  ? { ...CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID], shortcut: "7" }
+  ? { ...CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID], shortcut: "6" }
   : null;
-const PROBLEM_NAVIGATION_ITEM = { ...PROBLEM_ITEMS_PAGE, shortcut: "6" };
+const PROBLEM_NAVIGATION_ITEM = { ...PROBLEM_ITEMS_PAGE, shortcut: "7" };
 const OTHER_NAVIGATION_ITEM = { ...OTHER_ITEMS_PAGE, shortcut: "8" };
 const NAVIGATION_ITEMS = [
   ...CATEGORIES.filter(
@@ -118,8 +118,8 @@ const NAVIGATION_ITEMS = [
       category.id !== PROJECT_CATEGORY_ID && category.id !== ACTIVITY_CATEGORY_ID,
   ),
   PROJECT_NAVIGATION_ITEM,
-  PROBLEM_NAVIGATION_ITEM,
   ACTIVITY_NAVIGATION_ITEM,
+  PROBLEM_NAVIGATION_ITEM,
   OTHER_NAVIGATION_ITEM,
 ].filter(Boolean);
 
@@ -545,10 +545,10 @@ function App() {
             ? STATUS_CONFIG_PAGE
             : activeCategory;
   const displayFields = useMemo(
-    () => buildDisplayFields(activeCategory.fields),
+    () => buildDisplayFields(activeCategory.fields).filter((field) => field.type !== "status"),
     [activeCategory.fields],
   );
-  const tableTemplate = ["58px", ...displayFields.map((field) => field.width)].join(" ");
+  const tableTemplate = ["126px", ...displayFields.map((field) => field.width)].join(" ");
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
     [statusOptions],
@@ -2146,8 +2146,6 @@ function App() {
     try {
       const response = await fetch("/api/backups", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(buildFullDataPayload()),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) {
@@ -2155,7 +2153,7 @@ function App() {
       }
       const backups = await loadBackupList();
       setSelectedBackup(data.backup?.name || backups[0]?.name || "");
-      setStatusConfigMessage("已创建服务器本地备份，包含 1-8 页面全部数据");
+      setStatusConfigMessage("已从 PostgreSQL 数据库创建服务器备份，包含 1-8 页面全部数据");
     } catch (error) {
       setStatusConfigMessage(error.message || "服务器本地备份失败");
     } finally {
@@ -2662,11 +2660,10 @@ function App() {
       : backupList.length === 0
         ? "暂无服务器本地备份"
         : "请选择服务器本地备份";
-    const statusColumnSize = Math.ceil(statusDraft.length / 2);
-    const statusColumns = [
-      statusDraft.slice(0, statusColumnSize),
-      statusDraft.slice(statusColumnSize),
-    ].filter((column) => column.length > 0);
+    const statusColumnSize = Math.ceil(statusDraft.length / 3);
+    const statusColumns = Array.from({ length: 3 }, (_, index) =>
+      statusDraft.slice(index * statusColumnSize, (index + 1) * statusColumnSize),
+    ).filter((column) => column.length > 0);
 
     return (
       <section className="workspace status-config-page">
@@ -2693,8 +2690,8 @@ function App() {
 
       <div className="backup-panel">
         <div>
-          <strong>服务器本地备份</strong>
-          <span>备份 1-8 页面：软著、专利、论文、比赛、知识图谱、日历、项目、优先级配置。</span>
+          <strong>PostgreSQL 服务器备份</strong>
+          <span>一键备份直接读取数据库中的 1-8 页面数据，不读取浏览器本地文件。</span>
         </div>
         <div className="backup-actions">
           <button
@@ -3222,6 +3219,14 @@ function App() {
       return (
         <div className="todo-cell">
           <div className="todo-list">
+            {doneItems.length > 0 && (
+              <div className="todo-completed-summary" title={`已完成 ${doneItems.length} 项 Todo`}>
+                <strong>已完成</strong>
+                {doneItems.map((line, idx) => (
+                  <span key={`summary-${idx}-${line}`}>{line.trim()}</span>
+                ))}
+              </div>
+            )}
             {activeItems.map((line, idx) => {
               const trimmed = line.trim();
               if (!trimmed) return null;
@@ -3271,11 +3276,12 @@ function App() {
                 if (!rect) return;
                 const vw = window.innerWidth;
                 const vh = window.innerHeight;
-                const pw = 240;
+                const pw = Math.min(480, vw - 20);
                 const ph = Math.min(180, doneItems.length * 28 + 30);
                 let left = rect.right + 6;
                 let top = rect.top;
                 if (left + pw > vw - 10) left = rect.left - pw - 6;
+                left = Math.min(Math.max(10, left), vw - pw - 10);
                 if (top + ph > vh - 10) top = vh - ph - 10;
                 if (top < 0) top = 4;
                 el.style.top = top + "px";
@@ -3616,7 +3622,18 @@ function App() {
 
           <div className="table-wrap">
             <div className="table-grid header-row" style={{ gridTemplateColumns: tableTemplate }}>
-              <div className="table-head action-head" aria-hidden="true" />
+              <div className="table-head action-head">
+                <button
+                  className={`head-sort-button ${statusSortDirection !== "none" ? "active" : ""}`}
+                  type="button"
+                  onClick={cycleStatusSort}
+                  title={statusSortTitle}
+                  aria-label={statusSortTitle}
+                >
+                  <span>1. 状态</span>
+                  <ArrowDownUp size={13} />
+                </button>
+              </div>
               {displayFields.map((field, index) => (
                 <div key={field.key} className={`table-head field-${field.key}`}>
                   {field.type === "status" ? (
@@ -3628,7 +3645,7 @@ function App() {
                       aria-label={statusSortTitle}
                     >
                       <span>
-                        {index + 1}. {field.label}
+                        {index + 2}. {field.label}
                       </span>
                       <ArrowDownUp size={13} />
                     </button>
@@ -3643,13 +3660,13 @@ function App() {
                       aria-label={getDateSortTitle(field)}
                     >
                       <span>
-                        {index + 1}. {field.label}
+                        {index + 2}. {field.label}
                       </span>
                       <ArrowDownUp size={13} />
                     </button>
                   ) : (
                     <>
-                      {field.displayLabel ?? `${index + 1}. ${field.label}`}
+                      {field.displayLabel ?? `${index + 2}. ${field.label}`}
                     </>
                   )}
                 </div>
@@ -3665,34 +3682,42 @@ function App() {
                   onClick={() => setSelectedId(record.id)}
                 >
                   <div className="table-cell row-action-cell">
-                <button
-                  className="row-delete-button"
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    deleteRecord(record.id);
-                      }}
-                      title="删除这一行"
-                      aria-label={`删除 ${getRecordTitle(record)}`}
-                >
-                  <Trash2 size={12} />
-                </button>
-                <button
-                  className="row-copy-button"
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    duplicateRecord(record);
-                  }}
-                  title="复制这一行"
-                  aria-label={`复制 ${getRecordTitle(record)}`}
-                >
-                  <Copy size={12} />
-                </button>
-                <DaysSince dateField={activeCategory.fields.find((f) => f.type === "date")} record={record} />
-              </div>
-                {displayFields.map((field) => (
-                  <div key={field.key} className={`table-cell field-${field.key}`}>
+                    <div className="row-status-control">
+                      {renderCell(record, activeCategory.fields.find((field) => field.type === "status"))}
+                    </div>
+                    <div className="row-action-buttons">
+                      <button
+                        className="row-delete-button"
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          deleteRecord(record.id);
+                        }}
+                        title="删除这一行"
+                        aria-label={`删除 ${getRecordTitle(record)}`}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                      <button
+                        className="row-copy-button"
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          duplicateRecord(record);
+                        }}
+                        title="复制这一行"
+                        aria-label={`复制 ${getRecordTitle(record)}`}
+                      >
+                        <Copy size={12} />
+                      </button>
+                      <DaysSince
+                        dateField={activeCategory.fields.find((field) => field.type === "date")}
+                        record={record}
+                      />
+                    </div>
+                  </div>
+                  {displayFields.map((field) => (
+                    <div key={field.key} className={`table-cell field-${field.key}`}>
                       {renderCell(record, field)}
                     </div>
                   ))}
