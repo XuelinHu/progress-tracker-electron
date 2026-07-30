@@ -336,6 +336,16 @@ async function verifyCalendarCategoryButtons(page) {
     categoryAccents,
     "Calendar buttons must use the configured category colors",
   );
+  const inactiveStyle = await page.evaluate(`(() => {
+    const style = getComputedStyle([...document.querySelectorAll(".calendar-category-filter-button")]
+      .find((button) => button.textContent.includes("专利")));
+    return {
+      color: style.color,
+      borderColor: style.borderColor,
+      backgroundColor: style.backgroundColor,
+      boxShadow: style.boxShadow,
+    };
+  })()`);
   assert.equal(
     await page.evaluate("Boolean(document.querySelector('select[aria-label=\"日历类别筛选\"]'))"),
     false,
@@ -356,6 +366,16 @@ async function verifyCalendarCategoryButtons(page) {
     await page.evaluate("document.querySelector('.calendar-record-list')?.textContent || ''"),
     /知识图谱字体回归记录/,
   );
+  const activeStyle = await page.evaluate(`(() => {
+    const style = getComputedStyle([...document.querySelectorAll(".calendar-category-filter-button")]
+      .find((button) => button.textContent.includes("专利")));
+    return {
+      color: style.color,
+      borderColor: style.borderColor,
+      backgroundColor: style.backgroundColor,
+      boxShadow: style.boxShadow,
+    };
+  })()`);
 
   await clickButton(
     page,
@@ -388,9 +408,10 @@ async function verifyCalendarCategoryButtons(page) {
   assert.match(recordListText, /日历类别筛选专利记录/);
   assert.match(recordListText, /知识图谱字体回归记录/);
   console.log("PASS calendar category quick filters");
+  return { inactiveStyle, activeStyle };
 }
 
-async function verifyGraphCategoryButtons(page) {
+async function verifyGraphCategoryButtons(page, calendarStyles) {
   assert.equal(
     await page.evaluate("document.querySelectorAll('.graph-source-category-button').length"),
     6,
@@ -402,6 +423,17 @@ async function verifyGraphCategoryButtons(page) {
     categoryAccents,
     "Knowledge graph buttons must use the configured category colors",
   );
+  const graphInactiveStyle = await page.evaluate(`(() => {
+    const style = getComputedStyle([...document.querySelectorAll(".graph-source-category-button")]
+      .find((button) => button.textContent.includes("专利")));
+    return {
+      color: style.color,
+      borderColor: style.borderColor,
+      backgroundColor: style.backgroundColor,
+      boxShadow: style.boxShadow,
+    };
+  })()`);
+  assert.deepEqual(calendarStyles.inactiveStyle, graphInactiveStyle);
   assert.equal(
     await page.evaluate("document.querySelectorAll('.graph-display-category-button').length"),
     6,
@@ -424,6 +456,17 @@ async function verifyGraphCategoryButtons(page) {
   let sourceText = await page.evaluate("document.querySelector('.graph-source-list')?.textContent || ''");
   assert.match(sourceText, /日历类别筛选专利记录/);
   assert.doesNotMatch(sourceText, /知识图谱字体回归记录/);
+  const graphActiveStyle = await page.evaluate(`(() => {
+    const style = getComputedStyle([...document.querySelectorAll(".graph-source-category-button")]
+      .find((button) => button.textContent.includes("专利")));
+    return {
+      color: style.color,
+      borderColor: style.borderColor,
+      backgroundColor: style.backgroundColor,
+      boxShadow: style.boxShadow,
+    };
+  })()`);
+  assert.deepEqual(calendarStyles.activeStyle, graphActiveStyle);
   await clickButton(
     page,
     ".graph-source-category-button",
@@ -497,10 +540,10 @@ async function run() {
 
     await clickButton(page, ".global-data-actions button", "优先级配置", ".status-config-page");
     await clickButton(page, ".global-data-actions button", "日历", ".calendar-page");
-    await verifyCalendarCategoryButtons(page);
+    const calendarCategoryStyles = await verifyCalendarCategoryButtons(page);
     await verifyCalendarDropUsesTargetDate(page, server);
     await clickButton(page, ".global-data-actions button", "知识图谱", ".graph-workspace");
-    await verifyGraphCategoryButtons(page);
+    await verifyGraphCategoryButtons(page, calendarCategoryStyles);
     assert.equal(
       await page.evaluate("getComputedStyle(document.querySelector('.graph-node-date-input')).fontSize"),
       "11.2px",
