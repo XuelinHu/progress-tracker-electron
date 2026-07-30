@@ -731,6 +731,7 @@ function GraphCanvas({
   deleteDateHistoryItem,
   deleteStatusHistoryItem,
   deleteTodoHistoryItem,
+  updateTodoHistoryItem,
   syncTodoItems,
   updateRecord,
   updateRecordDate,
@@ -1444,6 +1445,7 @@ export default function KnowledgeGraph({
             deleteDateHistoryItem={deleteDateHistoryItem}
             deleteStatusHistoryItem={deleteStatusHistoryItem}
             deleteTodoHistoryItem={deleteTodoHistoryItem}
+            updateTodoHistoryItem={updateTodoHistoryItem}
             syncTodoItems={syncTodoItems}
             updateRecord={updateRecord}
             updateRecordDate={updateRecordDate}

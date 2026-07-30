@@ -11,6 +11,7 @@
     "check": "vite build",
     "build": "vite build",
     "preview": "node scripts/preview-server.cjs",
+    "test:navigation": "npm run check && node scripts/navigation-regression.cjs",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",
     "android:sync": "vite build && npx cap sync android",
