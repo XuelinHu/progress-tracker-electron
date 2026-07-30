@@ -719,7 +719,7 @@ function GraphCanvas({
   statusOptions,
   graphNodes,
   graphEdges,
-  graphCategoryFilter,
+  graphCategoryFilters,
   graphStatusFilter,
   setGraphNodes,
   setGraphEdges,
@@ -758,7 +758,7 @@ function GraphCanvas({
             return true;
           }
           const matchesCategory =
-            graphCategoryFilter === "all" || record.categoryId === graphCategoryFilter;
+            graphCategoryFilters.length === 0 || graphCategoryFilters.includes(record.categoryId);
           const matchesStatus =
             graphStatusFilter === "all" || record.status === graphStatusFilter;
           return matchesCategory && matchesStatus;
@@ -838,7 +838,7 @@ function GraphCanvas({
       syncTodoItems,
       statusOptions,
       statusById,
-      graphCategoryFilter,
+      graphCategoryFilters,
       graphStatusFilter,
     ],
   );
@@ -1138,8 +1138,8 @@ export default function KnowledgeGraph({
   syncTodoItems,
 }) {
   const [sourceSearch, setSourceSearch] = useState("");
-  const [sourceCategory, setSourceCategory] = useState("all");
-  const [graphCategoryFilter, setGraphCategoryFilter] = useState("all");
+  const [sourceCategories, setSourceCategories] = useState([]);
+  const [graphCategoryFilters, setGraphCategoryFilters] = useState([]);
   const [graphStatusFilter, setGraphStatusFilter] = useState("all");
   const [selectedElement, setSelectedElement] = useState(null);
   const graphStatusById = useMemo(
@@ -1163,12 +1163,12 @@ export default function KnowledgeGraph({
           return true;
         }
         const matchesCategory =
-          graphCategoryFilter === "all" || record.categoryId === graphCategoryFilter;
+          graphCategoryFilters.length === 0 || graphCategoryFilters.includes(record.categoryId);
         const matchesStatus =
           graphStatusFilter === "all" || record.status === graphStatusFilter;
         return matchesCategory && matchesStatus;
       }).length,
-    [graphCategoryFilter, graphNodes, graphStatusFilter, records],
+    [graphCategoryFilters, graphNodes, graphStatusFilter, records],
   );
 
   const visibleSourceRecords = useMemo(() => {
@@ -1176,7 +1176,7 @@ export default function KnowledgeGraph({
     return records
       .filter((record) => {
         const matchesCategory =
-          sourceCategory === "all" || record.categoryId === sourceCategory;
+          sourceCategories.length === 0 || sourceCategories.includes(record.categoryId);
         if (!matchesCategory) {
           return false;
         }
@@ -1197,7 +1197,7 @@ export default function KnowledgeGraph({
           String(left.title ?? "").localeCompare(String(right.title ?? ""), "zh-Hans-CN")
         );
       });
-  }, [graphStatusPriority, records, sourceCategory, sourceSearch]);
+  }, [graphStatusPriority, records, sourceCategories, sourceSearch]);
 
   const selectedNode =
     selectedElement?.type === "node"
@@ -1242,6 +1242,14 @@ export default function KnowledgeGraph({
     const currentIndex = statusOptions.findIndex((status) => status.id === record.status);
     const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % statusOptions.length : 0;
     updateRecord(record.id, { status: statusOptions[nextIndex]?.id ?? STATUSES[0].id });
+  }
+
+  function toggleCategory(setCategories, categoryId) {
+    setCategories((current) =>
+      current.includes(categoryId)
+        ? current.filter((id) => id !== categoryId)
+        : [...current, categoryId],
+    );
   }
 
   function deleteSelectedNode() {
@@ -1313,19 +1321,23 @@ export default function KnowledgeGraph({
           />
         </label>
 
-        <select
-          className="graph-category-filter"
-          value={sourceCategory}
-          onChange={(event) => setSourceCategory(event.target.value)}
-          aria-label="图谱数据源类别"
-        >
-          <option value="all">全部类别</option>
+        <div className="graph-source-category-filters" role="group" aria-label="图谱数据源类别">
           {CATEGORIES.map((category) => (
-            <option key={category.id} value={category.id}>
+            <button
+              className="graph-category-button graph-source-category-button"
+              type="button"
+              key={category.id}
+              aria-pressed={sourceCategories.includes(category.id)}
+              onClick={() => toggleCategory(setSourceCategories, category.id)}
+              style={{
+                "--graph-category-accent": category.accent,
+                "--graph-category-tint": category.tint,
+              }}
+            >
               {category.name}
-            </option>
+            </button>
           ))}
-        </select>
+        </div>
 
         <div className="graph-source-list">
           {visibleSourceRecords.map((record) => {
@@ -1386,18 +1398,23 @@ export default function KnowledgeGraph({
 
       <div className="graph-canvas-panel">
         <div className="graph-display-filters">
-          <select
-            value={graphCategoryFilter}
-            onChange={(event) => setGraphCategoryFilter(event.target.value)}
-            aria-label="图谱显示类别"
-          >
-            <option value="all">显示全部类别</option>
+          <div className="graph-display-category-buttons" role="group" aria-label="图谱显示类别">
             {CATEGORIES.map((category) => (
-              <option key={category.id} value={category.id}>
+              <button
+                className="graph-category-button graph-display-category-button"
+                type="button"
+                key={category.id}
+                aria-pressed={graphCategoryFilters.includes(category.id)}
+                onClick={() => toggleCategory(setGraphCategoryFilters, category.id)}
+                style={{
+                  "--graph-category-accent": category.accent,
+                  "--graph-category-tint": category.tint,
+                }}
+              >
                 {category.name}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
           <select
             value={graphStatusFilter}
             onChange={(event) => setGraphStatusFilter(event.target.value)}
@@ -1433,7 +1450,7 @@ export default function KnowledgeGraph({
             statusOptions={statusOptions}
             graphNodes={graphNodes}
             graphEdges={graphEdges}
-            graphCategoryFilter={graphCategoryFilter}
+            graphCategoryFilters={graphCategoryFilters}
             graphStatusFilter={graphStatusFilter}
             setGraphNodes={setGraphNodes}
             setGraphEdges={setGraphEdges}

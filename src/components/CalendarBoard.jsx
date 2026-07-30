@@ -802,10 +802,6 @@ export default function CalendarBoard({
   }
 
   function toggleCategoryFilter(categoryId) {
-    if (categoryId === "all") {
-      setCategoryFilters([]);
-      return;
-    }
     setCategoryFilters((current) => {
       if (current.includes(categoryId)) {
         const next = current.filter((id) => id !== categoryId);
@@ -832,14 +828,6 @@ export default function CalendarBoard({
           />
         </label>
         <div className="calendar-category-filters" role="group" aria-label="日历类别筛选">
-          <button
-            className="calendar-category-filter-button"
-            type="button"
-            aria-pressed={categoryFilters.length === 0}
-            onClick={() => toggleCategoryFilter("all")}
-          >
-            全部
-          </button>
           {CATEGORIES.map((category) => (
             <button
               className="calendar-category-filter-button"

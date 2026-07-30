@@ -17,6 +17,7 @@ const categoryNames = [
   "问题记录",
   "其他事项",
 ];
+const categoryAccents = ["#2563eb", "#16a34a", "#d97706", "#e11d48", "#7c3aed", "#f59e0b"];
 const mimeByExt = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -76,6 +77,11 @@ const regressionState = {
         id: "graph-node-regression",
         position: { x: 80, y: 80 },
         data: { recordId: regressionRecordId, categoryId: "software" },
+      },
+      {
+        id: "graph-node-category-patent",
+        position: { x: 360, y: 80 },
+        data: { recordId: "calendar-category-filter-patent", categoryId: "patent" },
       },
     ],
     edges: [],
@@ -320,8 +326,15 @@ async function verifyCalendarDropUsesTargetDate(page, server) {
 async function verifyCalendarCategoryButtons(page) {
   assert.equal(
     await page.evaluate("document.querySelectorAll('.calendar-category-filter-button').length"),
-    7,
-    "Calendar category filter must render All plus six category buttons",
+    6,
+    "Calendar category filter must render six category buttons without All",
+  );
+  assert.deepEqual(
+    await page.evaluate(`[
+      ...document.querySelectorAll(".calendar-category-filter-button")
+    ].map((button) => button.style.getPropertyValue("--category-filter-accent"))`),
+    categoryAccents,
+    "Calendar buttons must use the configured category colors",
   );
   assert.equal(
     await page.evaluate("Boolean(document.querySelector('select[aria-label=\"日历类别筛选\"]'))"),
@@ -368,18 +381,74 @@ async function verifyCalendarCategoryButtons(page) {
   assert.doesNotMatch(recordListText, /日历类别筛选专利记录/);
   assert.match(recordListText, /知识图谱字体回归记录/);
 
-  await clickButton(
-    page,
-    ".calendar-category-filter-button",
-    "全部",
-    ".calendar-category-filter-button[aria-pressed='true']",
-  );
+  await clickButton(page, ".calendar-category-filter-button", "软著", ".calendar-record-list");
   recordListText = await page.evaluate(
     "document.querySelector('.calendar-record-list')?.textContent || ''",
   );
   assert.match(recordListText, /日历类别筛选专利记录/);
   assert.match(recordListText, /知识图谱字体回归记录/);
   console.log("PASS calendar category quick filters");
+}
+
+async function verifyGraphCategoryButtons(page) {
+  assert.equal(
+    await page.evaluate("document.querySelectorAll('.graph-source-category-button').length"),
+    6,
+  );
+  assert.deepEqual(
+    await page.evaluate(`[
+      ...document.querySelectorAll(".graph-source-category-button")
+    ].map((button) => button.style.getPropertyValue("--graph-category-accent"))`),
+    categoryAccents,
+    "Knowledge graph buttons must use the configured category colors",
+  );
+  assert.equal(
+    await page.evaluate("document.querySelectorAll('.graph-display-category-button').length"),
+    6,
+  );
+  assert.equal(
+    await page.evaluate(`Boolean(
+      document.querySelector('select[aria-label="图谱数据源类别"]') ||
+      document.querySelector('select[aria-label="图谱显示类别"]')
+    )`),
+    false,
+    "Knowledge graph category filters must not use select menus",
+  );
+
+  await clickButton(
+    page,
+    ".graph-source-category-button",
+    "专利",
+    ".graph-source-category-button[aria-pressed='true']",
+  );
+  let sourceText = await page.evaluate("document.querySelector('.graph-source-list')?.textContent || ''");
+  assert.match(sourceText, /日历类别筛选专利记录/);
+  assert.doesNotMatch(sourceText, /知识图谱字体回归记录/);
+  await clickButton(
+    page,
+    ".graph-source-category-button",
+    "软著",
+    ".graph-source-category-button[aria-pressed='true']",
+  );
+  sourceText = await page.evaluate("document.querySelector('.graph-source-list')?.textContent || ''");
+  assert.match(sourceText, /日历类别筛选专利记录/);
+  assert.match(sourceText, /知识图谱字体回归记录/);
+
+  await clickButton(
+    page,
+    ".graph-display-category-button",
+    "专利",
+    ".graph-display-category-button[aria-pressed='true']",
+  );
+  await waitFor(page, "document.querySelectorAll('.react-flow__node').length === 1", "patent graph filter");
+  await clickButton(
+    page,
+    ".graph-display-category-button",
+    "软著",
+    ".graph-display-category-button[aria-pressed='true']",
+  );
+  await waitFor(page, "document.querySelectorAll('.react-flow__node').length === 2", "multi graph filter");
+  console.log("PASS knowledge graph category quick filters");
 }
 
 async function verifyCalendarCategoryButtonsOnMobile(page) {
@@ -431,6 +500,7 @@ async function run() {
     await verifyCalendarCategoryButtons(page);
     await verifyCalendarDropUsesTargetDate(page, server);
     await clickButton(page, ".global-data-actions button", "知识图谱", ".graph-workspace");
+    await verifyGraphCategoryButtons(page);
     assert.equal(
       await page.evaluate("getComputedStyle(document.querySelector('.graph-node-date-input')).fontSize"),
       "11.2px",
