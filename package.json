@@ -11,6 +11,7 @@
     "check": "vite build",
     "build": "vite build",
     "preview": "node scripts/preview-server.cjs",
+    "test:storage": "node --test scripts/storage-regression.test.cjs",
     "test:navigation": "npm run check && node scripts/navigation-regression.cjs",
     "dist:win": "electron-builder --win",
     "dist:mac": "electron-builder --mac",

@@ -7,7 +7,6 @@ const { Pool } = require("pg");
 
 const rootDir = path.resolve(__dirname, "..");
 const distDir = path.join(rootDir, "dist");
-const backupDir = path.join(rootDir, "backups");
 const port = Number(process.env.PORT || 4003);
 const host = process.env.HOST || "0.0.0.0";
 
@@ -170,17 +169,13 @@ async function writeAppState(data) {
   return result.rows[0]?.updated_at ?? null;
 }
 
-function isSafeBackupName(name) {
-  return /^backup-\d{8}-\d{6}(?:-[a-z0-9]+)?\.json$/i.test(name);
-}
-
 async function readBody(req) {
   const chunks = [];
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
     if (size > 20 * 1024 * 1024) {
-      throw new Error("备份数据超过 20MB 限制");
+      throw new Error("请求数据超过 20MB 限制");
     }
     chunks.push(chunk);
   }
@@ -285,39 +280,6 @@ async function loadLatestPayloadFromDav() {
   };
 }
 
-async function listBackups() {
-  await fs.mkdir(backupDir, { recursive: true });
-  const entries = await fs.readdir(backupDir, { withFileTypes: true });
-  const files = await Promise.all(
-    entries
-      .filter((entry) => entry.isFile() && isSafeBackupName(entry.name))
-      .map(async (entry) => {
-        const filePath = path.join(backupDir, entry.name);
-        const stat = await fs.stat(filePath);
-        let summary = null;
-        try {
-          const parsed = JSON.parse(await fs.readFile(filePath, "utf8"));
-          summary = {
-            createdAt: parsed.createdAt || parsed.exportedAt || stat.mtime.toISOString(),
-            recordCount: Array.isArray(parsed.records) ? parsed.records.length : 0,
-            graphNodeCount: Array.isArray(parsed.graph?.nodes) ? parsed.graph.nodes.length : 0,
-            graphEdgeCount: Array.isArray(parsed.graph?.edges) ? parsed.graph.edges.length : 0,
-            statusCount: Array.isArray(parsed.statusOptions) ? parsed.statusOptions.length : 0,
-          };
-        } catch {
-          summary = { createdAt: stat.mtime.toISOString() };
-        }
-        return {
-          name: entry.name,
-          size: stat.size,
-          mtime: stat.mtime.toISOString(),
-          ...summary,
-        };
-      }),
-  );
-  return files.sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
-}
-
 async function handleApi(req, res, pathname) {
   const requestId = createRequestId(req);
   const context = requestContext(req, requestId);
@@ -329,7 +291,12 @@ async function handleApi(req, res, pathname) {
       durationMs: Date.now() - startedAt,
       ...stateSummary(state.data),
     });
-    sendJson(res, 200, { ok: true, state: state.data, updatedAt: state.updatedAt });
+    sendJson(res, 200, {
+      ok: true,
+      source: "postgresql",
+      state: state.data,
+      updatedAt: state.updatedAt,
+    });
     return;
   }
 
@@ -356,7 +323,7 @@ async function handleApi(req, res, pathname) {
         updatedAt,
         ...summary,
       });
-      sendJson(res, 200, { ok: true, updatedAt, requestId });
+      sendJson(res, 200, { ok: true, source: "postgresql", updatedAt, requestId });
     } catch (error) {
       logEvent("error", "state.write.failure", {
         ...context,
@@ -385,84 +352,32 @@ async function handleApi(req, res, pathname) {
     return;
   }
 
-  if (pathname === "/api/backups" && req.method === "GET") {
-    sendJson(res, 200, { ok: true, backups: await listBackups() });
-    return;
-  }
-
-  if (pathname === "/api/backups" && req.method === "POST") {
+  if (pathname === "/api/dav/sync" && req.method === "POST") {
     const state = await readAppState();
     if (!state.data) {
-      sendJson(res, 404, { ok: false, error: "数据库中没有可备份的应用数据" });
+      sendJson(res, 404, { ok: false, error: "PostgreSQL 中没有可同步的应用数据" });
       return;
     }
-    const payload = {
-      ...state.data,
-      version: state.data.version || 5,
-      createdAt: new Date().toISOString(),
-      backupSource: "postgresql",
-      databaseUpdatedAt: state.updatedAt,
-    };
-    await fs.mkdir(backupDir, { recursive: true });
-    const name = createBackupName();
-    const filePath = path.join(backupDir, name);
-    await fs.writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-    const stat = await fs.stat(filePath);
-    logEvent("info", "backup.create.success", {
-      ...context,
-      source: "postgresql",
-      databaseUpdatedAt: state.updatedAt,
-      backup: name,
-      ...stateSummary(state.data),
-    });
-    sendJson(res, 201, {
-      ok: true,
-      backup: { name, size: stat.size, createdAt: payload.createdAt },
-    });
+    const result = await syncPayloadToDav(state.data);
+    sendJson(res, 201, { ok: true, source: "postgresql", sync: result });
     return;
   }
 
-  if (pathname === "/api/dav/sync" && req.method === "POST") {
-    const parsed = JSON.parse(await readBody(req));
-    const result = await syncPayloadToDav(parsed);
-    sendJson(res, 201, { ok: true, sync: result });
-    return;
-  }
-
-  if (pathname === "/api/dav/latest" && req.method === "GET") {
+  if (pathname === "/api/dav/restore" && req.method === "POST") {
     const result = await loadLatestPayloadFromDav();
-    sendJson(res, 200, { ok: true, latest: result });
-    return;
-  }
-
-  const match = pathname.match(/^\/api\/backups\/([^/]+)$/);
-  if (match && req.method === "GET") {
-    const name = decodeURIComponent(match[1]);
-    if (!isSafeBackupName(name)) {
-      sendJson(res, 400, { ok: false, error: "非法备份文件名" });
-      return;
-    }
-    const content = await fs.readFile(path.join(backupDir, name), "utf8");
-    sendJson(res, 200, { ok: true, name, data: JSON.parse(content) });
-    return;
-  }
-
-  if (match && req.method === "DELETE") {
-    const name = decodeURIComponent(match[1]);
-    if (!isSafeBackupName(name)) {
-      sendJson(res, 400, { ok: false, error: "非法备份文件名" });
-      return;
-    }
-    try {
-      await fs.unlink(path.join(backupDir, name));
-    } catch (error) {
-      if (error?.code === "ENOENT") {
-        sendJson(res, 404, { ok: false, error: "备份不存在或已被删除" });
-        return;
-      }
-      throw error;
-    }
-    sendJson(res, 200, { ok: true, name });
+    const restoredState = {
+      ...result.data,
+      version: result.data.version || 5,
+      persistedAt: new Date().toISOString(),
+    };
+    const updatedAt = await writeAppState(restoredState);
+    sendJson(res, 200, {
+      ok: true,
+      source: "postgresql",
+      state: restoredState,
+      updatedAt,
+      latest: { project: result.project, latestName: result.latestName },
+    });
     return;
   }
 
@@ -523,7 +438,6 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, host, () => {
   console.log(`科研进度管理平台 preview server listening at http://${host}:${port}`);
-  console.log(`Backups directory: ${backupDir}`);
 });
 
 process.on("SIGTERM", async () => {

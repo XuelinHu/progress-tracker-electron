@@ -509,8 +509,6 @@ function App() {
   const [statusOptions, setStatusOptions] = useState(loadStatusConfig);
   const [statusDraft, setStatusDraft] = useState(() => loadStatusConfig());
   const [statusConfigMessage, setStatusConfigMessage] = useState("");
-  const [backupList, setBackupList] = useState([]);
-  const [selectedBackup, setSelectedBackup] = useState("");
   const [backupBusy, setBackupBusy] = useState(false);
   const [otherItemDraft, setOtherItemDraft] = useState(() => ({
     date: today(),
@@ -688,7 +686,7 @@ function App() {
       try {
         const response = await fetch("/api/state");
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.ok) {
+        if (!response.ok || !data.ok || data.source !== "postgresql") {
           throw new Error(data.error || "读取数据库状态失败");
         }
         if (!cancelled && data.state) {
@@ -735,7 +733,7 @@ function App() {
           body: JSON.stringify(payload),
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.ok) {
+        if (!response.ok || !data.ok || data.source !== "postgresql") {
           const error = new Error(data.error || `写入数据库状态失败（HTTP ${response.status}）`);
           error.status = response.status;
           throw error;
@@ -825,10 +823,6 @@ function App() {
 
   useEffect(() => {
     setPageLoadTime(Date.now());
-  }, []);
-
-  useEffect(() => {
-    loadBackupList();
   }, []);
 
   function updateRecord(recordId, patch) {
@@ -2118,60 +2112,15 @@ function App() {
     reader.readAsText(file);
   }
 
-  async function loadBackupList() {
-    try {
-      const response = await fetch("/api/backups");
-      if (!response.ok) {
-        throw new Error("备份服务不可用");
-      }
-      const data = await response.json();
-      const backups = Array.isArray(data.backups) ? data.backups : [];
-      setBackupList(backups);
-      setSelectedBackup((current) =>
-        current && backups.some((backup) => backup.name === current)
-          ? current
-          : backups[0]?.name ?? "",
-      );
-      return backups;
-    } catch {
-      setBackupList([]);
-      setSelectedBackup("");
-      return [];
-    }
-  }
-
-  async function createServerBackup() {
-    setBackupBusy(true);
-    setStatusConfigMessage("");
-    try {
-      const response = await fetch("/api/backups", {
-        method: "POST",
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "服务器本地备份失败");
-      }
-      const backups = await loadBackupList();
-      setSelectedBackup(data.backup?.name || backups[0]?.name || "");
-      setStatusConfigMessage("已从 PostgreSQL 数据库创建服务器备份，包含 1-8 页面全部数据");
-    } catch (error) {
-      setStatusConfigMessage(error.message || "服务器本地备份失败");
-    } finally {
-      setBackupBusy(false);
-    }
-  }
-
   async function syncDavBackup() {
     setBackupBusy(true);
     setStatusConfigMessage("");
     try {
       const response = await fetch("/api/dav/sync", {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(buildFullDataPayload()),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
+      if (!response.ok || !data.ok || data.source !== "postgresql") {
         throw new Error(data.error || "WebDAV 同步失败");
       }
       setStatusConfigMessage(
@@ -2193,12 +2142,12 @@ function App() {
     setBackupBusy(true);
     setStatusConfigMessage("");
     try {
-      const response = await fetch("/api/dav/latest");
+      const response = await fetch("/api/dav/restore", { method: "POST" });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok || !data.latest?.data) {
+      if (!response.ok || !data.ok || data.source !== "postgresql" || !data.state) {
         throw new Error(data.error || "读取云端数据失败");
       }
-      const { recordCount, graphNodeCount, graphEdgeCount } = applyFullDataPayload(data.latest.data);
+      const { recordCount, graphNodeCount, graphEdgeCount } = applyFullDataPayload(data.state);
       setStatusConfigMessage(
         `已按云端优先恢复：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
       );
@@ -2212,72 +2161,6 @@ function App() {
     } finally {
       setBackupBusy(false);
     }
-  }
-
-  async function restoreServerBackup() {
-    if (!selectedBackup) {
-      setStatusConfigMessage("请先选择要恢复的备份");
-      return;
-    }
-    if (!window.confirm("确认恢复所选备份吗？当前 1-8 页面数据会被备份内容覆盖。")) {
-      return;
-    }
-
-    setBackupBusy(true);
-    setStatusConfigMessage("");
-    try {
-      const response = await fetch(`/api/backups/${encodeURIComponent(selectedBackup)}`);
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok || !data.data) {
-        throw new Error(data.error || "读取备份失败");
-      }
-      const { recordCount, graphNodeCount, graphEdgeCount } = applyFullDataPayload(data.data);
-      setStatusConfigMessage(
-        `已恢复备份：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
-      );
-    } catch (error) {
-      setStatusConfigMessage(error.message || "恢复备份失败");
-    } finally {
-      setBackupBusy(false);
-    }
-  }
-
-  async function deleteServerBackup(name) {
-    if (!name) {
-      return;
-    }
-    const backup = backupList.find((item) => item.name === name);
-    const label = backup ? formatBackupLabel(backup) : name;
-    if (!window.confirm(`确认删除备份"${label}"吗？删除后无法恢复。`)) {
-      return;
-    }
-
-    setBackupBusy(true);
-    setStatusConfigMessage("");
-    try {
-      const response = await fetch(`/api/backups/${encodeURIComponent(name)}`, {
-        method: "DELETE",
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
-        throw new Error(data.error || "删除备份失败");
-      }
-      await loadBackupList();
-      setStatusConfigMessage("已删除所选服务器本地备份");
-    } catch (error) {
-      setStatusConfigMessage(error.message || "删除备份失败");
-    } finally {
-      setBackupBusy(false);
-    }
-  }
-
-  function formatBackupLabel(backup) {
-    const created = backup.createdAt || backup.mtime;
-    const timeText = created ? new Date(created).toLocaleString() : backup.name;
-    const recordCount = Number.isFinite(Number(backup.recordCount))
-      ? `${backup.recordCount}条`
-      : "未知条数";
-    return `${timeText} · ${recordCount}`;
   }
 
   function updateStatusDraft(statusId, patch) {
@@ -2654,12 +2537,6 @@ function App() {
   }
 
   function renderStatusConfig() {
-    const selectedBackupInfo = backupList.find((backup) => backup.name === selectedBackup);
-    const selectedBackupLabel = selectedBackupInfo
-      ? formatBackupLabel(selectedBackupInfo)
-      : backupList.length === 0
-        ? "暂无服务器本地备份"
-        : "请选择服务器本地备份";
     const statusColumnSize = Math.ceil(statusDraft.length / 3);
     const statusColumns = Array.from({ length: 3 }, (_, index) =>
       statusDraft.slice(index * statusColumnSize, (index + 1) * statusColumnSize),
@@ -2685,86 +2562,6 @@ function App() {
                 <Save size={16} />
                 <span>生效</span>
               </button>
-        </div>
-      </div>
-
-      <div className="backup-panel">
-        <div>
-          <strong>PostgreSQL 服务器备份</strong>
-          <span>一键备份直接读取数据库中的 1-8 页面数据，不读取浏览器本地文件。</span>
-        </div>
-        <div className="backup-actions">
-          <button
-            className="icon-button"
-            type="button"
-            onClick={createServerBackup}
-            disabled={backupBusy}
-          >
-            <Save size={16} />
-            <span>一键备份</span>
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            onClick={loadBackupList}
-            disabled={backupBusy}
-          >
-            <RotateCcw size={16} />
-            <span>刷新备份</span>
-          </button>
-            <details className="backup-dropdown">
-              <summary
-                className={`backup-select ${backupList.length === 0 ? "empty" : ""}`}
-                aria-label="选择服务器本地备份"
-              >
-                {selectedBackupLabel}
-              </summary>
-              <div className="backup-menu">
-                {backupList.length === 0 ? (
-                  <div className="backup-empty">暂无服务器本地备份</div>
-                ) : (
-                  backupList.map((backup) => (
-                    <div
-                      key={backup.name}
-                      className={`backup-menu-item ${backup.name === selectedBackup ? "selected" : ""}`}
-                    >
-                      <button
-                        className="backup-option-button"
-                        type="button"
-                        onClick={(event) => {
-                          setSelectedBackup(backup.name);
-                          event.currentTarget.closest("details")?.removeAttribute("open");
-                        }}
-                        title={backup.name}
-                      >
-                        {formatBackupLabel(backup)}
-                      </button>
-                      <button
-                        className="backup-delete-button"
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          deleteServerBackup(backup.name);
-                        }}
-                        disabled={backupBusy}
-                        title="删除这个备份"
-                        aria-label={`删除备份 ${formatBackupLabel(backup)}`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </details>
-            <button
-              className="text-button"
-            type="button"
-            onClick={restoreServerBackup}
-            disabled={backupBusy || !selectedBackup}
-          >
-            恢复备份
-          </button>
         </div>
       </div>
 

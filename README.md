@@ -43,7 +43,7 @@ npm run dev
 - 数据字段：`data JSONB`，保存 1-7 页面记录、知识图谱、优先级配置和导出同步所需的整份状态
 - 时间字段：`created_at`、`updated_at`
 
-生产预览服务启动后，前端通过 `/api/state` 从 PostgreSQL 读取和写入数据，不再把业务数据持久化到浏览器 `localStorage`。WebDAV 同步仍通过 `/api/dav/sync` 和 `/api/dav/latest` 保留，用于云端备份和云端同步本地。
+生产预览服务启动后，前端通过 `/api/state` 从 PostgreSQL 读取和写入数据，不把业务数据持久化到浏览器 `localStorage` 或服务器本地 JSON 文件。WebDAV 同步通过 `/api/dav/sync` 和 `/api/dav/restore` 保留，两个接口都由后端以 PostgreSQL 当前状态为唯一事实源。
 
 启动桌面应用：
 
@@ -76,6 +76,7 @@ npm run check
 - 默认连接变量：`PGHOST=127.0.0.1`、`PGPORT=5432`、`PGDATABASE=progress_tracker_electron`、`PGUSER=<your-postgres-user>`、`PGPASSWORD=<your-postgres-password>`。
 - 核心表：`app_state`，默认状态主键 `APP_STATE_ID=main`，`data JSONB` 保存 1-7 类别页记录、知识图谱、日历事项、其他事项、优先级配置和同步状态。
 - WebDAV：通过 `DAV_URL`、`DAV_USERNAME`、`DAV_PASSWORD`、`DAV_PROJECT` 配置云端备份；真实凭据只放本地 `.env`。
+- 存储回归：`npm run test:storage` 会检查本地存储残留，并通过隔离状态 ID 验证 API 与 PostgreSQL 的实际读写闭环。
 <!-- codex-runtime-config:end -->
 
 ## 打包

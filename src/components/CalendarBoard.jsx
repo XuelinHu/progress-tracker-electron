@@ -613,6 +613,8 @@ export default function CalendarBoard({
     if (scheduleDraft.calendarItemId) {
       updateCalendarItem?.(scheduleDraft.calendarItemId, {
         date: scheduleDraft.date,
+        startDate: scheduleDraft.date,
+        endDate: scheduleDraft.date,
         title: item,
         durationMinutes,
         status: nextStatus,

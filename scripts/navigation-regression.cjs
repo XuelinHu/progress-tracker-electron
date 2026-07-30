@@ -24,17 +24,74 @@ const mimeByExt = {
   ".svg": "image/svg+xml",
 };
 
+function localIsoDate(offsetDays = 0) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetDays);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+const todayIso = localIsoDate();
+const previousDayIso = localIsoDate(-1);
+const calendarRegressionItemId = "calendar-drag-regression";
+const regressionRecordId = "graph-font-regression";
+const regressionState = {
+  version: 5,
+  records: [
+    {
+      id: regressionRecordId,
+      categoryId: "software",
+      title: "知识图谱字体回归记录",
+      status: "进行中",
+      startDate: todayIso,
+      endDate: todayIso,
+      todo: "",
+    },
+  ],
+  calendarItems: [
+    {
+      id: calendarRegressionItemId,
+      date: "",
+      startDate: previousDayIso,
+      endDate: previousDayIso,
+      title: "日历拖拽回归事项",
+      categoryId: "other",
+      status: "进行中",
+    },
+  ],
+  graph: {
+    nodes: [
+      {
+        id: "graph-node-regression",
+        position: { x: 80, y: 80 },
+        data: { recordId: regressionRecordId, categoryId: "software" },
+      },
+    ],
+    edges: [],
+  },
+};
+
 function sendJson(response, payload) {
   response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
 }
 
 function startTestServer() {
+  let savedState = null;
   const server = http.createServer(async (request, response) => {
     const url = new URL(request.url, "http://127.0.0.1");
 
     if (url.pathname === "/api/state") {
-      sendJson(response, request.method === "GET" ? { ok: true, state: null } : { ok: true });
+      if (request.method === "GET") {
+        sendJson(response, { ok: true, source: "postgresql", state: regressionState });
+        return;
+      }
+      const chunks = [];
+      for await (const chunk of request) chunks.push(chunk);
+      savedState = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      sendJson(response, { ok: true, source: "postgresql" });
       return;
     }
 
@@ -61,7 +118,10 @@ function startTestServer() {
 
   return new Promise((resolve, reject) => {
     server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => resolve(server));
+    server.listen(0, "127.0.0.1", () => {
+      server.getSavedState = () => savedState;
+      resolve(server);
+    });
   });
 }
 
@@ -211,6 +271,43 @@ async function clickButton(page, selector, text, expectedSelector) {
   console.log(`PASS ${text}`);
 }
 
+async function verifyCalendarDropUsesTargetDate(page, server) {
+  const dragged = await page.evaluate(`(() => {
+    const source = [...document.querySelectorAll(".calendar-todo-card")]
+      .find((item) => item.textContent.includes("日历拖拽回归事项"));
+    const target = document.querySelector(".calendar-day.today");
+    if (!source || !target) return false;
+    const dataTransfer = new DataTransfer();
+    source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }));
+    return true;
+  })()`);
+  assert.equal(dragged, true, "Expected an unscheduled item and today's calendar cell");
+  await waitFor(page, "document.querySelector('.calendar-schedule-modal')", "calendar schedule modal");
+  assert.match(
+    await page.evaluate("document.querySelector('.calendar-schedule-head')?.textContent || ''"),
+    new RegExp(todayIso),
+  );
+  await page.evaluate("document.querySelector('.calendar-schedule-submit').click()");
+  await waitFor(page, "!document.querySelector('.calendar-schedule-modal')", "calendar schedule save");
+
+  const deadline = Date.now() + 4000;
+  let savedItem;
+  while (Date.now() < deadline) {
+    savedItem = server
+      .getSavedState()
+      ?.calendarItems?.find((item) => item.id === calendarRegressionItemId);
+    if (savedItem?.date === todayIso) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  assert.equal(savedItem?.date, todayIso, "Calendar date must use the drop target date");
+  assert.equal(savedItem?.startDate, todayIso, "Start date must reset to the drop target date");
+  assert.equal(savedItem?.endDate, todayIso, "End date must reset to the drop target date");
+  console.log("PASS calendar drop defaults to today");
+}
+
 async function run() {
   const server = await startTestServer();
   const chromium = await startChromium();
@@ -236,7 +333,24 @@ async function run() {
 
     await clickButton(page, ".global-data-actions button", "优先级配置", ".status-config-page");
     await clickButton(page, ".global-data-actions button", "日历", ".calendar-page");
+    await verifyCalendarDropUsesTargetDate(page, server);
     await clickButton(page, ".global-data-actions button", "知识图谱", ".graph-workspace");
+    assert.equal(
+      await page.evaluate("getComputedStyle(document.querySelector('.graph-node-date-input')).fontSize"),
+      "11.2px",
+      "Knowledge graph date font must be 70% of the previous 16px size",
+    );
+    console.log("PASS knowledge graph date font scale");
+
+    const browserStorage = await page.evaluate(`(async () => ({
+      localStorage: Object.keys(localStorage),
+      sessionStorage: Object.keys(sessionStorage),
+      indexedDb: typeof indexedDB.databases === "function"
+        ? (await indexedDB.databases()).map((database) => database.name)
+        : [],
+    }))()`);
+    assert.deepEqual(browserStorage, { localStorage: [], sessionStorage: [], indexedDb: [] });
+    console.log("PASS browser runtime has no local business storage");
 
     assert.deepEqual(browserErrors, [], `Browser errors:\n${browserErrors.join("\n")}`);
     console.log(`PASS all ${categoryNames.length + 3} navigation buttons`);
