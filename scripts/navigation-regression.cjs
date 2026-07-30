@@ -49,6 +49,15 @@ const regressionState = {
       endDate: todayIso,
       todo: "",
     },
+    {
+      id: "calendar-category-filter-patent",
+      categoryId: "patent",
+      title: "日历类别筛选专利记录",
+      status: "进行中",
+      startDate: todayIso,
+      endDate: todayIso,
+      todo: "",
+    },
   ],
   calendarItems: [
     {
@@ -241,7 +250,7 @@ async function connectToPage(port, url, browserErrors) {
 
   await send("Runtime.enable");
   await send("Page.enable");
-  return { evaluate, socket };
+  return { evaluate, send, socket };
 }
 
 async function waitFor(page, expression, label, timeoutMs = 4000) {
@@ -308,6 +317,92 @@ async function verifyCalendarDropUsesTargetDate(page, server) {
   console.log("PASS calendar drop defaults to today");
 }
 
+async function verifyCalendarCategoryButtons(page) {
+  assert.equal(
+    await page.evaluate("document.querySelectorAll('.calendar-category-filter-button').length"),
+    7,
+    "Calendar category filter must render All plus six category buttons",
+  );
+  assert.equal(
+    await page.evaluate("Boolean(document.querySelector('select[aria-label=\"日历类别筛选\"]'))"),
+    false,
+    "Calendar category filter must not use a select menu",
+  );
+
+  await clickButton(
+    page,
+    ".calendar-category-filter-button",
+    "专利",
+    ".calendar-category-filter-button[aria-pressed='true']",
+  );
+  assert.match(
+    await page.evaluate("document.querySelector('.calendar-record-list')?.textContent || ''"),
+    /日历类别筛选专利记录/,
+  );
+  assert.doesNotMatch(
+    await page.evaluate("document.querySelector('.calendar-record-list')?.textContent || ''"),
+    /知识图谱字体回归记录/,
+  );
+
+  await clickButton(
+    page,
+    ".calendar-category-filter-button",
+    "软著",
+    ".calendar-category-filter-button[aria-pressed='true']",
+  );
+  let recordListText = await page.evaluate(
+    "document.querySelector('.calendar-record-list')?.textContent || ''",
+  );
+  assert.match(recordListText, /日历类别筛选专利记录/);
+  assert.match(recordListText, /知识图谱字体回归记录/);
+
+  await clickButton(
+    page,
+    ".calendar-category-filter-button",
+    "专利",
+    ".calendar-category-filter-button[aria-pressed='true']",
+  );
+  recordListText = await page.evaluate(
+    "document.querySelector('.calendar-record-list')?.textContent || ''",
+  );
+  assert.doesNotMatch(recordListText, /日历类别筛选专利记录/);
+  assert.match(recordListText, /知识图谱字体回归记录/);
+
+  await clickButton(
+    page,
+    ".calendar-category-filter-button",
+    "全部",
+    ".calendar-category-filter-button[aria-pressed='true']",
+  );
+  recordListText = await page.evaluate(
+    "document.querySelector('.calendar-record-list')?.textContent || ''",
+  );
+  assert.match(recordListText, /日历类别筛选专利记录/);
+  assert.match(recordListText, /知识图谱字体回归记录/);
+  console.log("PASS calendar category quick filters");
+}
+
+async function verifyCalendarCategoryButtonsOnMobile(page) {
+  await page.send("Emulation.setDeviceMetricsOverride", {
+    width: 390,
+    height: 844,
+    deviceScaleFactor: 1,
+    mobile: true,
+  });
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  const layout = await page.evaluate(`(() => {
+    const group = document.querySelector(".calendar-category-filters");
+    const buttons = [...document.querySelectorAll(".calendar-category-filter-button")];
+    const rect = group?.getBoundingClientRect();
+    return {
+      groupWithinViewport: Boolean(rect && rect.left >= 0 && rect.right <= window.innerWidth),
+      buttonsFit: buttons.every((button) => button.scrollWidth <= button.clientWidth),
+    };
+  })()`);
+  assert.deepEqual(layout, { groupWithinViewport: true, buttonsFit: true });
+  console.log("PASS calendar category filters fit mobile viewport");
+}
+
 async function run() {
   const server = await startTestServer();
   const chromium = await startChromium();
@@ -333,6 +428,7 @@ async function run() {
 
     await clickButton(page, ".global-data-actions button", "优先级配置", ".status-config-page");
     await clickButton(page, ".global-data-actions button", "日历", ".calendar-page");
+    await verifyCalendarCategoryButtons(page);
     await verifyCalendarDropUsesTargetDate(page, server);
     await clickButton(page, ".global-data-actions button", "知识图谱", ".graph-workspace");
     assert.equal(
@@ -351,6 +447,9 @@ async function run() {
     }))()`);
     assert.deepEqual(browserStorage, { localStorage: [], sessionStorage: [], indexedDb: [] });
     console.log("PASS browser runtime has no local business storage");
+
+    await clickButton(page, ".global-data-actions button", "日历", ".calendar-page");
+    await verifyCalendarCategoryButtonsOnMobile(page);
 
     assert.deepEqual(browserErrors, [], `Browser errors:\n${browserErrors.join("\n")}`);
     console.log(`PASS all ${categoryNames.length + 3} navigation buttons`);

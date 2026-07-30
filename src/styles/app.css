@@ -424,6 +424,47 @@ button {
   font-size: 12px;
 }
 
+.calendar-category-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  min-width: 0;
+}
+
+.calendar-category-filter-button {
+  min-width: 0;
+  height: 28px;
+  padding: 0 4px;
+  border: 1px solid #cfd8e6;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #475569;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 680;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.calendar-category-filter-button:hover {
+  border-color: var(--category-filter-accent, #64748b);
+  color: var(--category-filter-accent, #334155);
+}
+
+.calendar-category-filter-button[aria-pressed="true"] {
+  border-color: var(--category-filter-accent, #475569);
+  background: var(--category-filter-tint, #e2e8f0);
+  color: var(--category-filter-accent, #334155);
+  box-shadow: inset 0 -2px 0 var(--category-filter-accent, #475569);
+}
+
+.calendar-category-filter-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
 .calendar-record-list {
   min-height: 0;
   overflow: auto;

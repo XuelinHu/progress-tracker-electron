@@ -371,7 +371,7 @@ export default function CalendarBoard({
 }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [categoryFilters, setCategoryFilters] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [dropTarget, setDropTarget] = useState("");
   const [tooltip, setTooltip] = useState(null);
@@ -387,7 +387,7 @@ export default function CalendarBoard({
   const visibleRecords = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return records.filter((record) => {
-      if (categoryFilter !== "all" && record.categoryId !== categoryFilter) {
+      if (categoryFilters.length > 0 && !categoryFilters.includes(record.categoryId)) {
         return false;
       }
       if (statusFilter !== "all" && record.status !== statusFilter) {
@@ -409,7 +409,7 @@ export default function CalendarBoard({
         .toLowerCase()
         .includes(keyword);
     });
-  }, [categoryFilter, records, searchTerm, statusFilter]);
+  }, [categoryFilters, records, searchTerm, statusFilter]);
 
   const recordsByDate = useMemo(() => {
     const groups = new Map();
@@ -801,6 +801,20 @@ export default function CalendarBoard({
     openCalendarItemModal?.(item.date, item, { itemId: item.id });
   }
 
+  function toggleCategoryFilter(categoryId) {
+    if (categoryId === "all") {
+      setCategoryFilters([]);
+      return;
+    }
+    setCategoryFilters((current) => {
+      if (current.includes(categoryId)) {
+        const next = current.filter((id) => id !== categoryId);
+        return next.length > 0 ? next : [];
+      }
+      return [...current, categoryId];
+    });
+  }
+
   return (
     <section className="workspace calendar-page">
       <aside className="calendar-source-panel">
@@ -817,19 +831,31 @@ export default function CalendarBoard({
             onChange={(event) => setSearchTerm(event.target.value)}
           />
         </label>
-        <select
-          className="calendar-filter"
-          value={categoryFilter}
-          onChange={(event) => setCategoryFilter(event.target.value)}
-          aria-label="日历类别筛选"
-        >
-          <option value="all">全部类别</option>
+        <div className="calendar-category-filters" role="group" aria-label="日历类别筛选">
+          <button
+            className="calendar-category-filter-button"
+            type="button"
+            aria-pressed={categoryFilters.length === 0}
+            onClick={() => toggleCategoryFilter("all")}
+          >
+            全部
+          </button>
           {CATEGORIES.map((category) => (
-            <option key={category.id} value={category.id}>
+            <button
+              className="calendar-category-filter-button"
+              type="button"
+              key={category.id}
+              aria-pressed={categoryFilters.includes(category.id)}
+              onClick={() => toggleCategoryFilter(category.id)}
+              style={{
+                "--category-filter-accent": category.accent,
+                "--category-filter-tint": category.tint,
+              }}
+            >
               {category.name}
-            </option>
+            </button>
           ))}
-        </select>
+        </div>
         <select
           className="calendar-filter"
           value={statusFilter}
