@@ -27,6 +27,7 @@ export default function DateHistoryField({
   onDateChange,
   onHistoryItemChange,
   onDeleteHistory,
+  showHistory = true,
 }) {
   const [draftDate, setDraftDate] = useState(value ?? "");
   const [item, setItem] = useState("");
@@ -88,8 +89,8 @@ export default function DateHistoryField({
       <div
         className="date-history-row"
         ref={triggerRef}
-        onMouseEnter={handleEnter}
-        onMouseLeave={handleLeave}
+        onMouseEnter={showHistory ? handleEnter : undefined}
+        onMouseLeave={showHistory ? handleLeave : undefined}
       >
         <input
           className={inputClassName}
@@ -123,7 +124,7 @@ export default function DateHistoryField({
         </div>
       </div>
 
-      {showPopover &&
+      {showHistory && showPopover &&
         createPortal(
           <div
             className="portal-popover"

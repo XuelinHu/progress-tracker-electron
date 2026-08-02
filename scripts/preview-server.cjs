@@ -80,6 +80,106 @@ function stateSummary(state) {
   };
 }
 
+const STATE_SCHEMA_VERSION = 6;
+
+function sortTimeline(entries = []) {
+  const seen = new Set();
+  return entries
+    .filter((entry) => entry && (entry.summary || entry.item || entry.date || entry.createdAt))
+    .filter((entry) => {
+      const key = entry.id || [entry.summary || entry.item, entry.status || "", entry.createdAt || entry.date || ""].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) => String(left.createdAt || left.updatedAt || left.date || "").localeCompare(
+      String(right.createdAt || right.updatedAt || right.date || ""),
+    ));
+}
+
+function migrateStateToV6(state) {
+  if (!state || typeof state !== "object") return state;
+  const now = new Date().toISOString();
+  const records = Array.isArray(state.records) ? state.records.map((record) => {
+    const dateHistory = record?.dateHistory && typeof record.dateHistory === "object" ? record.dateHistory : {};
+    const legacyTodo = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
+    const existingItems = Array.isArray(record?.items) ? record.items : [];
+    const migratedDateTodos = Object.entries(dateHistory).flatMap(([sourceField, entries]) =>
+      (Array.isArray(entries) ? entries : []).map((entry, index) => ({
+        id: String(entry?.id || `todo-date-${record?.id || "record"}-${sourceField}-${index}`),
+        recordId: String(record?.id || ""),
+        type: "todo",
+        text: String(entry?.item || `${sourceField} Todo`),
+        details: String(entry?.details || entry?.item || ""),
+        date: String(entry?.date || ""),
+        sourceField,
+        status: "active",
+        doneDate: null,
+        doneAt: null,
+        createdAt: entry?.createdAt || entry?.addedAt || entry?.date || now,
+        updatedAt: entry?.updatedAt || entry?.createdAt || entry?.date || now,
+      })),
+    );
+    const itemsById = new Map();
+    [...existingItems, ...migratedDateTodos].forEach((item, index) => {
+      const id = String(item?.id || `todo-${record?.id || "record"}-${index}`);
+      const normalized = {
+        ...item,
+        id,
+        recordId: String(item?.recordId || record?.id || ""),
+        type: item?.type === "date" ? "todo" : item?.type || "todo",
+        text: String(item?.text ?? item?.item ?? "").trim(),
+        details: String(item?.details ?? item?.description ?? ""),
+        date: String(item?.date || item?.addedDate || ""),
+        sourceField: String(item?.sourceField || ""),
+        status: item?.status || (item?.doneDate ? "done" : "active"),
+        doneDate: item?.doneDate || null,
+        doneAt: item?.doneAt || null,
+        createdAt: item?.createdAt || item?.addedAt || item?.date || now,
+        updatedAt: item?.updatedAt || item?.createdAt || item?.date || now,
+      };
+      if (normalized.text && !itemsById.has(id)) itemsById.set(id, normalized);
+    });
+    legacyTodo.forEach((entry, index) => {
+      const id = String(entry?.id || `todo-legacy-${record?.id || "record"}-${index}`);
+      if (itemsById.has(id)) return;
+      itemsById.set(id, {
+        id,
+        recordId: String(record?.id || ""),
+        type: "todo",
+        text: String(entry?.item || "").trim(),
+        details: String(entry?.details || entry?.description || ""),
+        date: String(entry?.addedDate || entry?.date || ""),
+        sourceField: String(entry?.sourceField || ""),
+        status: entry?.doneDate ? "done" : "active",
+        doneDate: entry?.doneDate || null,
+        doneAt: entry?.doneAt || null,
+        createdAt: entry?.createdAt || entry?.addedAt || entry?.addedDate || now,
+        updatedAt: entry?.updatedAt || entry?.doneAt || entry?.createdAt || now,
+      });
+    });
+    const todoItems = [...itemsById.values()].filter((item) => item.type === "todo");
+    return {
+      ...record,
+      items: todoItems,
+      todo: todoItems.map((item) => item.text).join("\n"),
+      todoHistory: todoItems.map((item) => ({
+        id: item.id, item: item.text, details: item.details, sourceField: item.sourceField,
+        addedDate: item.date, doneDate: item.doneDate, addedAt: item.createdAt,
+        doneAt: item.doneAt, createdAt: item.createdAt, updatedAt: item.updatedAt,
+      })),
+      history: sortTimeline(record?.history || []),
+    };
+  }) : [];
+  const calendarItems = Array.isArray(state.calendarItems) ? state.calendarItems.map((item) => ({
+    ...item,
+    categoryId: item?.categoryId === "problem" ? "other" : item?.categoryId || "other",
+    itemType: "todo",
+    history: sortTimeline(item?.history || []),
+  })) : [];
+  return { ...state, version: STATE_SCHEMA_VERSION, records, calendarItems, schemaVersion: STATE_SCHEMA_VERSION };
+}
+
 function logEvent(level, event, details = {}) {
   const line = JSON.stringify({
     timestamp: new Date().toISOString(),
@@ -140,6 +240,8 @@ async function ensureDbSchema() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
+      ;
+      ALTER TABLE app_state ADD COLUMN IF NOT EXISTS schema_version INTEGER NOT NULL DEFAULT 6
     `);
   }
   await dbReadyPromise;
@@ -151,7 +253,13 @@ async function readAppState() {
     appStateId,
   ]);
   const row = result.rows[0];
-  return row ? { data: row.data, updatedAt: row.updated_at } : { data: null, updatedAt: null };
+  if (!row) return { data: null, updatedAt: null };
+  const data = migrateStateToV6(row.data);
+  if (Number(row.data?.version || 0) < STATE_SCHEMA_VERSION) {
+    const updatedAt = await writeAppState(data);
+    return { data, updatedAt };
+  }
+  return { data, updatedAt: row.updated_at };
 }
 
 async function writeAppState(data) {
@@ -161,10 +269,10 @@ async function writeAppState(data) {
       INSERT INTO app_state (id, data, updated_at)
       VALUES ($1, $2::jsonb, NOW())
       ON CONFLICT (id)
-      DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()
+      DO UPDATE SET data = EXCLUDED.data, schema_version = $3, updated_at = NOW()
       RETURNING updated_at
     `,
-    [appStateId, JSON.stringify(data)],
+    [appStateId, JSON.stringify(migrateStateToV6(data)), STATE_SCHEMA_VERSION],
   );
   return result.rows[0]?.updated_at ?? null;
 }
@@ -250,7 +358,7 @@ async function syncPayloadToDav(payload) {
   const config = getDavConfig();
   const syncPayload = {
     ...payload,
-    version: payload.version || 5,
+    version: STATE_SCHEMA_VERSION,
     syncedAt: new Date().toISOString(),
     syncSource: "progress-tracker-electron-preview",
   };
@@ -313,7 +421,7 @@ async function handleApi(req, res, pathname) {
     try {
       const updatedAt = await writeAppState({
         ...parsed,
-        version: parsed.version || 5,
+        version: STATE_SCHEMA_VERSION,
         persistedAt: new Date().toISOString(),
       });
       logEvent("info", "state.write.success", {
@@ -367,7 +475,7 @@ async function handleApi(req, res, pathname) {
     const result = await loadLatestPayloadFromDav();
     const restoredState = {
       ...result.data,
-      version: result.data.version || 5,
+      version: STATE_SCHEMA_VERSION,
       persistedAt: new Date().toISOString(),
     };
     const updatedAt = await writeAppState(restoredState);

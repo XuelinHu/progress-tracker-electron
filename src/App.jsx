@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownUp,
+  Award,
   BarChart3,
   CalendarDays,
   Copy,
   Download,
   ExternalLink,
+  FileCode2,
   FileDown,
+  FileText,
+  FolderKanban,
   Keyboard,
+  ListTodo,
   Pencil,
   Plus,
   RotateCcw,
@@ -15,6 +20,7 @@ import {
   Settings2,
   Save,
   Share2,
+  Trophy,
   Trash2,
   Upload,
   X,
@@ -36,7 +42,6 @@ import {
   RECORD_ITEM_TYPES,
   buildRecordItemsFromLegacy,
   createRecordItem,
-  syncDateItemsLegacy,
   syncTodoItemsLegacy,
   withSyncedRecordItems,
 } from "./models/progressRecord.js";
@@ -111,6 +116,15 @@ const ACTIVITY_NAVIGATION_ITEM = CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID]
   ? { ...CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID], shortcut: "6" }
   : null;
 const TODO_NAVIGATION_ITEM = { ...TODO_ITEMS_PAGE, shortcut: "7" };
+const NAVIGATION_ICONS = {
+  software: FileCode2,
+  patent: Award,
+  paper: FileText,
+  contest: Trophy,
+  project: FolderKanban,
+  activity: CalendarDays,
+  "todo-items": ListTodo,
+};
 const NAVIGATION_ITEMS = [
   ...CATEGORIES.filter(
     (category) =>
@@ -170,6 +184,8 @@ function normalizeRecord(record) {
       id: e.id,
       addedDate: e.addedDate || e.date || today(),
       item: e.item || "",
+      details: e.details || e.description || record.description || "",
+      sourceField: e.sourceField || "",
       doneDate: e.doneDate || (!e.addedDate && e.date ? e.date : null),
       addedAt: e.addedAt || e.createdAt || e.addedDate || e.date || today(),
       doneAt: e.doneAt || null,
@@ -177,7 +193,7 @@ function normalizeRecord(record) {
       updatedAt: e.updatedAt || e.doneAt || e.createdAt || e.addedDate || e.date || today(),
     })),
   };
-  return withSyncedRecordItems(normalized, buildRecordItemsFromLegacy(normalized));
+  return syncTodoItemsLegacy(normalized, buildRecordItemsFromLegacy(normalized));
 }
 
 function createHistoryEntry({ date = today(), status = "", summary = "" } = {}) {
@@ -965,14 +981,15 @@ function App() {
           createRecordItem({
             id: historyId,
             recordId: record.id,
-            type: RECORD_ITEM_TYPES.DATE,
+            type: RECORD_ITEM_TYPES.TODO,
             text: item,
+            details: item,
             date,
             sourceField: fieldKey,
           }),
         ];
         const dateHistory = record.dateHistory ?? {};
-        return syncDateItemsLegacy({
+        return syncTodoItemsLegacy({
           ...record,
           history: [
             ...(record.history ?? []),
@@ -991,6 +1008,7 @@ function App() {
                 id: historyId,
                 date,
                 item,
+                details: item,
               },
             ],
           },
@@ -1013,12 +1031,12 @@ function App() {
           : (dateHistory[fieldKey] ?? []).filter((entry) => entry.date !== date);
         const shouldClearDate = record[fieldKey] === date && (!historyId || historyId.endsWith("-primary"));
         const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter((entry) => {
-          if (entry.type !== RECORD_ITEM_TYPES.DATE || entry.sourceField !== fieldKey) {
+          if (entry.type !== RECORD_ITEM_TYPES.TODO || entry.sourceField !== fieldKey) {
             return true;
           }
           return historyId ? entry.id !== historyId : entry.date !== date;
         });
-        return syncDateItemsLegacy({
+        return syncTodoItemsLegacy({
           ...record,
           [fieldKey]: shouldClearDate ? "" : record[fieldKey],
           dateHistory: {
@@ -1649,11 +1667,11 @@ function App() {
 
         const dateHistory = record.dateHistory ?? {};
         const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
-          entry.id === historyId && entry.type === RECORD_ITEM_TYPES.DATE
-            ? { ...entry, text: item, updatedAt: new Date().toISOString() }
+          entry.id === historyId && entry.type === RECORD_ITEM_TYPES.TODO
+            ? { ...entry, text: item, details: item, updatedAt: new Date().toISOString() }
             : entry,
         );
-        return syncDateItemsLegacy({
+        return syncTodoItemsLegacy({
           ...record,
           dateHistory: {
             ...dateHistory,
@@ -1727,6 +1745,8 @@ function App() {
         status: existing?.doneDate ? "done" : "active",
         doneDate: existing?.doneDate || null,
         doneAt: existing?.doneAt || null,
+        details: existing?.details || sourceRecord.description || "",
+        sourceField: existing?.sourceField || "",
         createdAt: existing?.createdAt || existing?.addedAt || existing?.addedDate,
         updatedAt: existing?.updatedAt,
       });
@@ -1742,6 +1762,8 @@ function App() {
           doneDate: item.doneDate || null,
           addedAt: item.createdAt,
           doneAt: item.doneAt || null,
+          details: item.details || "",
+          sourceField: item.sourceField || "",
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
         }));
@@ -1799,9 +1821,9 @@ function App() {
         if (record.id !== recordId) return record;
         const dateHistory = record.dateHistory ?? {};
         const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter(
-          (entry) => entry.id !== historyId || entry.type !== RECORD_ITEM_TYPES.DATE,
+          (entry) => entry.id !== historyId || entry.type !== RECORD_ITEM_TYPES.TODO,
         );
-        return syncDateItemsLegacy({
+        return syncTodoItemsLegacy({
           ...record,
           dateHistory: {
             ...dateHistory,
@@ -2141,7 +2163,7 @@ function App() {
 
   function buildFullDataPayload() {
     return {
-      version: 5,
+      version: 6,
       exportedAt: new Date().toISOString(),
       scope: "pages-1-8",
       includes: [
@@ -2473,6 +2495,30 @@ function App() {
             <div className={`create-form-fields ${isCalendarItem ? "calendar-item-form" : ""}`}>
               {isCalendarItem ? (
                 <>
+                  <div className="calendar-status-field">
+                    <span>归属类别</span>
+                    <div className="calendar-quick-statuses">
+                      {[...CATEGORIES, TODO_ITEMS_PAGE].map((item) => {
+                        const selected = createDraft.categoryId === item.itemCategoryId || createDraft.categoryId === item.id;
+                        const categoryId = item.itemCategoryId || item.id;
+                        return (
+                          <button
+                            key={categoryId}
+                            className={`calendar-status-button${selected ? " selected" : ""}`}
+                            type="button"
+                            onClick={() => updateCreateDraft("categoryId", categoryId)}
+                            style={{
+                              "--status-bg": item.tint,
+                              "--status-color": item.accent,
+                              "--status-border": item.accent,
+                            }}
+                          >
+                            {item.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div className="calendar-status-field">
                     <span>默认状态</span>
                     <div className="calendar-quick-statuses">
@@ -3064,6 +3110,7 @@ function App() {
         <DateHistoryField
           value={record[field.key] ?? ""}
           history={record.dateHistory?.[field.key] ?? []}
+          showHistory={false}
           label={`${getRecordTitle(record)} ${field.label}`}
           resetKey={`${record.id}-${field.key}`}
           inputClassName="cell-input date-input"
@@ -3235,7 +3282,7 @@ function App() {
                 <div
                   key={`a-${idx}-${trimmed.substring(0, 12)}`}
                   className="todo-item"
-                  title={`添加日期：${addedDate || "未知"}`}
+                  title={`添加日期：${addedDate || "未知"}；详情：${hist?.details || "无"}`}
                 >
                   <button
                     className="todo-delete-btn"
@@ -3297,7 +3344,7 @@ function App() {
                   <div
                     key={`d-${idx}-${trimmed.substring(0, 12)}`}
                     className="todo-item done"
-                    title={`添加日期：${addedDate || "未知"}；完成日期：${hist?.doneDate || "未知"}`}
+                    title={`添加日期：${addedDate || "未知"}；完成日期：${hist?.doneDate || "未知"}；详情：${hist?.details || "无"}`}
                   >
                     <CopyIconButton
                       value={trimmed}
@@ -3508,8 +3555,10 @@ function App() {
         )}
 
         <nav className="category-tabs" aria-label="类别切换">
-          {NAVIGATION_ITEMS.map((category) => (
-            <button
+          {NAVIGATION_ITEMS.map((category) => {
+            const CategoryIcon = NAVIGATION_ICONS[category.id] || ListTodo;
+            return (
+              <button
               key={category.id}
               className={`category-tab ${category.id === activeCategoryId ? "active" : ""}`}
               style={{
@@ -3524,9 +3573,11 @@ function App() {
               }}
             >
               <span className="shortcut-key">{category.shortcut}</span>
-            {category.name}
-            </button>
-          ))}
+              <CategoryIcon size={14} />
+              <span>{category.name}</span>
+              </button>
+            );
+          })}
         </nav>
       </header>
 
