@@ -98,6 +98,7 @@ const CALENDAR_DONE_STATUS = {
   bg: "#e2e8f0",
   border: "#94a3b8",
 };
+const STATUS_CHANGE_TODO_SOURCE = "statusChange";
 const CALENDAR_ITEM_FIELD_KEYS = [
   "todo",
   "githubUrl",
@@ -603,6 +604,50 @@ function App() {
   const saveTimerRef = useRef(null);
   const operationStatusTimerRef = useRef(null);
 
+  useEffect(() => {
+    const linkedTodoKeys = new Set(
+      calendarItems
+        .filter((item) => item.recordId && item.todoId)
+        .map((item) => `${item.recordId}:${item.todoId}`),
+    );
+    const statusTodos = records.flatMap((record) =>
+      (record.items ?? [])
+        .filter((item) => item.type === RECORD_ITEM_TYPES.TODO && item.sourceField === STATUS_CHANGE_TODO_SOURCE)
+        .filter((item) => !linkedTodoKeys.has(`${record.id}:${item.id}`))
+        .map((item) => ({ record, item })),
+    );
+    if (statusTodos.length === 0) {
+      return;
+    }
+    const now = new Date().toISOString();
+    setCalendarItems((current) => [
+      ...current,
+      ...statusTodos.map(({ record, item }) => ({
+        id: createId("calendar-item"),
+        recordId: record.id,
+        todoId: item.id,
+        date: item.date || today(),
+        startDate: item.date || today(),
+        endDate: item.date || today(),
+        title: item.text,
+        description: item.details || "",
+        categoryId: record.categoryId || "other",
+        status: CALENDAR_DONE_STATUS.id,
+        durationMinutes: 30,
+        distanceKm: "",
+        history: [
+          createHistoryEntry({
+            date: item.date || today(),
+            status: CALENDAR_DONE_STATUS.id,
+            summary: `由状态变更自动生成：${item.text}`,
+          }),
+        ],
+        createdAt: item.createdAt || now,
+        updatedAt: now,
+      })),
+    ]);
+  }, [calendarItems, records]);
+
   function openTodoDetail(event, record, todo) {
     const rect = event.currentTarget.getBoundingClientRect();
     const width = Math.min(560, window.innerWidth - 24);
@@ -928,45 +973,35 @@ function App() {
   }, []);
 
   function updateRecord(recordId, patch) {
-    const sourceRecord = records.find((record) => record.id === recordId);
-    const statusChanged = Boolean(
-      sourceRecord && patch.status && patch.status !== sourceRecord.status,
-    );
-    const previousStatusLabel = statusChanged
-      ? statusById[sourceRecord.status]?.label || sourceRecord.status || "未设置"
-      : "";
-    const nextStatusLabel = statusChanged
-      ? statusById[patch.status]?.label || patch.status
-      : "";
-    const statusTodoText = statusChanged
-      ? `状态变更：${previousStatusLabel} -> ${nextStatusLabel}`
-      : "";
-    const statusTodo = statusChanged
-      ? createRecordItem({
-          id: createId("todo-status"),
-          recordId,
-          type: RECORD_ITEM_TYPES.TODO,
-          text: statusTodoText,
-          date: today(),
-          status: "done",
-          doneDate: today(),
-          doneAt: new Date().toISOString(),
-        })
-      : null;
-    if (statusTodo && sourceRecord) {
-      addCalendarItem(today(), {
-        title: statusTodo.text,
-        categoryId: sourceRecord.categoryId,
-        status: CALENDAR_DONE_STATUS.id,
-        recordId: sourceRecord.id,
-        todoId: statusTodo.id,
-      });
-    }
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) {
           return record;
         }
+
+        const statusChanged = Object.hasOwn(patch, "status") && patch.status !== record.status;
+        const previousStatusLabel = statusChanged
+          ? statusById[record.status]?.label || record.status || "未设置"
+          : "";
+        const nextStatusLabel = statusChanged
+          ? statusById[patch.status]?.label || patch.status
+          : "";
+        const statusTodoText = statusChanged
+          ? `状态变更：${previousStatusLabel} -> ${nextStatusLabel}`
+          : "";
+        const statusTodo = statusChanged
+          ? createRecordItem({
+              id: createId("todo-status"),
+              recordId,
+              type: RECORD_ITEM_TYPES.TODO,
+              text: statusTodoText,
+              date: today(),
+              sourceField: STATUS_CHANGE_TODO_SOURCE,
+              status: "done",
+              doneDate: today(),
+              doneAt: new Date().toISOString(),
+            })
+          : null;
 
         const nextRecord = {
           ...record,
