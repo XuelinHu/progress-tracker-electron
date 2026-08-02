@@ -3188,7 +3188,7 @@ function App() {
           <h1>科研进度管理平台</h1>
             <div className="shortcut-hint">
               <Keyboard size={15} />
-              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 / 8 切换数据页，G 打开日历，F 打开知识图谱</span>
+              <span>按 1 / 2 / 3 / 4 / 5 / 6 / 7 / 8 切换数据页</span>
               {pageLoadTime && (
                 <span className="load-time-badge" title={`页面刷新时间: ${new Date(pageLoadTime).toLocaleTimeString()}`}>
                   已刷新

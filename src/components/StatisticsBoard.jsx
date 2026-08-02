@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { BarChart3, CheckCircle2, ListChecks } from "lucide-react";
 import { CATEGORIES } from "../data/categories.js";
 
@@ -118,7 +118,32 @@ function StatisticsTable({ title, periods, entries }) {
   );
 }
 
+function StatisticsBars({ title, data, valueLabel }) {
+  const maxValue = Math.max(...data.map((item) => item.value), 1);
+  return (
+    <section className="statistics-chart-panel">
+      <h3>{title}</h3>
+      <div className="statistics-bars">
+        {data.map((item) => (
+          <div className="statistics-bar-row" key={item.key}>
+            <span className="statistics-bar-label" title={item.label}>{item.label}</span>
+            <div className="statistics-bar-track">
+              <span
+                className="statistics-bar-fill"
+                style={{ width: `${Math.round((item.value / maxValue) * 100)}%`, background: item.color }}
+              />
+            </div>
+            <strong>{valueLabel(item.value)}</strong>
+          </div>
+        ))}
+        {data.length === 0 && <div className="statistics-chart-empty">当前筛选下没有可统计事项</div>}
+      </div>
+    </section>
+  );
+}
+
 export default function StatisticsBoard({ records = [], calendarItems = [], statusOptions = [] }) {
+  const [statusFilter, setStatusFilter] = useState("all");
   const statusById = useMemo(
     () => new Map(statusOptions.map((status) => [status.id, status])),
     [statusOptions],
@@ -128,11 +153,13 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
       ...records.map((record) => ({
         categoryId: record.categoryId,
         date: String(record.endDate || record.startDate || "").slice(0, 10),
+        status: record.status || "",
         completed: isCompleted(record.status, statusById),
       })),
       ...calendarItems.map((item) => ({
         categoryId: item.categoryId || "other",
         date: String(item.date || item.endDate || item.startDate || "").slice(0, 10),
+        status: item.status || "",
         completed: isCompleted(item.status, statusById),
       })),
     ].filter((entry) => toLocalDate(entry.date)),
@@ -141,7 +168,10 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
   const monthlyPeriods = useMemo(() => buildMonthPeriods(), []);
   const weeklyPeriods = useMemo(() => buildWeekPeriods(), []);
   const currentMonth = monthlyPeriods.at(-1);
-  const currentMonthEntries = entries.filter((entry) => isInPeriod(entry.date, currentMonth));
+  const filteredEntries = statusFilter === "all"
+    ? entries
+    : entries.filter((entry) => entry.status === statusFilter);
+  const currentMonthEntries = filteredEntries.filter((entry) => isInPeriod(entry.date, currentMonth));
   const currentMonthCompleted = currentMonthEntries.filter((entry) => entry.completed).length;
   const pendingTodos = records.reduce(
     (sum, record) => sum + (record.todoHistory ?? []).filter((item) => !item.doneDate).length,
@@ -150,6 +180,24 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
   const completionRate = currentMonthEntries.length
     ? Math.round((currentMonthCompleted / currentMonthEntries.length) * 100)
     : 0;
+  const categoryBars = STATISTIC_CATEGORIES.map((category) => {
+    const categoryEntries = currentMonthEntries.filter((entry) => entry.categoryId === category.id);
+    const completed = categoryEntries.filter((entry) => entry.completed).length;
+    return {
+      key: category.id,
+      label: category.name,
+      color: category.accent,
+      value: categoryEntries.length ? Math.round((completed / categoryEntries.length) * 100) : 0,
+    };
+  }).filter((item) => item.value > 0 || currentMonthEntries.some((entry) => entry.categoryId === item.key));
+  const statusBars = [...new Map(
+    currentMonthEntries.map((entry) => [entry.status, (statusById.get(entry.status)?.label || entry.status || "未设置")]),
+  )].map(([status, label]) => ({
+    key: status || "empty",
+    label,
+    color: statusById.get(status)?.color || "#64748b",
+    value: currentMonthEntries.filter((entry) => entry.status === status).length,
+  }));
 
   return (
     <section className="workspace statistics-page">
@@ -158,6 +206,13 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
           <div className="statistics-title"><BarChart3 size={21} /><h2>完成统计</h2></div>
           <p>按记录结束日期和日历事项日期统计，单元格显示“已完成 / 总数”。</p>
         </div>
+        <label className="statistics-filter">
+          <span>状态筛选</span>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="all">全部状态</option>
+            {statusOptions.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+          </select>
+        </label>
         <div className="statistics-summary" aria-label="本月汇总">
           <div><span>本月完成</span><strong>{currentMonthCompleted} / {currentMonthEntries.length}</strong></div>
           <div><span>本月完成率</span><strong>{completionRate}%</strong></div>
@@ -165,8 +220,12 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
         </div>
       </header>
       <div className="statistics-legend"><CheckCircle2 size={15} /> 已完成与结束状态计为完成 <ListChecks size={15} /> Todo 独立计入待处理数量</div>
-      <StatisticsTable title="近 6 个月" periods={monthlyPeriods} entries={entries} />
-      <StatisticsTable title="近 8 周" periods={weeklyPeriods} entries={entries} />
+      <div className="statistics-charts">
+        <StatisticsBars title="本月各类别完成率" data={categoryBars} valueLabel={(value) => `${value}%`} />
+        <StatisticsBars title="本月状态分布" data={statusBars} valueLabel={(value) => `${value} 项`} />
+      </div>
+      <StatisticsTable title="近 6 个月" periods={monthlyPeriods} entries={filteredEntries} />
+      <StatisticsTable title="近 8 周" periods={weeklyPeriods} entries={filteredEntries} />
     </section>
   );
 }

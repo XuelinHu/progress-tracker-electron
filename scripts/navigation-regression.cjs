@@ -620,6 +620,16 @@ async function run() {
       2,
       "Statistics page must show monthly and weekly completion tables",
     );
+    assert.equal(
+      await page.evaluate("document.querySelectorAll('.statistics-chart-panel').length"),
+      2,
+      "Statistics page must show category and status bar charts",
+    );
+    assert.equal(
+      await page.evaluate("document.querySelectorAll('.statistics-filter option').length > 1"),
+      true,
+      "Statistics page must provide a status filter",
+    );
     console.log("PASS statistics page");
 
     assert.deepEqual(browserErrors, [], `Browser errors:\n${browserErrors.join("\n")}`);
