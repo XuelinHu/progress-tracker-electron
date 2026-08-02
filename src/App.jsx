@@ -3566,7 +3566,7 @@ function App() {
               <button
                 key={status.id}
                 type="button"
-                className={`status-chip ${statusFilter === status.id ? "selected" : ""}`}
+                className={`status-chip ${status.id === "已提交系统" ? "status-chip-system" : ""} ${statusFilter === status.id ? "selected" : ""}`}
                 style={{
                   "--status-bg": status.bg,
                   "--status-color": status.color,
