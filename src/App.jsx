@@ -75,21 +75,13 @@ const STATUS_CONFIG_PAGE = {
   accent: "#2563eb",
   tint: "#dbeafe",
 };
-const PROBLEM_ITEMS_PAGE = {
-  id: "problem-items",
-  itemCategoryId: "problem",
-  name: "问题记录",
-  shortcut: "7",
-  accent: "#dc2626",
-  tint: "#fee2e2",
-};
-const OTHER_ITEMS_PAGE = {
-  id: "other-items",
+const TODO_ITEMS_PAGE = {
+  id: "todo-items",
   itemCategoryId: "other",
-  name: "其他事项",
-  shortcut: "8",
-  accent: "#64748b",
-  tint: "#f1f5f9",
+  name: "Todo事项",
+  shortcut: "7",
+  accent: "#0f766e",
+  tint: "#ccfbf1",
 };
 const CREATE_ASSIST_HINT =
   "粘贴项目名称、状态、日期、预计耗时、GitHub 地址、路径、Todo 或备注，点击自动识别后会填充到左侧表单。";
@@ -118,8 +110,7 @@ const PROJECT_NAVIGATION_ITEM = CATEGORY_BY_ID[PROJECT_CATEGORY_ID]
 const ACTIVITY_NAVIGATION_ITEM = CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID]
   ? { ...CATEGORY_BY_ID[ACTIVITY_CATEGORY_ID], shortcut: "6" }
   : null;
-const PROBLEM_NAVIGATION_ITEM = { ...PROBLEM_ITEMS_PAGE, shortcut: "7" };
-const OTHER_NAVIGATION_ITEM = { ...OTHER_ITEMS_PAGE, shortcut: "8" };
+const TODO_NAVIGATION_ITEM = { ...TODO_ITEMS_PAGE, shortcut: "7" };
 const NAVIGATION_ITEMS = [
   ...CATEGORIES.filter(
     (category) =>
@@ -127,8 +118,7 @@ const NAVIGATION_ITEMS = [
   ),
   PROJECT_NAVIGATION_ITEM,
   ACTIVITY_NAVIGATION_ITEM,
-  PROBLEM_NAVIGATION_ITEM,
-  OTHER_NAVIGATION_ITEM,
+  TODO_NAVIGATION_ITEM,
 ].filter(Boolean);
 
 function today(offsetDays = 0) {
@@ -144,6 +134,23 @@ function createId(prefix = "item") {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
 }
 
+function sortTimelineEntries(entries = []) {
+  const seen = new Set();
+  return [...entries]
+    .filter((entry) => entry && (entry.summary || entry.item || entry.date || entry.createdAt))
+    .filter((entry) => {
+      const key = entry.id || [entry.summary || entry.item, entry.status, entry.createdAt || entry.date].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((left, right) =>
+      String(left.createdAt || left.updatedAt || left.date || "").localeCompare(
+        String(right.createdAt || right.updatedAt || right.date || ""),
+      ),
+    );
+}
+
 function normalizeRecord(record) {
   const rawTodo = Array.isArray(record.todoHistory) ? record.todoHistory : [];
   const normalizedStartDate =
@@ -154,7 +161,7 @@ function normalizeRecord(record) {
     ...record,
     startDate: normalizedStartDate,
     endDate: normalizedEndDate,
-    history: Array.isArray(record.history) ? record.history : [],
+    history: sortTimelineEntries(Array.isArray(record.history) ? record.history : []),
     dateHistory:
       record.dateHistory && typeof record.dateHistory === "object"
         ? record.dateHistory
@@ -311,13 +318,26 @@ function normalizeCalendarItems(items) {
             endDate: String(item?.endDate || item?.startDate || item?.date || today()),
             title: String(item?.title || "其他事项"),
             description: String(item?.description || ""),
-            categoryId: item?.categoryId || "other",
+            categoryId: item?.categoryId === "problem" ? "other" : item?.categoryId || "other",
+            itemType: "todo",
             status: item?.status || CALENDAR_DONE_STATUS.id,
             recordId: String(item?.recordId || ""),
             todoId: String(item?.todoId || ""),
             durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
             distanceKm: normalizeDistanceKm(item?.distanceKm),
-            history: Array.isArray(item?.history) ? item.history : [],
+            history: sortTimelineEntries([
+              ...(Array.isArray(item?.history) ? item.history : []),
+              ...(item?.categoryId === "problem"
+                ? [{
+                    id: `history-migrate-${item?.id || "legacy"}`,
+                    date: String(item?.createdAt || item?.date || today()).slice(0, 10),
+                    status: item?.status || "",
+                    summary: "问题记录已合并为Todo事项",
+                    createdAt: item?.createdAt || item?.date || new Date().toISOString(),
+                    updatedAt: item?.updatedAt || item?.createdAt || new Date().toISOString(),
+                  }]
+                : []),
+            ]),
             createdAt: item?.createdAt || new Date().toISOString(),
             updatedAt: item?.updatedAt || item?.createdAt || new Date().toISOString(),
           };
@@ -359,9 +379,7 @@ function getCalendarItemSharedFields(source = {}) {
 }
 
 function getCalendarItemPage(categoryId) {
-  return categoryId === PROBLEM_ITEMS_PAGE.itemCategoryId
-    ? PROBLEM_ITEMS_PAGE
-    : OTHER_ITEMS_PAGE;
+  return TODO_ITEMS_PAGE;
 }
 
 function normalizeStatusConfig(items) {
@@ -552,8 +570,7 @@ function App() {
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const isCalendarView = activeCategoryId === CALENDAR_CATEGORY.id;
   const isStatisticsView = activeCategoryId === STATISTICS_CATEGORY.id;
-  const isProblemItemsView = activeCategoryId === PROBLEM_ITEMS_PAGE.id;
-  const isOtherItemsView = activeCategoryId === OTHER_ITEMS_PAGE.id;
+  const isTodoItemsView = activeCategoryId === TODO_ITEMS_PAGE.id;
   const isStatusConfigView = activeCategoryId === STATUS_CONFIG_PAGE.id;
   const activeCategory = CATEGORY_BY_ID[activeCategoryId] ?? CATEGORIES[0];
   const activeNavigationItem = isGraphView
@@ -562,10 +579,8 @@ function App() {
       ? CALENDAR_CATEGORY
       : isStatisticsView
         ? STATISTICS_CATEGORY
-      : isProblemItemsView
-        ? PROBLEM_ITEMS_PAGE
-        : isOtherItemsView
-          ? OTHER_ITEMS_PAGE
+        : isTodoItemsView
+          ? TODO_ITEMS_PAGE
           : isStatusConfigView
             ? STATUS_CONFIG_PAGE
             : activeCategory;
@@ -859,6 +874,40 @@ function App() {
   }, []);
 
   function updateRecord(recordId, patch) {
+    const sourceRecord = records.find((record) => record.id === recordId);
+    const statusChanged = Boolean(
+      sourceRecord && patch.status && patch.status !== sourceRecord.status,
+    );
+    const previousStatusLabel = statusChanged
+      ? statusById[sourceRecord.status]?.label || sourceRecord.status || "未设置"
+      : "";
+    const nextStatusLabel = statusChanged
+      ? statusById[patch.status]?.label || patch.status
+      : "";
+    const statusTodoText = statusChanged
+      ? `状态变更：${previousStatusLabel} -> ${nextStatusLabel}`
+      : "";
+    const statusTodo = statusChanged
+      ? createRecordItem({
+          id: createId("todo-status"),
+          recordId,
+          type: RECORD_ITEM_TYPES.TODO,
+          text: statusTodoText,
+          date: today(),
+          status: "done",
+          doneDate: today(),
+          doneAt: new Date().toISOString(),
+        })
+      : null;
+    if (statusTodo && sourceRecord) {
+      addCalendarItem(today(), {
+        title: statusTodo.text,
+        categoryId: sourceRecord.categoryId,
+        status: CALENDAR_DONE_STATUS.id,
+        recordId: sourceRecord.id,
+        todoId: statusTodo.id,
+      });
+    }
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) {
@@ -869,22 +918,28 @@ function App() {
           ...record,
           ...patch,
         };
-        if (patch.status && patch.status !== record.status) {
-          const previousStatus =
-            statusById[record.status]?.label || record.status || "未设置";
-          const nextStatus = statusById[patch.status]?.label || patch.status;
-          nextRecord.history = [
-            ...(record.history ?? []),
+        if (statusTodo) {
+          nextRecord.history = sortTimelineEntries([
+            ...(record.history ?? []).filter(
+              (entry) => !(entry.date === today() && entry.summary === statusTodoText),
+            ),
             createHistoryEntry({
               date: today(),
               status: patch.status,
-              summary: `状态由"${previousStatus}"变更为"${nextStatus}"`,
+              summary: statusTodoText,
             }),
+          ]);
+          nextRecord.items = [
+            ...(record.items ?? buildRecordItemsFromLegacy(record)),
+            statusTodo,
           ];
         }
 
+        const syncedRecord = statusTodo
+          ? syncTodoItemsLegacy(nextRecord, nextRecord.items)
+          : nextRecord;
         return normalizeRecord(
-          appendRecordHistory(nextRecord, [
+          appendRecordHistory(syncedRecord, [
             ...(Array.isArray(patch.todoHistory)
               ? buildAddedTodoHistoryEntries(record, patch.todoHistory)
               : []),
@@ -980,6 +1035,7 @@ function App() {
     if (!title) {
       return;
     }
+    const usesDistance = isDistanceActivity(draft.categoryId, title);
     setCalendarItems((current) => [
       ...current,
       {
@@ -994,7 +1050,7 @@ function App() {
         recordId: String(draft.recordId || ""),
         todoId: String(draft.todoId || ""),
         durationMinutes: normalizeDurationMinutes(draft.durationMinutes),
-        distanceKm: normalizeDistanceKm(draft.distanceKm),
+        distanceKm: usesDistance ? normalizeDistanceKm(draft.distanceKm || "1") : "",
         history: [
           createHistoryEntry({
             date: today(),
@@ -1027,10 +1083,12 @@ function App() {
                 patch.durationMinutes === undefined
                   ? normalizeDurationMinutes(item.durationMinutes)
                   : normalizeDurationMinutes(patch.durationMinutes),
-              distanceKm:
-                patch.distanceKm === undefined
-                  ? normalizeDistanceKm(item.distanceKm)
-                  : normalizeDistanceKm(patch.distanceKm),
+              distanceKm: isDistanceActivity(
+                patch.categoryId || item.categoryId,
+                patch.title === undefined ? item.title : patch.title,
+              )
+                ? normalizeDistanceKm(patch.distanceKm === undefined ? item.distanceKm || "1" : patch.distanceKm || "1")
+                : "",
               categoryId: patch.categoryId || item.categoryId || "other",
               recordId: patch.recordId === undefined ? item.recordId || "" : String(patch.recordId || ""),
               todoId: patch.todoId === undefined ? item.todoId || "" : String(patch.todoId || ""),
@@ -1549,7 +1607,9 @@ function App() {
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || CALENDAR_DONE_STATUS.id,
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
-          distanceKm: normalizeDistanceKm(createDraft.distanceKm),
+          distanceKm: isDistanceActivity(createDraft.categoryId, title)
+            ? normalizeDistanceKm(createDraft.distanceKm || "1")
+            : "",
           startDate: createDraft.startDate || today(),
           endDate: createDraft.endDate || createDraft.startDate || today(),
           ...getCalendarItemSharedFields(createDraft),
@@ -1561,7 +1621,9 @@ function App() {
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || CALENDAR_DONE_STATUS.id,
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
-          distanceKm: normalizeDistanceKm(createDraft.distanceKm),
+          distanceKm: isDistanceActivity(createDraft.categoryId, title)
+            ? normalizeDistanceKm(createDraft.distanceKm || "1")
+            : "",
           startDate: createDraft.startDate || today(),
           endDate: createDraft.endDate || createDraft.startDate || today(),
           ...getCalendarItemSharedFields(createDraft),
@@ -3512,10 +3574,8 @@ function App() {
             calendarItems={calendarItems}
             statusOptions={calendarStatusOptions}
           />
-        ) : isProblemItemsView ? (
-          renderCalendarItemPage(PROBLEM_ITEMS_PAGE)
-        ) : isOtherItemsView ? (
-          renderCalendarItemPage(OTHER_ITEMS_PAGE)
+        ) : isTodoItemsView ? (
+          renderCalendarItemPage(TODO_ITEMS_PAGE)
         ) : isStatusConfigView ? (
           renderStatusConfig()
         ) : (

@@ -14,8 +14,7 @@ const categoryNames = [
   "比赛",
   "项目",
   "活动",
-  "问题记录",
-  "其他事项",
+  "Todo事项",
 ];
 const categoryAccents = ["#2563eb", "#16a34a", "#d97706", "#e11d48", "#7c3aed", "#f59e0b"];
 const mimeByExt = {

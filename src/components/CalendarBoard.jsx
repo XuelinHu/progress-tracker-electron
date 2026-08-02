@@ -620,7 +620,7 @@ export default function CalendarBoard({
       referenceTodos,
       item: sourceTodoItem,
       durationMinutes: "30",
-      distanceKm: "",
+      distanceKm: isDistanceActivity(record.categoryId, getRecordTitle(record)) ? "1" : "",
       categoryId: record.categoryId,
       status: ACTIVE_STATUS,
     });
@@ -641,7 +641,7 @@ export default function CalendarBoard({
       referenceTodos: [],
       item: item.title || "",
       durationMinutes: String(item.durationMinutes || "30"),
-      distanceKm: String(item.distanceKm || ""),
+      distanceKm: String(item.distanceKm || (isDistanceActivity(item.categoryId, item.title) ? "1" : "")),
       categoryId: item.categoryId,
       status: ACTIVE_STATUS,
     });
@@ -689,7 +689,11 @@ export default function CalendarBoard({
     }
     const item = scheduleDraft.item.trim() || `${scheduleDraft.recordTitle} 今日事项`;
     const durationMinutes = normalizeDurationMinutes(scheduleDraft.durationMinutes);
-    const distanceKm = normalizeDistanceKm(scheduleDraft.distanceKm);
+    const distanceKm = normalizeDistanceKm(
+      scheduleDraft.distanceKm || (
+        isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "1" : ""
+      ),
+    );
     const nextStatus = scheduleDraft.status || ACTIVE_STATUS;
     if (scheduleDraft.calendarItemId) {
       updateCalendarItem?.(scheduleDraft.calendarItemId, {
