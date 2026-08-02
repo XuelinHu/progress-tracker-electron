@@ -313,6 +313,8 @@ function normalizeCalendarItems(items) {
             description: String(item?.description || ""),
             categoryId: item?.categoryId || "other",
             status: item?.status || CALENDAR_DONE_STATUS.id,
+            recordId: String(item?.recordId || ""),
+            todoId: String(item?.todoId || ""),
             durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
             distanceKm: normalizeDistanceKm(item?.distanceKm),
             history: Array.isArray(item?.history) ? item.history : [],
@@ -989,6 +991,8 @@ function App() {
         description: String(draft.description ?? ""),
         categoryId: draft.categoryId || "other",
         status: draft.status || CALENDAR_DONE_STATUS.id,
+        recordId: String(draft.recordId || ""),
+        todoId: String(draft.todoId || ""),
         durationMinutes: normalizeDurationMinutes(draft.durationMinutes),
         distanceKm: normalizeDistanceKm(draft.distanceKm),
         history: [
@@ -1006,6 +1010,7 @@ function App() {
   }
 
   function updateCalendarItem(itemId, patch) {
+    const linkedItem = calendarItems.find((item) => item.id === itemId);
     setCalendarItems((current) =>
       current.map((item) =>
         item.id === itemId
@@ -1027,6 +1032,8 @@ function App() {
                   ? normalizeDistanceKm(item.distanceKm)
                   : normalizeDistanceKm(patch.distanceKm),
               categoryId: patch.categoryId || item.categoryId || "other",
+              recordId: patch.recordId === undefined ? item.recordId || "" : String(patch.recordId || ""),
+              todoId: patch.todoId === undefined ? item.todoId || "" : String(patch.todoId || ""),
               history: Array.isArray(item.history) ? item.history : [],
               date: patch.date === undefined ? item.date || "" : patch.date || "",
               startDate:
@@ -1046,10 +1053,44 @@ function App() {
           : item,
       ),
     );
+    if (linkedItem?.recordId && linkedItem.todoId && (patch.title !== undefined || patch.status !== undefined)) {
+      const completed = patch.status === "已完成" || patch.status === "结束";
+      const changedAt = new Date().toISOString();
+      setRecords((current) =>
+        current.map((record) => {
+          if (record.id !== linkedItem.recordId) return record;
+          const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
+            entry.type === RECORD_ITEM_TYPES.TODO && entry.id === linkedItem.todoId
+              ? {
+                  ...entry,
+                  text: patch.title === undefined ? entry.text : String(patch.title || "").trim() || entry.text,
+                  status: patch.status === undefined ? entry.status : completed ? "done" : "active",
+                  doneDate: patch.status === undefined ? entry.doneDate : completed ? today() : null,
+                  doneAt: patch.status === undefined ? entry.doneAt : completed ? changedAt : null,
+                  updatedAt: changedAt,
+                }
+              : entry,
+          );
+          return syncTodoItemsLegacy(record, nextItems);
+        }),
+      );
+    }
   }
 
   function deleteCalendarItem(itemId) {
+    const linkedItem = calendarItems.find((item) => item.id === itemId);
     setCalendarItems((current) => current.filter((item) => item.id !== itemId));
+    if (linkedItem?.recordId && linkedItem.todoId) {
+      setRecords((current) =>
+        current.map((record) => {
+          if (record.id !== linkedItem.recordId) return record;
+          const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter(
+            (entry) => entry.type !== RECORD_ITEM_TYPES.TODO || entry.id !== linkedItem.todoId,
+          );
+          return syncTodoItemsLegacy(record, nextItems);
+        }),
+      );
+    }
   }
 
   function copyCalendarItem(item) {
@@ -1563,28 +1604,75 @@ function App() {
     );
   }
 
+  function syncLinkedTodoCalendarItems(record, todoItems) {
+    setCalendarItems((current) => {
+      const retained = current.filter((item) => item.recordId !== record.id || !item.todoId);
+      const existingByTodoId = new Map(
+        current
+          .filter((item) => item.recordId === record.id && item.todoId)
+          .map((item) => [item.todoId, item]),
+      );
+      const linkedItems = todoItems.map((todoItem) => {
+        const existing = existingByTodoId.get(todoItem.id);
+        const completed = Boolean(todoItem.doneDate);
+        const now = new Date().toISOString();
+        return {
+          ...(existing ?? {}),
+          id: existing?.id || createId("calendar-item"),
+          recordId: record.id,
+          todoId: todoItem.id,
+          date: existing?.date || todoItem.date || today(),
+          startDate: existing?.startDate || todoItem.date || today(),
+          endDate: existing?.endDate || todoItem.date || today(),
+          title: todoItem.text,
+          description: existing?.description ?? "",
+          categoryId: record.categoryId || "other",
+          status: completed ? CALENDAR_DONE_STATUS.id : "进行中",
+          durationMinutes: normalizeDurationMinutes(existing?.durationMinutes),
+          distanceKm: normalizeDistanceKm(existing?.distanceKm),
+          history: Array.isArray(existing?.history)
+            ? existing.history
+            : [
+                createHistoryEntry({
+                  date: todoItem.date || today(),
+                  status: completed ? CALENDAR_DONE_STATUS.id : "进行中",
+                  summary: `由 Todo 自动生成：${todoItem.text}`,
+                }),
+              ],
+          ...getCalendarItemSharedFields(existing),
+          createdAt: existing?.createdAt || todoItem.createdAt || now,
+          updatedAt: now,
+        };
+      });
+      return [...retained, ...linkedItems];
+    });
+  }
+
   function syncTodoItems(recordId, todoText) {
     const lines = (todoText ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const sourceRecord = records.find((record) => record.id === recordId);
+    if (!sourceRecord) return;
+    const oldHistory = sourceRecord.todoHistory ?? [];
+    const oldById = new Map(oldHistory.map((entry) => [entry.item, entry]));
+    const nextItems = lines.map((item) => {
+      const existing = oldById.get(item);
+      return createRecordItem({
+        id: existing?.id || createId("todo-hist"),
+        recordId: sourceRecord.id,
+        type: RECORD_ITEM_TYPES.TODO,
+        text: item,
+        date: existing?.addedDate || today(),
+        status: existing?.doneDate ? "done" : "active",
+        doneDate: existing?.doneDate || null,
+        doneAt: existing?.doneAt || null,
+        createdAt: existing?.createdAt || existing?.addedAt || existing?.addedDate,
+        updatedAt: existing?.updatedAt,
+      });
+    });
+    syncLinkedTodoCalendarItems(sourceRecord, nextItems);
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
-        const oldHistory = record.todoHistory ?? [];
-        const oldById = new Map(oldHistory.map((e) => [e.item, e]));
-        const nextItems = lines.map((item) => {
-          const existing = oldById.get(item);
-          return createRecordItem({
-            id: existing?.id || createId("todo-hist"),
-            recordId: record.id,
-            type: RECORD_ITEM_TYPES.TODO,
-            text: item,
-            date: existing?.addedDate || today(),
-            status: existing?.doneDate ? "done" : "active",
-            doneDate: existing?.doneDate || null,
-            doneAt: existing?.doneAt || null,
-            createdAt: existing?.createdAt || existing?.addedAt || existing?.addedDate,
-            updatedAt: existing?.updatedAt,
-          });
-        });
         const nextTodoHistory = nextItems.map((item) => ({
           id: item.id,
           addedDate: item.date || "",
@@ -1807,6 +1895,12 @@ function App() {
       todo: String(record.todo ?? "").trim(),
     });
     setRecords((current) => [normalizedRecord, ...current]);
+    const todoItems = (normalizedRecord.items ?? []).filter(
+      (item) => item.type === RECORD_ITEM_TYPES.TODO && item.text,
+    );
+    if (todoItems.length > 0) {
+      syncLinkedTodoCalendarItems(normalizedRecord, todoItems);
+    }
     setSelectedId(normalizedRecord.id);
     if (graphContext?.position) {
       createGraphNodeForRecord(

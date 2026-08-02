@@ -34,6 +34,20 @@ function localIsoDate(offsetDays = 0) {
   return `${year}-${month}-${day}`;
 }
 
+function shiftIsoDateByMonth(isoDate, offset) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const targetMonth = new Date(year, month - 1 + offset, 1);
+  const lastDay = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
+  return localIsoDateFromDate(new Date(targetMonth.getFullYear(), targetMonth.getMonth(), Math.min(day, lastDay)));
+}
+
+function localIsoDateFromDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const todayIso = localIsoDate();
 const previousDayIso = localIsoDate(-1);
 const calendarRegressionItemId = "calendar-drag-regression";
@@ -367,6 +381,32 @@ async function verifyRecordDropCreatesTodo(page, server) {
   console.log("PASS record drop creates a right-side Todo");
 }
 
+async function verifyCalendarMonthDrop(page, server) {
+  const dragged = await page.evaluate(`(() => {
+    const source = [...document.querySelectorAll(".calendar-day-record.custom")]
+      .find((item) => item.textContent.includes("日历拖拽回归事项"));
+    const target = [...document.querySelectorAll(".calendar-toolbar button")]
+      .find((item) => item.textContent.includes("下月"));
+    if (!source || !target) return false;
+    const dataTransfer = new DataTransfer();
+    source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }));
+    return true;
+  })()`);
+  assert.equal(dragged, true, "Expected a scheduled calendar item and next-month target");
+  const expectedDate = shiftIsoDateByMonth(todayIso, 1);
+  const deadline = Date.now() + 4000;
+  let savedItem;
+  while (Date.now() < deadline) {
+    savedItem = server.getSavedState()?.calendarItems?.find((item) => item.id === calendarRegressionItemId);
+    if (savedItem?.date === expectedDate) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  assert.equal(savedItem?.date, expectedDate, "Month drop must preserve the day and move to the next month");
+  console.log("PASS calendar month drop preserves the selected item");
+}
+
 async function verifyCalendarCategoryButtons(page) {
   assert.equal(
     await page.evaluate("document.querySelectorAll('.calendar-category-filter-button').length"),
@@ -593,6 +633,7 @@ async function run() {
       "Activities must appear first in each calendar day",
     );
     console.log("PASS calendar activities are prioritized");
+    await verifyCalendarMonthDrop(page, server);
     await clickButton(page, ".global-data-actions button", "知识图谱", ".graph-workspace");
     await verifyGraphCategoryButtons(page, calendarCategoryStyles);
     assert.equal(

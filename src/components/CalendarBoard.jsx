@@ -42,6 +42,20 @@ function toIsoDate(date) {
   return `${year}-${month}-${day}`;
 }
 
+function toLocalDate(isoDate) {
+  const value = String(isoDate || "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function shiftIsoDateByMonth(isoDate, offset) {
+  const source = toLocalDate(isoDate) || new Date();
+  const targetMonth = new Date(source.getFullYear(), source.getMonth() + offset, 1);
+  const lastDay = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate();
+  return toIsoDate(new Date(targetMonth.getFullYear(), targetMonth.getMonth(), Math.min(source.getDate(), lastDay)));
+}
+
 function getRecordTitle(record) {
   return record?.title?.trim() || "未命名记录";
 }
@@ -395,6 +409,7 @@ export default function CalendarBoard({
   const [tooltip, setTooltip] = useState(null);
   const [scheduleDraft, setScheduleDraft] = useState(null);
   const tooltipCloseTimerRef = useRef(null);
+  const monthDragTargetRef = useRef("");
   const todayIso = today();
   const statusById = useMemo(
     () => Object.fromEntries(statusOptions.map((status) => [status.id, status])),
@@ -477,6 +492,11 @@ export default function CalendarBoard({
   }, [calendarItems]);
   const unscheduledItems = useMemo(
     () => {
+      const linkedTodoKeys = new Set(
+        calendarItems
+          .filter((item) => item.recordId && item.todoId)
+          .map((item) => `${item.recordId}:${item.todoId}`),
+      );
       const calendarTodoItems = calendarItems
         .filter((item) => !item?.date)
         .map((item) => ({
@@ -488,6 +508,7 @@ export default function CalendarBoard({
       const recordTodoItems = records.flatMap((record) =>
         (record.todoHistory ?? [])
           .filter((todo) => todo.item && !todo.doneDate)
+          .filter((todo) => !linkedTodoKeys.has(`${record.id}:${todo.id}`))
           .map((todo) => ({
             type: "recordTodo",
             key: `todo-${record.id}-${todo.id || todo.item}`,
@@ -509,18 +530,54 @@ export default function CalendarBoard({
     setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   }
 
+  function handleMonthDragOver(event, offset) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + offset, 1);
+    const targetKey = `${nextMonth.getFullYear()}-${nextMonth.getMonth()}`;
+    if (monthDragTargetRef.current !== targetKey) {
+      monthDragTargetRef.current = targetKey;
+      setMonthDate(nextMonth);
+    }
+  }
+
+  function handleMonthDrop(event, offset) {
+    event.preventDefault();
+    monthDragTargetRef.current = "";
+    const calendarItemId = event.dataTransfer.getData(CALENDAR_ITEM_DRAG_TYPE);
+    if (calendarItemId) {
+      const item = calendarItems.find((entry) => String(entry.id) === calendarItemId);
+      if (!item) return;
+      const date = shiftIsoDateByMonth(item.date || item.startDate || todayIso, offset);
+      updateCalendarItem?.(item.id, { date, startDate: date, endDate: date });
+      const target = toLocalDate(date);
+      setMonthDate(new Date(target.getFullYear(), target.getMonth(), 1));
+      return;
+    }
+    const recordId = event.dataTransfer.getData(DRAG_TYPE);
+    const record = records.find((entry) => entry.id === recordId);
+    if (record) {
+      const date = shiftIsoDateByMonth(getRecordDate(record) || todayIso, offset);
+      const target = toLocalDate(date);
+      setMonthDate(new Date(target.getFullYear(), target.getMonth(), 1));
+      openRecordScheduleDraft(record, date);
+    }
+  }
+
   function handleDragStart(event, record) {
     window.clearTimeout(tooltipCloseTimerRef.current);
     setTooltip(null);
     event.dataTransfer.effectAllowed = "copyMove";
     event.dataTransfer.setData(DRAG_TYPE, record.id);
     event.dataTransfer.setData("text/plain", getRecordTitle(record));
+    monthDragTargetRef.current = "";
   }
 
   function handleCalendarItemDragStart(event, item) {
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData(CALENDAR_ITEM_DRAG_TYPE, item.id);
     event.dataTransfer.setData("text/plain", item.title || "待办事项");
+    monthDragTargetRef.current = "";
   }
 
   function handleRecordTodoDragStart(event, record, todo) {
@@ -530,6 +587,7 @@ export default function CalendarBoard({
       JSON.stringify({ recordId: record.id, item: todo.item || "" }),
     );
     event.dataTransfer.setData("text/plain", todo.item || "待办事项");
+    monthDragTargetRef.current = "";
   }
 
   function recordHasDate(record, dateField, dateIso) {
@@ -919,7 +977,13 @@ export default function CalendarBoard({
 
       <div className="calendar-board">
         <div className="calendar-toolbar">
-          <button className="icon-button" type="button" onClick={() => moveMonth(-1)}>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => moveMonth(-1)}
+            onDragOver={(event) => handleMonthDragOver(event, -1)}
+            onDrop={(event) => handleMonthDrop(event, -1)}
+          >
             <ChevronLeft size={16} />
             <span>上月</span>
           </button>
@@ -929,7 +993,13 @@ export default function CalendarBoard({
             </h2>
             <p>拖到日期格后可选择“进行中”或“已完成”，日期历史会自动追加。</p>
           </div>
-          <button className="icon-button" type="button" onClick={() => moveMonth(1)}>
+          <button
+            className="icon-button"
+            type="button"
+            onClick={() => moveMonth(1)}
+            onDragOver={(event) => handleMonthDragOver(event, 1)}
+            onDrop={(event) => handleMonthDrop(event, 1)}
+          >
             <span>下月</span>
             <ChevronRight size={16} />
           </button>
@@ -1033,10 +1103,16 @@ export default function CalendarBoard({
                           }`}
                           role="button"
                           tabIndex={0}
+                          draggable
                           onMouseEnter={(event) => openTooltip(event, tooltipContent)}
                           onMouseLeave={closeTooltip}
                           onFocus={(event) => openTooltip(event, tooltipContent)}
                           onBlur={closeTooltip}
+                          onDragStart={(event) => handleCalendarItemDragStart(event, item)}
+                          onDragEnd={() => {
+                            monthDragTargetRef.current = "";
+                            setDropTarget("");
+                          }}
                           onClick={(event) => handleEditCustomItem(event, item)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
@@ -1173,7 +1249,10 @@ export default function CalendarBoard({
                         onFocus={(event) => openTooltip(event, tooltipContent)}
                         onBlur={closeTooltip}
                         onDragStart={(event) => handleDragStart(event, record)}
-                        onDragEnd={() => setDropTarget("")}
+                        onDragEnd={() => {
+                          monthDragTargetRef.current = "";
+                          setDropTarget("");
+                        }}
                         onClick={() => openRecord?.(record)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
@@ -1305,6 +1384,7 @@ export default function CalendarBoard({
                 className={`calendar-todo-card calendar-type-${item.categoryId || "other"}`}
                 draggable
                 onDragStart={(event) => handleCalendarItemDragStart(event, item)}
+                onDragEnd={() => { monthDragTargetRef.current = ""; setDropTarget(""); }}
                 onClick={(event) => handleEditCustomItem(event, item)}
                 role="button"
                 tabIndex={0}
