@@ -622,8 +622,8 @@ async function run() {
     );
     assert.equal(
       await page.evaluate("document.querySelectorAll('.statistics-chart-panel').length"),
-      2,
-      "Statistics page must show category and status bar charts",
+      3,
+      "Statistics page must show completion, category, and status pie charts",
     );
     assert.equal(
       await page.evaluate("document.querySelectorAll('.statistics-filter option').length > 1"),

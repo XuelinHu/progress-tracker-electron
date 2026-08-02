@@ -819,6 +819,12 @@ function App() {
         resetTableSort();
         return;
       }
+      if (shortcut === "t") {
+        setActiveCategoryId(STATISTICS_CATEGORY.id);
+        setStatusFilter("all");
+        resetTableSort();
+        return;
+      }
 
       const category = NAVIGATION_ITEMS.find((item) => item.shortcut === event.key);
       if (category) {

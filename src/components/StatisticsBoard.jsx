@@ -1,6 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as echarts from "echarts/core";
+import { PieChart } from "echarts/charts";
+import { TitleComponent, TooltipComponent } from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
 import { BarChart3, CheckCircle2, ListChecks } from "lucide-react";
 import { CATEGORIES } from "../data/categories.js";
+
+echarts.use([PieChart, TitleComponent, TooltipComponent, CanvasRenderer]);
 
 const EXTRA_CATEGORIES = [
   { id: "problem", name: "问题记录", accent: "#dc2626", tint: "#fee2e2" },
@@ -28,10 +34,11 @@ function addDays(date, amount) {
   return next;
 }
 
-function buildMonthPeriods(count = 6) {
+function buildMonthPeriods() {
   const today = new Date();
-  return Array.from({ length: count }, (_, index) => {
-    const date = new Date(today.getFullYear(), today.getMonth() - (count - index - 1), 1);
+  const startMonth = today.getMonth() >= 5 ? 5 : 0;
+  return Array.from({ length: today.getMonth() - startMonth + 1 }, (_, index) => {
+    const date = new Date(today.getFullYear(), startMonth + index, 1);
     const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
     return {
       key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
@@ -118,28 +125,46 @@ function StatisticsTable({ title, periods, entries }) {
   );
 }
 
-function StatisticsBars({ title, data, valueLabel }) {
-  const maxValue = Math.max(...data.map((item) => item.value), 1);
-  return (
-    <section className="statistics-chart-panel">
-      <h3>{title}</h3>
-      <div className="statistics-bars">
-        {data.map((item) => (
-          <div className="statistics-bar-row" key={item.key}>
-            <span className="statistics-bar-label" title={item.label}>{item.label}</span>
-            <div className="statistics-bar-track">
-              <span
-                className="statistics-bar-fill"
-                style={{ width: `${Math.round((item.value / maxValue) * 100)}%`, background: item.color }}
-              />
-            </div>
-            <strong>{valueLabel(item.value)}</strong>
-          </div>
-        ))}
-        {data.length === 0 && <div className="statistics-chart-empty">当前筛选下没有可统计事项</div>}
-      </div>
-    </section>
-  );
+function StatisticsPie({ title, data, centerText, roseType = false }) {
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const element = chartRef.current;
+    if (!element) return undefined;
+    const chart = echarts.init(element);
+    const resizeObserver = new ResizeObserver(() => chart.resize());
+    resizeObserver.observe(element);
+    chart.setOption({
+      animationDuration: 420,
+      title: {
+        text: centerText,
+        left: "center",
+        top: "42%",
+        textStyle: { color: "#172033", fontSize: 15, fontWeight: 700, lineHeight: 21 },
+      },
+      tooltip: { trigger: "item", formatter: "{b}<br/>{c} 项（{d}%）" },
+      series: [{
+        type: "pie",
+        radius: roseType ? ["25%", "76%"] : ["48%", "76%"],
+        center: ["50%", "52%"],
+        roseType: roseType ? "radius" : false,
+        minAngle: 4,
+        label: { color: "#475569", fontSize: 11, formatter: "{b}\n{c} 项" },
+        labelLine: { length: 8, length2: 6 },
+        itemStyle: { borderColor: "#ffffff", borderWidth: 2, borderRadius: 3 },
+        data: data.map((item) => ({ name: item.label, value: item.value, itemStyle: { color: item.color } })),
+      }],
+      graphic: data.length
+        ? []
+        : [{ type: "text", left: "center", top: "middle", style: { text: "暂无数据", fill: "#94a3b8", fontSize: 13 } }],
+    });
+    return () => {
+      resizeObserver.disconnect();
+      chart.dispose();
+    };
+  }, [centerText, data, roseType]);
+
+  return <section className="statistics-chart-panel"><h3>{title}</h3><div ref={chartRef} className="statistics-pie" /></section>;
 }
 
 export default function StatisticsBoard({ records = [], calendarItems = [], statusOptions = [] }) {
@@ -180,17 +205,16 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
   const completionRate = currentMonthEntries.length
     ? Math.round((currentMonthCompleted / currentMonthEntries.length) * 100)
     : 0;
-  const categoryBars = STATISTIC_CATEGORIES.map((category) => {
+  const categoryPie = STATISTIC_CATEGORIES.map((category) => {
     const categoryEntries = currentMonthEntries.filter((entry) => entry.categoryId === category.id);
-    const completed = categoryEntries.filter((entry) => entry.completed).length;
     return {
       key: category.id,
       label: category.name,
       color: category.accent,
-      value: categoryEntries.length ? Math.round((completed / categoryEntries.length) * 100) : 0,
+      value: categoryEntries.length,
     };
-  }).filter((item) => item.value > 0 || currentMonthEntries.some((entry) => entry.categoryId === item.key));
-  const statusBars = [...new Map(
+  }).filter((item) => item.value > 0);
+  const statusPie = [...new Map(
     currentMonthEntries.map((entry) => [entry.status, (statusById.get(entry.status)?.label || entry.status || "未设置")]),
   )].map(([status, label]) => ({
     key: status || "empty",
@@ -221,8 +245,16 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
       </header>
       <div className="statistics-legend"><CheckCircle2 size={15} /> 已完成与结束状态计为完成 <ListChecks size={15} /> Todo 独立计入待处理数量</div>
       <div className="statistics-charts">
-        <StatisticsBars title="本月各类别完成率" data={categoryBars} valueLabel={(value) => `${value}%`} />
-        <StatisticsBars title="本月状态分布" data={statusBars} valueLabel={(value) => `${value} 项`} />
+        <StatisticsPie
+          title="本月完成率"
+          centerText={`${completionRate}%\n完成率`}
+          data={[
+            { key: "done", label: "已完成", color: "#16a34a", value: currentMonthCompleted },
+            { key: "pending", label: "未完成", color: "#cbd5e1", value: currentMonthEntries.length - currentMonthCompleted },
+          ].filter((item) => item.value > 0)}
+        />
+        <StatisticsPie title="本月类别分布" centerText={`${currentMonthEntries.length}\n事项`} data={categoryPie} roseType />
+        <StatisticsPie title="本月状态分布" centerText={`${currentMonthEntries.length}\n事项`} data={statusPie} roseType />
       </div>
       <StatisticsTable title="近 6 个月" periods={monthlyPeriods} entries={filteredEntries} />
       <StatisticsTable title="近 8 周" periods={weeklyPeriods} entries={filteredEntries} />

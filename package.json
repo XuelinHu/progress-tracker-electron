@@ -26,6 +26,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "@xyflow/react": "^12.11.0",
     "astral-regex": "^2.0.0",
+    "echarts": "^6.1.0",
     "lucide-react": "^0.468.0",
     "pg": "^8.22.0",
     "react": "^19.1.0",
