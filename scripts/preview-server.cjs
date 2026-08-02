@@ -80,7 +80,7 @@ function stateSummary(state) {
   };
 }
 
-const STATE_SCHEMA_VERSION = 6;
+const STATE_SCHEMA_VERSION = 7;
 
 function sortTimeline(entries = []) {
   const seen = new Set();
@@ -159,15 +159,10 @@ function migrateStateToV6(state) {
       });
     });
     const todoItems = [...itemsById.values()].filter((item) => item.type === "todo");
+    const { todo, todoHistory, dateHistory: ignoredDateHistory, ...canonicalRecord } = record;
     return {
-      ...record,
+      ...canonicalRecord,
       items: todoItems,
-      todo: todoItems.map((item) => item.text).join("\n"),
-      todoHistory: todoItems.map((item) => ({
-        id: item.id, item: item.text, details: item.details, sourceField: item.sourceField,
-        addedDate: item.date, doneDate: item.doneDate, addedAt: item.createdAt,
-        doneAt: item.doneAt, createdAt: item.createdAt, updatedAt: item.updatedAt,
-      })),
       history: sortTimeline(record?.history || []),
     };
   }) : [];

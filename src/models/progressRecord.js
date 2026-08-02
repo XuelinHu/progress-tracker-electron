@@ -1,6 +1,5 @@
 export const RECORD_ITEM_TYPES = {
   TODO: "todo",
-  DATE: "date",
   CALENDAR: "calendar",
   NOTE: "note",
 };
@@ -56,7 +55,7 @@ function normalizeRecordItem(item, recordId) {
     ...item,
     id: item?.id,
     recordId: item?.recordId || recordId,
-    type: item?.type === RECORD_ITEM_TYPES.DATE ? RECORD_ITEM_TYPES.TODO : item?.type || RECORD_ITEM_TYPES.TODO,
+    type: item?.type === "date" ? RECORD_ITEM_TYPES.TODO : item?.type || RECORD_ITEM_TYPES.TODO,
     text: item?.text ?? item?.item ?? "",
     details: item?.details ?? item?.description ?? "",
     date: item?.date ?? item?.addedDate ?? "",
@@ -184,37 +183,6 @@ export function syncTodoItemsLegacy(record, items = record?.items ?? []) {
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     })),
-    items: nextItems,
-  };
-}
-
-export function syncDateItemsLegacy(record, items = record?.items ?? []) {
-  const dateItems = items.filter((item) => item.type === RECORD_ITEM_TYPES.DATE);
-  const otherItems = (record?.items ?? []).filter((item) => item.type !== RECORD_ITEM_TYPES.DATE);
-  const nextItems = [...otherItems, ...dateItems];
-  const nextDateHistory = { ...(record?.dateHistory ?? {}) };
-  Object.keys(nextDateHistory).forEach((fieldKey) => {
-    nextDateHistory[fieldKey] = (nextDateHistory[fieldKey] ?? []).filter(
-      (entry) => !dateItems.some((item) => item.id === entry.id),
-    );
-  });
-  dateItems
-    .filter((item) => item.sourceField)
-    .forEach((item) => {
-      nextDateHistory[item.sourceField] = [
-        ...(nextDateHistory[item.sourceField] ?? []).filter((entry) => entry.id !== item.id),
-        {
-          id: item.id,
-          date: item.date,
-          item: item.text,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-        },
-      ];
-    });
-  return {
-    ...record,
-    dateHistory: nextDateHistory,
     items: nextItems,
   };
 }

@@ -167,6 +167,24 @@ function sortTimelineEntries(entries = []) {
 
 function normalizeRecord(record) {
   const rawTodo = Array.isArray(record.todoHistory) ? record.todoHistory : [];
+  const recordItems = Array.isArray(record.items) ? record.items : [];
+  const derivedDateHistory = recordItems
+    .filter((item) => item?.type === RECORD_ITEM_TYPES.TODO && item?.sourceField)
+    .reduce((groups, item) => {
+      const sourceField = item.sourceField;
+      groups[sourceField] = [
+        ...(groups[sourceField] ?? []),
+        {
+          id: item.id,
+          date: item.date || "",
+          item: item.text || "",
+          details: item.details || "",
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        },
+      ];
+      return groups;
+    }, {});
   const normalizedStartDate =
     record.startDate || record.registrationDate || record.stageDate || today();
   const normalizedEndDate = record.endDate || normalizedStartDate || today();
@@ -176,8 +194,9 @@ function normalizeRecord(record) {
     startDate: normalizedStartDate,
     endDate: normalizedEndDate,
     history: sortTimelineEntries(Array.isArray(record.history) ? record.history : []),
-    dateHistory:
-      record.dateHistory && typeof record.dateHistory === "object"
+    dateHistory: Object.keys(derivedDateHistory).length > 0
+      ? derivedDateHistory
+      : record.dateHistory && typeof record.dateHistory === "object"
         ? record.dateHistory
         : {},
     todoHistory: rawTodo.map((e) => ({
@@ -2163,7 +2182,7 @@ function App() {
 
   function buildFullDataPayload() {
     return {
-      version: 6,
+      version: 7,
       exportedAt: new Date().toISOString(),
       scope: "pages-1-8",
       includes: [
