@@ -1139,7 +1139,7 @@ function App() {
       description: "",
       categoryId: "other",
       status: CALENDAR_DONE_STATUS.id,
-      durationMinutes: "",
+      durationMinutes: "30",
       distanceKm: "",
       ...getCalendarItemSharedFields(overrides),
       ...overrides,
@@ -2442,14 +2442,14 @@ function App() {
                       { key: "endDate", label: "结束日期", type: "date" },
                       usesDistance
                         ? { key: "distanceKm", label: "距离（公里）", type: "number", step: "0.1" }
-                        : { key: "durationMinutes", label: "预计耗时", type: "number", step: "1" },
+                        : { key: "durationMinutes", label: "预计耗时", type: "number", step: "5" },
                     ].map((field) => (
                       <label className="create-field" key={field.key}>
                         <span>{field.label}</span>
                         <input
                           className="form-control create-control"
                           type={field.type}
-                          min={field.type === "number" ? "0.1" : undefined}
+                          min={field.type === "number" ? field.key === "distanceKm" ? "0.1" : "5" : undefined}
                           step={field.type === "number" ? field.step : undefined}
                           inputMode={field.type === "number" ? "decimal" : undefined}
                           value={createDraft[field.key] ?? ""}

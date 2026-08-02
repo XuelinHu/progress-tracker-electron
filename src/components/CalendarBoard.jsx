@@ -619,7 +619,7 @@ export default function CalendarBoard({
       sourceTodoItem,
       referenceTodos,
       item: sourceTodoItem,
-      durationMinutes: "",
+      durationMinutes: "30",
       distanceKm: "",
       categoryId: record.categoryId,
       status: ACTIVE_STATUS,
@@ -640,7 +640,7 @@ export default function CalendarBoard({
       sourceTodoItem: "",
       referenceTodos: [],
       item: item.title || "",
-      durationMinutes: String(item.durationMinutes || ""),
+      durationMinutes: String(item.durationMinutes || "30"),
       distanceKm: String(item.distanceKm || ""),
       categoryId: item.categoryId,
       status: ACTIVE_STATUS,
@@ -1537,8 +1537,8 @@ export default function CalendarBoard({
                 <span>{isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "距离（公里）" : "预计耗时（分钟）"}</span>
                 <input
                   type="number"
-                  min={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "0.1" : "1"}
-                  step={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "0.1" : "1"}
+                  min={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "0.1" : "5"}
+                  step={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "0.1" : "5"}
                   inputMode="decimal"
                   value={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? scheduleDraft.distanceKm : scheduleDraft.durationMinutes}
                   onChange={(event) =>
