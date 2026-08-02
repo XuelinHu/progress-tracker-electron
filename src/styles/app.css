@@ -80,18 +80,18 @@ button {
 
 .global-data-primary-actions {
   display: grid;
+  grid-template-columns: repeat(2, 64px);
+  gap: 5px;
+  align-self: start;
+}
+
+.global-view-actions {
+  display: grid;
   grid-template-columns: repeat(3, 112px);
   gap: 5px;
   align-self: start;
   padding-left: 8px;
   border-left: 1px solid #cbd5e1;
-}
-
-.global-view-actions {
-  display: grid;
-  order: -1;
-  grid-template-columns: repeat(2, 64px);
-  gap: 5px;
 }
 
 .global-data-actions .icon-button {
@@ -3512,11 +3512,10 @@ button {
   }
 
   .global-view-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    order: initial;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .global-data-primary-actions {
+  .global-view-actions {
     padding-left: 0;
     border-left: 0;
   }
@@ -3583,7 +3582,7 @@ button {
   }
 
   .global-data-primary-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .editor-form {
