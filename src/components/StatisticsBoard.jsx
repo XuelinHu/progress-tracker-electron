@@ -101,7 +101,7 @@ function StatisticsPie({ title, data, centerText, roseType = false }) {
       tooltip: { trigger: "item", formatter: "{b}<br/>{c} 项（{d}%）" },
       series: [{
         type: "pie",
-        radius: roseType ? ["25%", "76%"] : ["48%", "76%"],
+        radius: roseType ? ["22%", "84%"] : ["48%", "84%"],
         center: ["50%", "52%"],
         roseType: roseType ? "radius" : false,
         minAngle: 4,
