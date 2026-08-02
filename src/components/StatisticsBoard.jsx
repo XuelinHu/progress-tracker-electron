@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as echarts from "echarts/core";
-import { PieChart } from "echarts/charts";
-import { TitleComponent, TooltipComponent } from "echarts/components";
+import { LineChart, PieChart } from "echarts/charts";
+import { GridComponent, LegendComponent, TitleComponent, TooltipComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import { BarChart3, CheckCircle2, ListChecks } from "lucide-react";
 import { CATEGORIES } from "../data/categories.js";
 
-echarts.use([PieChart, TitleComponent, TooltipComponent, CanvasRenderer]);
+echarts.use([
+  GridComponent,
+  LegendComponent,
+  LineChart,
+  PieChart,
+  TitleComponent,
+  TooltipComponent,
+  CanvasRenderer,
+]);
 
 const EXTRA_CATEGORIES = [
   { id: "problem", name: "问题记录", accent: "#dc2626", tint: "#fee2e2" },
@@ -34,6 +42,15 @@ function addDays(date, amount) {
   return next;
 }
 
+function buildDailyPeriods(days) {
+  const end = new Date();
+  return Array.from({ length: days }, (_, index) => {
+    const date = addDays(end, index - days + 1);
+    const iso = toIsoDate(date);
+    return { key: iso, label: `${date.getMonth() + 1}/${date.getDate()}`, start: iso, end: iso };
+  });
+}
+
 function buildMonthPeriods() {
   const today = new Date();
   const startMonth = today.getMonth() >= 5 ? 5 : 0;
@@ -49,20 +66,10 @@ function buildMonthPeriods() {
   });
 }
 
-function buildWeekPeriods(count = 8) {
-  const today = new Date();
-  const day = today.getDay() || 7;
-  const thisMonday = addDays(today, 1 - day);
-  return Array.from({ length: count }, (_, index) => {
-    const start = addDays(thisMonday, -7 * (count - index - 1));
-    const end = addDays(start, 6);
-    return {
-      key: toIsoDate(start),
-      label: `${start.getMonth() + 1}/${start.getDate()}-${end.getMonth() + 1}/${end.getDate()}`,
-      start: toIsoDate(start),
-      end: toIsoDate(end),
-    };
-  });
+function buildPeriods(range) {
+  if (range === "week") return buildDailyPeriods(7);
+  if (range === "month") return buildDailyPeriods(30);
+  return buildMonthPeriods();
 }
 
 function isCompleted(status, statusById) {
@@ -72,57 +79,6 @@ function isCompleted(status, statusById) {
 
 function isInPeriod(date, period) {
   return Boolean(date && date >= period.start && date <= period.end);
-}
-
-function StatisticsTable({ title, periods, entries }) {
-  const rows = STATISTIC_CATEGORIES.map((category) => {
-    const values = periods.map((period) => {
-      const inPeriod = entries.filter(
-        (entry) => entry.categoryId === category.id && isInPeriod(entry.date, period),
-      );
-      const completed = inPeriod.filter((entry) => entry.completed).length;
-      return { total: inPeriod.length, completed };
-    });
-    const total = values.reduce((sum, value) => sum + value.total, 0);
-    const completed = values.reduce((sum, value) => sum + value.completed, 0);
-    return { category, values, total, completed };
-  });
-
-  return (
-    <section className="statistics-table-section">
-      <h3>{title}</h3>
-      <div className="statistics-table-wrap">
-        <div
-          className="statistics-table"
-          style={{ gridTemplateColumns: `132px repeat(${periods.length}, minmax(88px, 1fr)) 100px` }}
-        >
-          <div className="statistics-cell statistics-head">类别</div>
-          {periods.map((period) => (
-            <div className="statistics-cell statistics-head" key={period.key} title={`${period.start} 至 ${period.end}`}>
-              {period.label}
-            </div>
-          ))}
-          <div className="statistics-cell statistics-head">合计</div>
-          {rows.map(({ category, values, total, completed }) => (
-            <div className="statistics-row" key={category.id}>
-              <div className="statistics-cell statistics-category">
-                <span style={{ background: category.accent }} />
-                {category.name}
-              </div>
-              {values.map((value, index) => (
-                <div className="statistics-cell statistics-value" key={`${category.id}-${periods[index].key}`}>
-                  <strong>{value.completed}</strong><span>/ {value.total}</span>
-                </div>
-              ))}
-              <div className="statistics-cell statistics-value statistics-total">
-                <strong>{completed}</strong><span>/ {total}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
 }
 
 function StatisticsPie({ title, data, centerText, roseType = false }) {
@@ -167,8 +123,69 @@ function StatisticsPie({ title, data, centerText, roseType = false }) {
   return <section className="statistics-chart-panel"><h3>{title}</h3><div ref={chartRef} className="statistics-pie" /></section>;
 }
 
+function StatisticsLineChart({ periods, entries, categories }) {
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    const element = chartRef.current;
+    if (!element) return undefined;
+    const chart = echarts.init(element);
+    const resizeObserver = new ResizeObserver(() => chart.resize());
+    resizeObserver.observe(element);
+    const visibleCategories = categories.filter((category) =>
+      entries.some((entry) => entry.categoryId === category.id),
+    );
+    chart.setOption({
+      animationDuration: 420,
+      tooltip: {
+        trigger: "axis",
+        formatter: (params) => [params[0]?.axisValue, ...params.map((item) => `${item.marker}${item.seriesName}：${item.value} 项`)].join("<br/>"),
+      },
+      legend: { type: "scroll", top: 4, textStyle: { color: "#475569", fontSize: 11 } },
+      grid: { top: 42, right: 18, bottom: 36, left: 42, containLabel: true },
+      xAxis: {
+        type: "category",
+        boundaryGap: false,
+        data: periods.map((period) => period.label),
+        axisLabel: { color: "#64748b", fontSize: 11 },
+        axisLine: { lineStyle: { color: "#cbd5e1" } },
+      },
+      yAxis: {
+        type: "value",
+        minInterval: 1,
+        axisLabel: { color: "#64748b", fontSize: 11 },
+        splitLine: { lineStyle: { color: "#e2e8f0" } },
+      },
+      series: visibleCategories.map((category) => ({
+        name: category.name,
+        type: "line",
+        smooth: true,
+        showSymbol: true,
+        symbolSize: 6,
+        label: { show: false },
+        lineStyle: { width: 2, color: category.accent },
+        itemStyle: { color: category.accent },
+        data: periods.map((period) => entries.filter(
+          (entry) => entry.categoryId === category.id && isInPeriod(entry.date, period),
+        ).length),
+      })),
+      graphic: visibleCategories.length
+        ? []
+        : [{ type: "text", left: "center", top: "middle", style: { text: "暂无数据", fill: "#94a3b8", fontSize: 13 } }],
+    });
+    return () => {
+      resizeObserver.disconnect();
+      chart.dispose();
+    };
+  }, [categories, entries, periods]);
+
+  return <section className="statistics-line-panel"><h3>数量趋势</h3><div ref={chartRef} className="statistics-line" /></section>;
+}
+
 export default function StatisticsBoard({ records = [], calendarItems = [], statusOptions = [] }) {
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [rangeFilter, setRangeFilter] = useState("sixMonths");
   const statusById = useMemo(
     () => new Map(statusOptions.map((status) => [status.id, status])),
     [statusOptions],
@@ -190,37 +207,42 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
     ].filter((entry) => toLocalDate(entry.date)),
     [calendarItems, records, statusById],
   );
-  const monthlyPeriods = useMemo(() => buildMonthPeriods(), []);
-  const weeklyPeriods = useMemo(() => buildWeekPeriods(), []);
-  const currentMonth = monthlyPeriods.at(-1);
-  const filteredEntries = statusFilter === "all"
-    ? entries
-    : entries.filter((entry) => entry.status === statusFilter);
-  const currentMonthEntries = filteredEntries.filter((entry) => isInPeriod(entry.date, currentMonth));
-  const currentMonthCompleted = currentMonthEntries.filter((entry) => entry.completed).length;
+  const periods = useMemo(() => buildPeriods(rangeFilter), [rangeFilter]);
+  const rangeEntries = entries.filter((entry) => periods.some((period) => isInPeriod(entry.date, period)));
+  const statusEntries = statusFilter === "all"
+    ? rangeEntries
+    : rangeEntries.filter((entry) => entry.status === statusFilter);
+  const filteredEntries = typeFilter === "all"
+    ? statusEntries
+    : statusEntries.filter((entry) => entry.categoryId === typeFilter);
+  const completedEntries = filteredEntries.filter((entry) => entry.completed);
   const pendingTodos = records.reduce(
     (sum, record) => sum + (record.todoHistory ?? []).filter((item) => !item.doneDate).length,
     0,
   );
-  const completionRate = currentMonthEntries.length
-    ? Math.round((currentMonthCompleted / currentMonthEntries.length) * 100)
+  const completionRate = filteredEntries.length
+    ? Math.round((completedEntries.length / filteredEntries.length) * 100)
     : 0;
-  const categoryPie = STATISTIC_CATEGORIES.map((category) => {
-    const categoryEntries = currentMonthEntries.filter((entry) => entry.categoryId === category.id);
-    return {
-      key: category.id,
-      label: category.name,
-      color: category.accent,
-      value: categoryEntries.length,
-    };
-  }).filter((item) => item.value > 0);
+  const typeCounts = STATISTIC_CATEGORIES.map((category) => ({
+    ...category,
+    value: statusEntries.filter((entry) => entry.categoryId === category.id).length,
+  })).filter((category) => category.value > 0);
+  const displayedCategories = typeFilter === "all"
+    ? STATISTIC_CATEGORIES
+    : STATISTIC_CATEGORIES.filter((category) => category.id === typeFilter);
+  const categoryPie = typeCounts.map((category) => ({
+    key: category.id,
+    label: category.name,
+    color: category.accent,
+    value: category.value,
+  }));
   const statusPie = [...new Map(
-    currentMonthEntries.map((entry) => [entry.status, (statusById.get(entry.status)?.label || entry.status || "未设置")]),
+    filteredEntries.map((entry) => [entry.status, statusById.get(entry.status)?.label || entry.status || "未设置"]),
   )].map(([status, label]) => ({
     key: status || "empty",
     label,
     color: statusById.get(status)?.color || "#64748b",
-    value: currentMonthEntries.filter((entry) => entry.status === status).length,
+    value: filteredEntries.filter((entry) => entry.status === status).length,
   }));
 
   return (
@@ -228,36 +250,59 @@ export default function StatisticsBoard({ records = [], calendarItems = [], stat
       <header className="statistics-header">
         <div>
           <div className="statistics-title"><BarChart3 size={21} /><h2>完成统计</h2></div>
-          <p>按记录结束日期和日历事项日期统计，单元格显示“已完成 / 总数”。</p>
+          <p>按日期、类型和状态筛选；折线图中的数量在鼠标悬停时显示。</p>
         </div>
-        <label className="statistics-filter">
-          <span>状态筛选</span>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="all">全部状态</option>
-            {statusOptions.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
-          </select>
-        </label>
-        <div className="statistics-summary" aria-label="本月汇总">
-          <div><span>本月完成</span><strong>{currentMonthCompleted} / {currentMonthEntries.length}</strong></div>
-          <div><span>本月完成率</span><strong>{completionRate}%</strong></div>
+        <div className="statistics-filters">
+          <label className="statistics-filter">
+            <span>时间范围</span>
+            <select value={rangeFilter} onChange={(event) => setRangeFilter(event.target.value)}>
+              <option value="week">近一周</option>
+              <option value="month">近一个月</option>
+              <option value="sixMonths">近六个月</option>
+            </select>
+          </label>
+          <label className="statistics-filter">
+            <span>类型筛选</span>
+            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+              <option value="all">全部类型</option>
+              {STATISTIC_CATEGORIES.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+          </label>
+          <label className="statistics-filter">
+            <span>状态筛选</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">全部状态</option>
+              {statusOptions.map((status) => <option key={status.id} value={status.id}>{status.label}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="statistics-summary" aria-label="当前筛选汇总">
+          <div><span>完成数量</span><strong>{completedEntries.length} / {filteredEntries.length}</strong></div>
+          <div><span>完成率</span><strong>{completionRate}%</strong></div>
           <div><span>待处理 Todo</span><strong>{pendingTodos}</strong></div>
         </div>
       </header>
       <div className="statistics-legend"><CheckCircle2 size={15} /> 已完成与结束状态计为完成 <ListChecks size={15} /> Todo 独立计入待处理数量</div>
+      <div className="statistics-type-counts" aria-label="各类型数量">
+        {typeCounts.length ? typeCounts.map((category) => (
+          <span className={typeFilter === category.id ? "selected" : ""} key={category.id} style={{ "--category-color": category.accent }}>
+            {category.name} <strong>{category.value}</strong>
+          </span>
+        )) : <span className="statistics-empty-count">当前筛选暂无事项</span>}
+      </div>
       <div className="statistics-charts">
         <StatisticsPie
-          title="本月完成率"
+          title="完成率"
           centerText={`${completionRate}%\n完成率`}
           data={[
-            { key: "done", label: "已完成", color: "#16a34a", value: currentMonthCompleted },
-            { key: "pending", label: "未完成", color: "#cbd5e1", value: currentMonthEntries.length - currentMonthCompleted },
+            { key: "done", label: "已完成", color: "#16a34a", value: completedEntries.length },
+            { key: "pending", label: "未完成", color: "#cbd5e1", value: filteredEntries.length - completedEntries.length },
           ].filter((item) => item.value > 0)}
         />
-        <StatisticsPie title="本月类别分布" centerText={`${currentMonthEntries.length}\n事项`} data={categoryPie} roseType />
-        <StatisticsPie title="本月状态分布" centerText={`${currentMonthEntries.length}\n事项`} data={statusPie} roseType />
+        <StatisticsPie title="类别分布" centerText={`${statusEntries.length}\n事项`} data={categoryPie} roseType />
+        <StatisticsPie title="状态分布" centerText={`${filteredEntries.length}\n事项`} data={statusPie} roseType />
       </div>
-      <StatisticsTable title="近 6 个月" periods={monthlyPeriods} entries={filteredEntries} />
-      <StatisticsTable title="近 8 周" periods={weeklyPeriods} entries={filteredEntries} />
+      <StatisticsLineChart periods={periods} entries={filteredEntries} categories={displayedCategories} />
     </section>
   );
 }

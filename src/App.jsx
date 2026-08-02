@@ -314,6 +314,7 @@ function normalizeCalendarItems(items) {
             categoryId: item?.categoryId || "other",
             status: item?.status || CALENDAR_DONE_STATUS.id,
             durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
+            distanceKm: normalizeDistanceKm(item?.distanceKm),
             history: Array.isArray(item?.history) ? item.history : [],
             createdAt: item?.createdAt || new Date().toISOString(),
             updatedAt: item?.updatedAt || item?.createdAt || new Date().toISOString(),
@@ -334,6 +335,19 @@ function normalizeDurationMinutes(value) {
   }
   const minutes = Number.parseInt(raw, 10);
   return Number.isFinite(minutes) && minutes > 0 ? String(minutes) : "";
+}
+
+function normalizeDistanceKm(value) {
+  const raw = String(value ?? "").trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) {
+    return "";
+  }
+  const distance = Number.parseFloat(raw);
+  return Number.isFinite(distance) && distance > 0 ? String(distance) : "";
+}
+
+function isDistanceActivity(categoryId, title) {
+  return categoryId === ACTIVITY_CATEGORY_ID && /骑行|游泳/.test(String(title ?? ""));
 }
 
 function getCalendarItemSharedFields(source = {}) {
@@ -976,6 +990,7 @@ function App() {
         categoryId: draft.categoryId || "other",
         status: draft.status || CALENDAR_DONE_STATUS.id,
         durationMinutes: normalizeDurationMinutes(draft.durationMinutes),
+        distanceKm: normalizeDistanceKm(draft.distanceKm),
         history: [
           createHistoryEntry({
             date: today(),
@@ -1007,6 +1022,10 @@ function App() {
                 patch.durationMinutes === undefined
                   ? normalizeDurationMinutes(item.durationMinutes)
                   : normalizeDurationMinutes(patch.durationMinutes),
+              distanceKm:
+                patch.distanceKm === undefined
+                  ? normalizeDistanceKm(item.distanceKm)
+                  : normalizeDistanceKm(patch.distanceKm),
               categoryId: patch.categoryId || item.categoryId || "other",
               history: Array.isArray(item.history) ? item.history : [],
               date: patch.date === undefined ? item.date || "" : patch.date || "",
@@ -1043,6 +1062,7 @@ function App() {
       categoryId: item.categoryId,
       status: item.status || CALENDAR_DONE_STATUS.id,
       durationMinutes: normalizeDurationMinutes(item.durationMinutes),
+      distanceKm: normalizeDistanceKm(item.distanceKm),
       startDate: item.startDate || "",
       endDate: item.endDate || "",
       ...getCalendarItemSharedFields(item),
@@ -1079,6 +1099,7 @@ function App() {
       categoryId: "other",
       status: CALENDAR_DONE_STATUS.id,
       durationMinutes: "",
+      distanceKm: "",
       ...getCalendarItemSharedFields(overrides),
       ...overrides,
     };
@@ -1487,6 +1508,7 @@ function App() {
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || CALENDAR_DONE_STATUS.id,
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
+          distanceKm: normalizeDistanceKm(createDraft.distanceKm),
           startDate: createDraft.startDate || today(),
           endDate: createDraft.endDate || createDraft.startDate || today(),
           ...getCalendarItemSharedFields(createDraft),
@@ -1498,6 +1520,7 @@ function App() {
           categoryId: createDraft.categoryId || "other",
           status: createDraft.status || CALENDAR_DONE_STATUS.id,
           durationMinutes: normalizeDurationMinutes(createDraft.durationMinutes),
+          distanceKm: normalizeDistanceKm(createDraft.distanceKm),
           startDate: createDraft.startDate || today(),
           endDate: createDraft.endDate || createDraft.startDate || today(),
           ...getCalendarItemSharedFields(createDraft),
@@ -2261,6 +2284,7 @@ function App() {
     }
 
     const isCalendarItem = createModal.mode === "calendar";
+    const usesDistance = isCalendarItem && isDistanceActivity(createDraft.categoryId, createDraft.title);
     const category = isCalendarItem
       ? getCalendarItemPage(createDraft.categoryId)
       : CATEGORY_BY_ID[createModal.categoryId] ?? CATEGORIES[0];
@@ -2322,22 +2346,26 @@ function App() {
                       { key: "date", label: "日期", type: "date" },
                       { key: "startDate", label: "开始日期", type: "date" },
                       { key: "endDate", label: "结束日期", type: "date" },
-                      { key: "durationMinutes", label: "预计耗时", type: "number" },
+                      usesDistance
+                        ? { key: "distanceKm", label: "距离（公里）", type: "number", step: "0.1" }
+                        : { key: "durationMinutes", label: "预计耗时", type: "number", step: "1" },
                     ].map((field) => (
                       <label className="create-field" key={field.key}>
                         <span>{field.label}</span>
                         <input
                           className="form-control create-control"
                           type={field.type}
-                          min={field.type === "number" ? "1" : undefined}
-                          step={field.type === "number" ? "1" : undefined}
-                          inputMode={field.type === "number" ? "numeric" : undefined}
+                          min={field.type === "number" ? "0.1" : undefined}
+                          step={field.type === "number" ? field.step : undefined}
+                          inputMode={field.type === "number" ? "decimal" : undefined}
                           value={createDraft[field.key] ?? ""}
                           onChange={(event) =>
                             updateCreateDraft(
                               field.key,
                               field.type === "number"
-                                ? event.target.value.replace(/\D/g, "")
+                                ? field.key === "distanceKm"
+                                  ? event.target.value.replace(/[^\d.]/g, "")
+                                  : event.target.value.replace(/\D/g, "")
                                 : event.target.value,
                             )
                           }
@@ -2554,8 +2582,8 @@ function App() {
   }
 
   function renderStatusConfig() {
-    const statusColumnSize = Math.ceil(statusDraft.length / 3);
-    const statusColumns = Array.from({ length: 3 }, (_, index) =>
+    const statusColumnSize = Math.ceil(statusDraft.length / 4);
+    const statusColumns = Array.from({ length: 4 }, (_, index) =>
       statusDraft.slice(index * statusColumnSize, (index + 1) * statusColumnSize),
     ).filter((column) => column.length > 0);
 
@@ -2726,7 +2754,7 @@ function App() {
               </span>
               <span className="other-item-desc">
                 {[
-                  item.durationMinutes ? `预计${item.durationMinutes}分钟` : "",
+                  item.distanceKm ? `${item.distanceKm}公里` : item.durationMinutes ? `预计${item.durationMinutes}分钟` : "",
                   item.description || "无备注",
                 ]
                   .filter(Boolean)

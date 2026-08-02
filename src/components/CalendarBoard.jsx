@@ -74,6 +74,7 @@ function cleanScheduleTodoItem(item) {
   return String(item ?? "")
     .replace(/^(今天|日历)事项：/, "")
     .replace(/；预计耗时：\d+分钟$/, "")
+    .replace(/；距离：\d+(?:\.\d+)?公里$/, "")
     .trim();
 }
 
@@ -151,7 +152,24 @@ function normalizeDurationMinutes(value) {
   return Number.isFinite(minutes) && minutes > 0 ? String(minutes) : "";
 }
 
-function formatScheduleItem(prefix, item, durationMinutes) {
+function normalizeDistanceKm(value) {
+  const raw = String(value ?? "").trim();
+  if (!/^\d+(?:\.\d{1,2})?$/.test(raw)) {
+    return "";
+  }
+  const distance = Number.parseFloat(raw);
+  return Number.isFinite(distance) && distance > 0 ? String(distance) : "";
+}
+
+function isDistanceActivity(categoryId, title) {
+  return categoryId === "activity" && /骑行|游泳/.test(String(title ?? ""));
+}
+
+function formatScheduleItem(prefix, item, durationMinutes, distanceKm) {
+  const distance = normalizeDistanceKm(distanceKm);
+  if (distance) {
+    return `${prefix}${item}；距离：${distance}公里`;
+  }
   const duration = normalizeDurationMinutes(durationMinutes);
   return duration ? `${prefix}${item}；预计耗时：${duration}分钟` : `${prefix}${item}`;
 }
@@ -544,6 +562,8 @@ export default function CalendarBoard({
       referenceTodos,
       item: sourceTodoItem,
       durationMinutes: "",
+      distanceKm: "",
+      categoryId: record.categoryId,
       status: ACTIVE_STATUS,
     });
   }
@@ -563,6 +583,8 @@ export default function CalendarBoard({
       referenceTodos: [],
       item: item.title || "",
       durationMinutes: String(item.durationMinutes || ""),
+      distanceKm: String(item.distanceKm || ""),
+      categoryId: item.categoryId,
       status: ACTIVE_STATUS,
     });
   }
@@ -609,6 +631,7 @@ export default function CalendarBoard({
     }
     const item = scheduleDraft.item.trim() || `${scheduleDraft.recordTitle} 今日事项`;
     const durationMinutes = normalizeDurationMinutes(scheduleDraft.durationMinutes);
+    const distanceKm = normalizeDistanceKm(scheduleDraft.distanceKm);
     const nextStatus = scheduleDraft.status || ACTIVE_STATUS;
     if (scheduleDraft.calendarItemId) {
       updateCalendarItem?.(scheduleDraft.calendarItemId, {
@@ -617,6 +640,7 @@ export default function CalendarBoard({
         endDate: scheduleDraft.date,
         title: item,
         durationMinutes,
+        distanceKm,
         status: nextStatus,
       });
       closeScheduleDraft();
@@ -624,11 +648,12 @@ export default function CalendarBoard({
     }
     const existingTodoItem = scheduleDraft.referenceTodos?.includes(item) ? item : "";
     const dateHistoryItem = existingTodoItem
-      ? formatScheduleItem("", item, durationMinutes)
+      ? formatScheduleItem("", item, durationMinutes, distanceKm)
       : formatScheduleItem(
           `${scheduleDraft.date === todayIso ? "今天" : "日历"}事项：`,
           item,
           durationMinutes,
+          distanceKm,
         );
     updateRecordDate?.(
       scheduleDraft.recordId,
@@ -638,7 +663,7 @@ export default function CalendarBoard({
     );
     const record = records.find((entry) => entry.id === scheduleDraft.recordId);
     const todoItem = existingTodoItem || formatScheduleItem(
-      `${scheduleDraft.date} 日历事项：`, item, durationMinutes,
+      `${scheduleDraft.date} 日历事项：`, item, durationMinutes, distanceKm,
     );
     const isDone = nextStatus === DONE_STATUS;
     updateRecord?.(scheduleDraft.recordId, {
@@ -783,6 +808,7 @@ export default function CalendarBoard({
       categoryId: item.categoryId,
       status: item.status || "已完成",
       durationMinutes: item.durationMinutes || "",
+      distanceKm: item.distanceKm || "",
       startDate: item.startDate || "",
       endDate: item.endDate || "",
       todo: item.todo || "",
@@ -985,7 +1011,8 @@ export default function CalendarBoard({
                           <span className="calendar-date-text">添加日期：{String(item.createdAt || item.date || "").slice(0, 10) || "未知"}</span>
                           {item.startDate && <span className="calendar-date-text">开始日期：{item.startDate}</span>}
                           {item.endDate && <span className="calendar-date-text">结束日期：{item.endDate}</span>}
-                          {item.durationMinutes && <span>预计耗时：{item.durationMinutes}分钟</span>}
+                          {item.distanceKm && <span>距离：{item.distanceKm}公里</span>}
+                          {item.durationMinutes && !item.distanceKm && <span>预计耗时：{item.durationMinutes}分钟</span>}
                           <DetailSection
                             title="今天事项"
                             items={[item.title]}
@@ -1301,7 +1328,8 @@ export default function CalendarBoard({
                   <span>{status?.label || item.status || ACTIVE_STATUS}</span>
                   {item.startDate && <span className="calendar-date-text">{item.startDate} 起</span>}
                   {item.endDate && <span className="calendar-date-text">{item.endDate} 止</span>}
-                  {item.durationMinutes && <span>{item.durationMinutes}分钟</span>}
+                  {item.distanceKm && <span>{item.distanceKm}公里</span>}
+                  {item.durationMinutes && !item.distanceKm && <span>{item.durationMinutes}分钟</span>}
                 </span>
                 {item.description && <em>{item.description}</em>}
               </div>
@@ -1426,21 +1454,23 @@ export default function CalendarBoard({
                 </div>
               </fieldset>
               <label className="calendar-schedule-field compact">
-                <span>预计耗时（分钟）</span>
+                <span>{isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "距离（公里）" : "预计耗时（分钟）"}</span>
                 <input
                   type="number"
-                  min="1"
-                  step="1"
-                  inputMode="numeric"
-                  value={scheduleDraft.durationMinutes}
+                  min={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "0.1" : "1"}
+                  step={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "0.1" : "1"}
+                  inputMode="decimal"
+                  value={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? scheduleDraft.distanceKm : scheduleDraft.durationMinutes}
                   onChange={(event) =>
                     setScheduleDraft((current) =>
                       current
-                        ? { ...current, durationMinutes: event.target.value.replace(/\D/g, "") }
+                        ? isDistanceActivity(current.categoryId, current.recordTitle || current.item)
+                          ? { ...current, distanceKm: event.target.value.replace(/[^\d.]/g, "") }
+                          : { ...current, durationMinutes: event.target.value.replace(/\D/g, "") }
                         : current,
                     )
                   }
-                  placeholder="例如 30"
+                  placeholder={isDistanceActivity(scheduleDraft.categoryId, scheduleDraft.recordTitle || scheduleDraft.item) ? "例如 5.2" : "例如 30"}
                 />
               </label>
               <div className="calendar-schedule-note">

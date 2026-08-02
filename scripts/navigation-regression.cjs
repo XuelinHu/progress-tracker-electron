@@ -616,19 +616,24 @@ async function run() {
     await verifyCalendarCategoryButtonsOnMobile(page);
     await clickButton(page, ".global-data-actions button", "统计", ".statistics-page");
     assert.equal(
-      await page.evaluate("document.querySelectorAll('.statistics-table-section').length"),
-      2,
-      "Statistics page must show monthly and weekly completion tables",
-    );
-    assert.equal(
       await page.evaluate("document.querySelectorAll('.statistics-chart-panel').length"),
       3,
       "Statistics page must show completion, category, and status pie charts",
     );
     assert.equal(
-      await page.evaluate("document.querySelectorAll('.statistics-filter option').length > 1"),
+      await page.evaluate("document.querySelectorAll('.statistics-filter').length"),
+      3,
+      "Statistics page must provide range, type, and status filters",
+    );
+    assert.equal(
+      await page.evaluate("document.querySelectorAll('.statistics-line').length"),
+      1,
+      "Statistics page must show a line chart",
+    );
+    assert.equal(
+      await page.evaluate("document.querySelector('.statistics-type-counts') != null"),
       true,
-      "Statistics page must provide a status filter",
+      "Statistics page must show category counts",
     );
     console.log("PASS statistics page");
 
