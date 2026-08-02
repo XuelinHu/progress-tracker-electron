@@ -71,16 +71,16 @@ button {
 }
 
 .global-data-actions {
-  width: min(500px, 100%);
+  width: min(700px, 100%);
   display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
+  grid-template-columns: 320px minmax(0, 1fr);
   gap: 8px;
   align-items: start;
 }
 
 .global-data-primary-actions {
   display: grid;
-  grid-template-columns: repeat(2, 64px);
+  grid-template-columns: repeat(3, 104px);
   gap: 5px;
   align-self: start;
 }
@@ -3582,7 +3582,7 @@ button {
   }
 
   .global-data-primary-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .editor-form {

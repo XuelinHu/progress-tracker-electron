@@ -614,7 +614,8 @@ async function run() {
 
     await clickButton(page, ".global-data-actions button", "日历", ".calendar-page");
     await verifyCalendarCategoryButtonsOnMobile(page);
-    await clickButton(page, ".global-data-actions button", "统计", ".statistics-page");
+    await page.evaluate('window.dispatchEvent(new KeyboardEvent("keydown", { key: "t", bubbles: true }))');
+    await waitFor(page, "document.querySelector('.statistics-page')", "statistics shortcut");
     assert.equal(
       await page.evaluate("document.querySelectorAll('.statistics-chart-panel').length"),
       3,
