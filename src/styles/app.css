@@ -1217,12 +1217,13 @@ button {
 
 .status-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-  gap: 6px;
-  max-height: 110px;
+  grid-template-columns: repeat(auto-fill, minmax(142px, 1fr));
+  column-gap: 12px;
+  row-gap: 10px;
+  max-height: 140px;
   overflow-y: auto;
   align-content: start;
-  padding: 8px 10px;
+  padding: 10px 14px;
   border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
 }
@@ -1231,9 +1232,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 9px;
   min-height: 36px;
-  padding: 0 10px;
+  padding: 0 12px;
   border: 1px solid var(--status-border);
   border-radius: 6px;
   background: var(--status-bg);
@@ -1244,7 +1245,7 @@ button {
 }
 
 .status-chip-system {
-  min-width: 128px;
+  min-width: 0;
 }
 
 .status-chip strong {
@@ -1561,7 +1562,7 @@ button {
 .portal-popover .date-history-title {
   margin-bottom: 5px;
   color: #1e293b;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 750;
 }
 
@@ -1569,7 +1570,7 @@ button {
   display: grid;
   grid-template-columns: 138px minmax(0, 1fr);
   border-top: 1px solid #e2e8f0;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .portal-popover .date-history-table span {
@@ -1604,7 +1605,7 @@ button {
 .portal-popover .date-history-empty {
   padding: 10px 6px;
   color: #7c8798;
-  font-size: 11px;
+  font-size: 13px;
   text-align: center;
 }
 
@@ -1781,11 +1782,11 @@ button {
   display: none;
   position: fixed;
   z-index: 2147483000;
-  width: min(480px, calc(100vw - 20px));
+  width: min(560px, calc(100vw - 20px));
   max-width: calc(100vw - 20px);
-  max-height: 180px;
+  max-height: 340px;
   overflow: auto;
-  padding: 5px;
+  padding: 10px;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   background: #ffffff;
@@ -1803,7 +1804,7 @@ button {
 }
 
 .todo-done-title {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 700;
   color: #16a34a;
   margin-bottom: 3px;
@@ -1880,6 +1881,73 @@ button {
 
 .todo-item:hover {
   background: #f1f5f9;
+}
+
+.todo-detail-popover {
+  position: fixed;
+  z-index: 2147483640;
+  max-width: calc(100vw - 24px);
+  max-height: min(380px, calc(100vh - 24px));
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.24);
+  color: #172033;
+  font-size: 14px;
+}
+
+.todo-detail-popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #dbe1ea;
+  font-size: 16px;
+}
+
+.todo-detail-popover-head button {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+}
+
+.todo-detail-popover-head button:hover { background: #e2e8f0; color: #0f172a; }
+.todo-detail-record { color: #475569; font-size: 13px; }
+
+.todo-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+}
+
+.todo-detail-meta div { display: flex; gap: 6px; }
+.todo-detail-meta dt { color: #64748b; }
+.todo-detail-meta dd { margin: 0; color: #172033; font-weight: 700; }
+
+.todo-detail-content {
+  min-height: 110px;
+  padding: 10px;
+  border: 1px solid #dbe1ea;
+  border-radius: 5px;
+  background: #f8fafc;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .todo-item.done .todo-text {

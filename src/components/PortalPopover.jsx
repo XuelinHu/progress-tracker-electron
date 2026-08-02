@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 
 export default function PortalPopover({ className, popover, children }) {
   const [show, setShow] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, maxWidth: 380 });
+  const [pos, setPos] = useState({ top: 0, left: 0, maxWidth: 520 });
   const triggerRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -13,8 +13,8 @@ export default function PortalPopover({ className, popover, children }) {
     if (!rect) return;
     const vh = window.innerHeight;
     const vw = window.innerWidth;
-    const popHeight = 230;
-    const popWidth = Math.min(380, vw - 20);
+    const popHeight = 360;
+    const popWidth = Math.min(520, vw - 20);
     const spaceBelow = vh - rect.bottom;
     const showAbove = spaceBelow < popHeight && rect.top > popHeight;
     setPos({
@@ -58,13 +58,13 @@ export default function PortalPopover({ className, popover, children }) {
               position: "fixed",
               zIndex: 2147483000,
               maxWidth: pos.maxWidth,
-              maxHeight: 220,
+              maxHeight: 340,
               overflow: "auto",
               border: "1px solid #cbd5e1",
               borderRadius: 6,
               background: "#ffffff",
               boxShadow: "0 10px 24px rgba(15,23,42,0.14)",
-              fontSize: 11,
+              fontSize: 13,
               color: "#1e293b",
               ...(pos.above
                 ? { bottom: window.innerHeight - pos.top, left: pos.left }

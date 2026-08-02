@@ -508,6 +508,8 @@ export default function CalendarBoard({
       const recordTodoItems = records.flatMap((record) =>
         (record.todoHistory ?? [])
           .filter((todo) => todo.item && !todo.doneDate)
+          // Date-history Todos already belong to a record date and are not backlog items.
+          .filter((todo) => !todo.sourceField)
           .filter((todo) => !linkedTodoKeys.has(`${record.id}:${todo.id}`))
           .map((todo) => ({
             type: "recordTodo",

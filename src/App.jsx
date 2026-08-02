@@ -599,8 +599,27 @@ function App() {
   const createAssistRef = useRef(null);
   const [serverStateReady, setServerStateReady] = useState(false);
   const [serverSaveError, setServerSaveError] = useState("");
+  const [todoDetail, setTodoDetail] = useState(null);
   const saveTimerRef = useRef(null);
   const operationStatusTimerRef = useRef(null);
+
+  function openTodoDetail(event, record, todo) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const width = Math.min(560, window.innerWidth - 24);
+    const height = 380;
+    const showAbove = window.innerHeight - rect.bottom < height && rect.top > height;
+    const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+    setTodoDetail({
+      recordTitle: getRecordTitle(record),
+      text: todo?.item || "未命名 Todo",
+      details: todo?.details || "暂无详情",
+      addedDate: itemAddedDate(todo) || "未知",
+      doneDate: todo?.doneDate || "",
+      top: showAbove ? Math.max(12, rect.top - height - 8) : Math.min(window.innerHeight - height - 12, rect.bottom + 8),
+      left,
+      width,
+    });
+  }
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const isCalendarView = activeCategoryId === CALENDAR_CATEGORY.id;
@@ -3302,6 +3321,7 @@ function App() {
                   key={`a-${idx}-${trimmed.substring(0, 12)}`}
                   className="todo-item"
                   title={`添加日期：${addedDate || "未知"}；详情：${hist?.details || "无"}`}
+                  onClick={(event) => openTodoDetail(event, record, hist)}
                 >
                   <button
                     className="todo-delete-btn"
@@ -3341,8 +3361,8 @@ function App() {
                 if (!rect) return;
                 const vw = window.innerWidth;
                 const vh = window.innerHeight;
-                const pw = Math.min(480, vw - 20);
-                const ph = Math.min(180, doneItems.length * 28 + 30);
+                const pw = Math.min(560, vw - 20);
+                const ph = Math.min(340, doneItems.length * 32 + 42);
                 let left = rect.right + 6;
                 let top = rect.top;
                 if (left + pw > vw - 10) left = rect.left - pw - 6;
@@ -3364,6 +3384,7 @@ function App() {
                     key={`d-${idx}-${trimmed.substring(0, 12)}`}
                     className="todo-item done"
                     title={`添加日期：${addedDate || "未知"}；完成日期：${hist?.doneDate || "未知"}；详情：${hist?.details || "无"}`}
+                    onClick={(event) => openTodoDetail(event, record, hist)}
                   >
                     <CopyIconButton
                       value={trimmed}
@@ -3823,6 +3844,27 @@ function App() {
         )}
       </main>
       {renderCreateModal()}
+      {todoDetail && (
+        <div
+          className="todo-detail-popover"
+          style={{ top: todoDetail.top, left: todoDetail.left, width: todoDetail.width }}
+          role="dialog"
+          aria-label={`${todoDetail.text} 详情`}
+        >
+          <div className="todo-detail-popover-head">
+            <strong>{todoDetail.text}</strong>
+            <button type="button" onClick={() => setTodoDetail(null)} title="关闭详情" aria-label="关闭详情">
+              <X size={17} />
+            </button>
+          </div>
+          <div className="todo-detail-record">{todoDetail.recordTitle}</div>
+          <dl className="todo-detail-meta">
+            <div><dt>添加日期</dt><dd>{todoDetail.addedDate}</dd></div>
+            {todoDetail.doneDate && <div><dt>完成日期</dt><dd>{todoDetail.doneDate}</dd></div>}
+          </dl>
+          <div className="todo-detail-content">{todoDetail.details}</div>
+        </div>
+      )}
     </div>
   );
 }

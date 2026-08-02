@@ -185,7 +185,7 @@ function StatisticsLineChart({ periods, entries, categories }) {
 export default function StatisticsBoard({ records = [], calendarItems = [], statusOptions = [] }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [rangeFilter, setRangeFilter] = useState("sixMonths");
+  const [rangeFilter, setRangeFilter] = useState("month");
   const statusById = useMemo(
     () => new Map(statusOptions.map((status) => [status.id, status])),
     [statusOptions],

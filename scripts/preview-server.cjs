@@ -80,7 +80,7 @@ function stateSummary(state) {
   };
 }
 
-const STATE_SCHEMA_VERSION = 7;
+const STATE_SCHEMA_VERSION = 8;
 
 function sortTimeline(entries = []) {
   const seen = new Set();
@@ -97,7 +97,7 @@ function sortTimeline(entries = []) {
     ));
 }
 
-function migrateStateToV6(state) {
+function migrateStateToV8(state) {
   if (!state || typeof state !== "object") return state;
   const now = new Date().toISOString();
   const records = Array.isArray(state.records) ? state.records.map((record) => {
@@ -158,6 +158,26 @@ function migrateStateToV6(state) {
         updatedAt: entry?.updatedAt || entry?.doneAt || entry?.createdAt || now,
       });
     });
+    const recordCreatedAt = String(
+      record?.createdAt || record?.addedAt || sortTimeline(record?.history || [])[0]?.createdAt || record?.startDate || now,
+    );
+    const creationTodoId = `todo-record-created-${record?.id || "record"}`;
+    if (!itemsById.has(creationTodoId)) {
+      itemsById.set(creationTodoId, {
+        id: creationTodoId,
+        recordId: String(record?.id || ""),
+        type: "todo",
+        text: "创建记录",
+        details: `记录创建：${recordCreatedAt}`,
+        date: recordCreatedAt.slice(0, 10),
+        sourceField: "createdAt",
+        status: "done",
+        doneDate: recordCreatedAt.slice(0, 10),
+        doneAt: recordCreatedAt,
+        createdAt: recordCreatedAt,
+        updatedAt: recordCreatedAt,
+      });
+    }
     const todoItems = [...itemsById.values()].filter((item) => item.type === "todo");
     const { todo, todoHistory, dateHistory: ignoredDateHistory, ...canonicalRecord } = record;
     return {
@@ -249,7 +269,7 @@ async function readAppState() {
   ]);
   const row = result.rows[0];
   if (!row) return { data: null, updatedAt: null };
-  const data = migrateStateToV6(row.data);
+  const data = migrateStateToV8(row.data);
   if (Number(row.data?.version || 0) < STATE_SCHEMA_VERSION) {
     const updatedAt = await writeAppState(data);
     return { data, updatedAt };
@@ -267,7 +287,7 @@ async function writeAppState(data) {
       DO UPDATE SET data = EXCLUDED.data, schema_version = $3, updated_at = NOW()
       RETURNING updated_at
     `,
-    [appStateId, JSON.stringify(migrateStateToV6(data)), STATE_SCHEMA_VERSION],
+    [appStateId, JSON.stringify(migrateStateToV8(data)), STATE_SCHEMA_VERSION],
   );
   return result.rows[0]?.updated_at ?? null;
 }
