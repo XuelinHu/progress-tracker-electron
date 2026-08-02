@@ -71,18 +71,37 @@ button {
 }
 
 .global-data-actions {
-  width: min(680px, 100%);
+  width: min(940px, 100%);
   display: grid;
-  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  grid-template-columns: minmax(0, 1fr) 98px;
   gap: 8px;
+  align-items: start;
+}
+
+.global-data-primary-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 5px;
+  align-self: start;
+}
+
+.global-view-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
 }
 
 .global-data-actions .icon-button {
   width: 100%;
-  min-height: 38px;
-  padding: 0 12px;
-  font-size: 13.5px;
+  min-height: 31px;
+  padding: 0 6px;
+  font-size: 11px;
   white-space: nowrap;
+}
+
+.global-data-actions .icon-button svg {
+  width: 14px;
+  height: 14px;
 }
 
 .global-data-actions .global-action {
@@ -127,6 +146,10 @@ button {
 
 .graph-action {
   --action-color: #4d7c0f;
+}
+
+.statistics-action {
+  --action-color: #0f766e;
 }
 
 .shortcut-hint {
@@ -189,7 +212,7 @@ button {
   width: min(680px, 100%);
   display: grid;
   grid-template-columns: repeat(4, minmax(120px, 1fr));
-  gap: 8px;
+  gap: 5px;
   margin-left: auto;
   justify-content: end;
 }
@@ -199,14 +222,14 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-height: 40px;
-  padding: 0 12px;
+  gap: 4px;
+  min-height: 29px;
+  padding: 0 7px;
   border: 1px solid var(--tab-tint);
   border-radius: 8px;
   background: color-mix(in srgb, var(--tab-tint) 42%, #ffffff);
   color: color-mix(in srgb, var(--tab-accent) 72%, #344156);
-  font-size: 15px;
+  font-size: 11px;
   font-weight: 680;
   white-space: nowrap;
 }
@@ -227,12 +250,12 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.76);
   border: 1px solid currentColor;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1;
 }
 
@@ -478,8 +501,8 @@ button {
 .calendar-record-card {
   min-width: 0;
   display: grid;
-  gap: 5px;
-  padding: 9px;
+  gap: 3px;
+  padding: 7px;
   border: 1px solid color-mix(in srgb, var(--record-accent) 30%, #dbe1ea);
   border-left: 4px solid var(--record-accent);
   border-radius: 8px;
@@ -518,10 +541,13 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 4px;
   min-width: 0;
   color: #647084;
-  font-size: 11px;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .calendar-date-text {
@@ -530,9 +556,18 @@ button {
   line-height: 1.25;
 }
 
+.calendar-record-card .calendar-date-text {
+  flex: 0 0 auto;
+  display: inline-block;
+  font-size: 10px !important;
+  font-weight: 650;
+  line-height: 1;
+}
+
 .calendar-record-meta span:first-child {
+  flex: 1 1 auto;
   max-width: 58%;
-  padding: 2px 5px;
+  padding: 1px 4px;
   border: 1px solid var(--record-status-border);
   border-radius: 5px;
   background: var(--record-status-bg);
@@ -3259,6 +3294,102 @@ button {
   padding: 36px 12px;
 }
 
+.statistics-page {
+  gap: 0;
+  padding: 0;
+  overflow: auto;
+}
+
+.statistics-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #dbe1ea;
+}
+
+.statistics-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #0f766e;
+}
+
+.statistics-title h2,
+.statistics-table-section h3 {
+  margin: 0;
+  color: #172033;
+}
+
+.statistics-title h2 { font-size: 18px; }
+
+.statistics-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.statistics-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(102px, 1fr));
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.statistics-summary > div {
+  display: grid;
+  gap: 3px;
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  text-align: center;
+}
+
+.statistics-summary span { color: #64748b; font-size: 11px; }
+.statistics-summary strong { color: #0f766e; font-size: 15px; }
+
+.statistics-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px 9px;
+  padding: 9px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.statistics-legend svg { color: #0f766e; }
+.statistics-table-section { padding: 14px 18px 0; }
+.statistics-table-section:last-child { padding-bottom: 18px; }
+.statistics-table-section h3 { margin-bottom: 8px; font-size: 15px; }
+.statistics-table-wrap { overflow-x: auto; border: 1px solid #dbe1ea; border-radius: 6px; }
+.statistics-table { display: grid; min-width: 780px; }
+.statistics-row { display: contents; }
+.statistics-cell {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 12px;
+  text-align: center;
+}
+
+.statistics-table > :nth-last-child(-n + 9) { border-bottom: 0; }
+.statistics-head { background: #f1f5f9; color: #475569; font-weight: 750; }
+.statistics-category { justify-content: flex-start; gap: 7px; font-weight: 700; }
+.statistics-category > span { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+.statistics-value { gap: 3px; }
+.statistics-value strong { color: #15803d; font-size: 13px; }
+.statistics-value span { color: #64748b; }
+.statistics-total { background: #f8fafc; }
+
 @media (max-width: 1240px) {
   .topbar {
     align-items: flex-start;
@@ -3327,6 +3458,19 @@ button {
     flex-wrap: wrap;
   }
 
+  .global-data-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .global-view-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .statistics-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .search-box {
     flex-basis: 100%;
   }
@@ -3376,11 +3520,11 @@ button {
 
   .global-data-actions {
     width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
-  .global-data-actions .icon-button {
-    flex: 1;
+  .global-data-primary-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .editor-form {
@@ -3389,6 +3533,11 @@ button {
 
   .category-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statistics-summary {
+    width: 100%;
+    grid-template-columns: 1fr;
   }
 
   .status-strip {

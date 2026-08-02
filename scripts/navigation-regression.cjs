@@ -38,6 +38,7 @@ const todayIso = localIsoDate();
 const previousDayIso = localIsoDate(-1);
 const calendarRegressionItemId = "calendar-drag-regression";
 const regressionRecordId = "graph-font-regression";
+const calendarTodoRegressionId = "calendar-record-todo-regression";
 const regressionState = {
   version: 5,
   records: [
@@ -54,6 +55,15 @@ const regressionState = {
       id: "calendar-category-filter-patent",
       categoryId: "patent",
       title: "日历类别筛选专利记录",
+      status: "进行中",
+      startDate: todayIso,
+      endDate: todayIso,
+      todo: "",
+    },
+    {
+      id: calendarTodoRegressionId,
+      categoryId: "activity",
+      title: "日历投放 Todo 回归记录",
       status: "进行中",
       startDate: todayIso,
       endDate: todayIso,
@@ -323,6 +333,40 @@ async function verifyCalendarDropUsesTargetDate(page, server) {
   console.log("PASS calendar drop defaults to today");
 }
 
+async function verifyRecordDropCreatesTodo(page, server) {
+  const dragged = await page.evaluate(`(() => {
+    const source = [...document.querySelectorAll(".calendar-record-card")]
+      .find((item) => item.textContent.includes("日历投放 Todo 回归记录"));
+    const target = document.querySelector(".calendar-day.today");
+    if (!source || !target) return false;
+    const dataTransfer = new DataTransfer();
+    source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }));
+    return true;
+  })()`);
+  assert.equal(dragged, true, "Expected a draggable record and today's calendar cell");
+  await waitFor(page, "document.querySelector('.calendar-schedule-modal')", "record schedule modal");
+  await page.evaluate("document.querySelector('.calendar-schedule-submit').click()");
+  await waitFor(page, "!document.querySelector('.calendar-schedule-modal')", "record schedule save");
+
+  const deadline = Date.now() + 4000;
+  let savedRecord;
+  while (Date.now() < deadline) {
+    savedRecord = server.getSavedState()?.records?.find((record) => record.id === calendarTodoRegressionId);
+    if (savedRecord?.todoHistory?.some((item) => item.item.includes("日历事项"))) break;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  assert.match(savedRecord?.todo || "", /日历事项/, "Record drop must create a Todo item");
+  assert.equal(
+    await page.evaluate("document.querySelector('.calendar-todo-panel')?.textContent.includes('日历事项')"),
+    true,
+    "Created Todo must be visible in the right-side pending Todo panel",
+  );
+  console.log("PASS record drop creates a right-side Todo");
+}
+
 async function verifyCalendarCategoryButtons(page) {
   assert.equal(
     await page.evaluate("document.querySelectorAll('.calendar-category-filter-button').length"),
@@ -542,6 +586,13 @@ async function run() {
     await clickButton(page, ".global-data-actions button", "日历", ".calendar-page");
     const calendarCategoryStyles = await verifyCalendarCategoryButtons(page);
     await verifyCalendarDropUsesTargetDate(page, server);
+    await verifyRecordDropCreatesTodo(page, server);
+    assert.match(
+      await page.evaluate("document.querySelector('.calendar-day.today .calendar-day-record')?.textContent || ''"),
+      /日历投放 Todo 回归记录/,
+      "Activities must appear first in each calendar day",
+    );
+    console.log("PASS calendar activities are prioritized");
     await clickButton(page, ".global-data-actions button", "知识图谱", ".graph-workspace");
     await verifyGraphCategoryButtons(page, calendarCategoryStyles);
     assert.equal(
@@ -563,6 +614,13 @@ async function run() {
 
     await clickButton(page, ".global-data-actions button", "日历", ".calendar-page");
     await verifyCalendarCategoryButtonsOnMobile(page);
+    await clickButton(page, ".global-data-actions button", "统计", ".statistics-page");
+    assert.equal(
+      await page.evaluate("document.querySelectorAll('.statistics-table-section').length"),
+      2,
+      "Statistics page must show monthly and weekly completion tables",
+    );
+    console.log("PASS statistics page");
 
     assert.deepEqual(browserErrors, [], `Browser errors:\n${browserErrors.join("\n")}`);
     console.log(`PASS all ${categoryNames.length + 3} navigation buttons`);

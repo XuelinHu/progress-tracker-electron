@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownUp,
+  BarChart3,
   CalendarDays,
   Copy,
   Download,
@@ -26,6 +27,7 @@ import CopyableControl from "./components/CopyableControl.jsx";
 import InlineEditableText from "./components/InlineEditableText.jsx";
 import CalendarBoard from "./components/CalendarBoard.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
+import StatisticsBoard from "./components/StatisticsBoard.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
 import { STATUSES } from "./data/statuses.js";
@@ -59,6 +61,12 @@ const CALENDAR_CATEGORY = {
   shortcut: "G",
   accent: "#7c3aed",
   tint: "#f3e8ff",
+};
+const STATISTICS_CATEGORY = {
+  id: "statistics",
+  name: "统计",
+  accent: "#0f766e",
+  tint: "#ccfbf1",
 };
 const STATUS_CONFIG_PAGE = {
   id: "status-config",
@@ -527,6 +535,7 @@ function App() {
 
   const isGraphView = activeCategoryId === GRAPH_CATEGORY.id;
   const isCalendarView = activeCategoryId === CALENDAR_CATEGORY.id;
+  const isStatisticsView = activeCategoryId === STATISTICS_CATEGORY.id;
   const isProblemItemsView = activeCategoryId === PROBLEM_ITEMS_PAGE.id;
   const isOtherItemsView = activeCategoryId === OTHER_ITEMS_PAGE.id;
   const isStatusConfigView = activeCategoryId === STATUS_CONFIG_PAGE.id;
@@ -535,6 +544,8 @@ function App() {
     ? GRAPH_CATEGORY
     : isCalendarView
       ? CALENDAR_CATEGORY
+      : isStatisticsView
+        ? STATISTICS_CATEGORY
       : isProblemItemsView
         ? PROBLEM_ITEMS_PAGE
         : isOtherItemsView
@@ -3187,6 +3198,7 @@ function App() {
           </div>
 
           <div className="global-data-actions">
+            <div className="global-data-primary-actions">
             <button
               className="icon-button global-action data-export"
               type="button"
@@ -3247,6 +3259,8 @@ function App() {
               <Settings2 size={17} />
               <span>优先级配置</span>
             </button>
+            </div>
+            <div className="global-view-actions">
             <button
               className="icon-button global-action calendar-action"
               type="button"
@@ -3273,6 +3287,20 @@ function App() {
               <Share2 size={17} />
               <span>知识图谱(F)</span>
             </button>
+            <button
+              className="icon-button global-action statistics-action"
+              type="button"
+              onClick={() => {
+                setActiveCategoryId(STATISTICS_CATEGORY.id);
+                setStatusFilter("all");
+                resetTableSort();
+              }}
+              title="打开完成统计"
+            >
+              <BarChart3 size={15} />
+              <span>统计</span>
+            </button>
+            </div>
             <input
               ref={fileInputRef}
               className="hidden-input"
@@ -3349,6 +3377,12 @@ function App() {
             copyCalendarItem={copyCalendarItem}
             openCalendarItemModal={openCalendarItemModal}
             openRecord={openRecordFromCalendar}
+          />
+        ) : isStatisticsView ? (
+          <StatisticsBoard
+            records={records}
+            calendarItems={calendarItems}
+            statusOptions={calendarStatusOptions}
           />
         ) : isProblemItemsView ? (
           renderCalendarItemPage(PROBLEM_ITEMS_PAGE)
