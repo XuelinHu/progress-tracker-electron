@@ -1938,8 +1938,6 @@ button {
 }
 
 .todo-detail-popover-head button:hover { background: #e2e8f0; color: #0f172a; }
-.todo-detail-popover-head .todo-detail-save { color: #166534; }
-.todo-detail-popover-head .todo-detail-save:hover { background: #dcfce7; color: #166534; }
 .todo-detail-record { color: #475569; font-size: 13px; }
 
 .todo-detail-meta {
@@ -1973,6 +1971,27 @@ button {
   border-color: var(--category-accent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--category-accent) 14%, transparent);
 }
+
+.todo-detail-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.todo-detail-save {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #86efac;
+  border-radius: 5px;
+  background: #f0fdf4;
+  color: #166534;
+  cursor: pointer;
+}
+
+.todo-detail-save:hover { background: #dcfce7; color: #14532d; }
 
 .todo-item.done .todo-text {
   color: #16a34a;

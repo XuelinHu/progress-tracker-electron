@@ -3913,15 +3913,6 @@ function App() {
         >
           <div className="todo-detail-popover-head">
             <strong>{todoDetail.text}</strong>
-            <button
-              className="todo-detail-save"
-              type="button"
-              onClick={() => updateTodoDetails(todoDetail.recordId, todoDetail.todoId, todoDetail.details)}
-              title="保存详情"
-              aria-label="保存详情"
-            >
-              <Save size={17} />
-            </button>
             <button type="button" onClick={() => setTodoDetail(null)} title="关闭详情" aria-label="关闭详情">
               <X size={17} />
             </button>
@@ -3937,6 +3928,17 @@ function App() {
             onChange={(event) => setTodoDetail((current) => ({ ...current, details: event.target.value }))}
             aria-label={`${todoDetail.text} 详情`}
           />
+          <div className="todo-detail-actions">
+            <button
+              className="todo-detail-save"
+              type="button"
+              onClick={() => updateTodoDetails(todoDetail.recordId, todoDetail.todoId, todoDetail.details)}
+              title="保存详情"
+              aria-label="保存详情"
+            >
+              <Save size={17} />
+            </button>
+          </div>
         </div>
       )}
     </div>
