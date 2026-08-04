@@ -50,6 +50,7 @@ function localIsoDateFromDate(date) {
 const todayIso = localIsoDate();
 const previousDayIso = localIsoDate(-1);
 const calendarRegressionItemId = "calendar-drag-regression";
+const completedUnscheduledCalendarItemId = "calendar-completed-unscheduled-regression";
 const regressionRecordId = "graph-font-regression";
 const calendarTodoRegressionId = "calendar-record-todo-regression";
 const regressionState = {
@@ -92,6 +93,15 @@ const regressionState = {
       title: "日历拖拽回归事项",
       categoryId: "other",
       status: "进行中",
+    },
+    {
+      id: completedUnscheduledCalendarItemId,
+      date: "",
+      startDate: previousDayIso,
+      endDate: previousDayIso,
+      title: "已完成未排期回归事项",
+      categoryId: "other",
+      status: "已完成",
     },
   ],
   graph: {
@@ -310,6 +320,13 @@ async function clickButton(page, selector, text, expectedSelector) {
 }
 
 async function verifyCalendarDropUsesTargetDate(page, server) {
+  assert.equal(
+    await page.evaluate(
+      "[...document.querySelectorAll('.calendar-todo-card')].some((item) => item.textContent.includes('已完成未排期回归事项'))",
+    ),
+    false,
+    "Completed unscheduled items must not appear in the pending panel",
+  );
   const dragged = await page.evaluate(`(() => {
     const source = [...document.querySelectorAll(".calendar-todo-card")]
       .find((item) => item.textContent.includes("日历拖拽回归事项"));

@@ -14,6 +14,7 @@ const CALENDAR_ITEM_DRAG_TYPE = "application/progress-calendar-item";
 const TODO_DRAG_TYPE = "application/progress-calendar-todo";
 const ACTIVE_STATUS = "进行中";
 const DONE_STATUS = "已完成";
+const FINAL_CALENDAR_STATUSES = new Set([DONE_STATUS, "结束", "done"]);
 const OTHER_CATEGORY = {
   id: "other",
   name: "其他事项",
@@ -82,6 +83,10 @@ function getTodoLines(record) {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+}
+
+function isCalendarItemCompleted(item) {
+  return FINAL_CALENDAR_STATUSES.has(String(item?.status ?? "").trim());
 }
 
 function cleanScheduleTodoItem(item) {
@@ -499,7 +504,7 @@ export default function CalendarBoard({
           .map((item) => `${item.recordId}:${item.todoId}`),
       );
       const calendarTodoItems = calendarItems
-        .filter((item) => !item?.date)
+        .filter((item) => !item?.date && !isCalendarItemCompleted(item))
         .map((item) => ({
           type: "calendar",
           key: `calendar-${item.id}`,
