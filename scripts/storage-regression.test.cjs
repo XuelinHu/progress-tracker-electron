@@ -164,4 +164,50 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
 
   const backupResponse = await request(port, "/api/backups");
   assert.equal(backupResponse.status, 404, "本地文件备份接口不应继续存在");
+
+  const todoState = {
+    version: 10,
+    marker: `${marker}-todo-normalization`,
+    records: [
+      {
+        id: "todo-delete-regression",
+        categoryId: "software",
+        title: "Todo 删除回归记录",
+        status: "进行中",
+        items: [
+          {
+            id: "legacy-completed-todo",
+            recordId: "todo-delete-regression",
+            type: "todo",
+            text: "历史已完成 Todo",
+            status: "done",
+            date: "2026-08-04",
+            doneDate: null,
+            doneAt: null,
+            createdAt: "2026-08-04T08:00:00.000Z",
+          },
+        ],
+        // These stale fields model a Todo already deleted by the canonical UI.
+        todo: "已删除 Todo 不应复生",
+        todoHistory: [{ id: "deleted-todo", item: "已删除 Todo 不应复生" }],
+        dateHistory: { startDate: [{ id: "deleted-date-todo", item: "已删除 Todo 不应复生" }] },
+      },
+    ],
+    calendarItems: [],
+    statusOptions: [],
+    graph: { nodes: [], edges: [] },
+  };
+  const todoWriteResponse = await request(port, "/api/state", { method: "PUT", body: todoState });
+  assert.equal(todoWriteResponse.status, 200, stderr);
+  const todoResult = await pool.query("SELECT data FROM app_state WHERE id = $1", [stateId]);
+  const savedTodoRecord = todoResult.rows[0]?.data?.records?.[0];
+  assert.deepEqual(
+    savedTodoRecord?.items?.map((item) => item.id),
+    ["legacy-completed-todo"],
+    "已删除 Todo 不得因旧兼容字段重新写入",
+  );
+  assert.equal(savedTodoRecord?.items?.[0]?.doneDate, "2026-08-04", "历史完成 Todo 必须补齐完成日期");
+  assert.equal("todo" in savedTodoRecord, false, "规范数据不得保留旧 Todo 文本字段");
+  assert.equal("todoHistory" in savedTodoRecord, false, "规范数据不得保留旧 Todo 历史字段");
+  assert.equal("dateHistory" in savedTodoRecord, false, "规范数据不得保留旧日期历史字段");
 });
