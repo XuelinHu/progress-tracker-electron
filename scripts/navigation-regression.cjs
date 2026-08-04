@@ -367,11 +367,15 @@ async function verifyRecordDropCreatesTodo(page, server) {
   let savedRecord;
   while (Date.now() < deadline) {
     savedRecord = server.getSavedState()?.records?.find((record) => record.id === calendarTodoRegressionId);
-    if (savedRecord?.todoHistory?.some((item) => item.item.includes("日历事项"))) break;
+    if (savedRecord?.items?.some((item) => item.type === "todo" && item.text.includes("日历事项"))) break;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
-  assert.match(savedRecord?.todo || "", /日历事项/, "Record drop must create a Todo item");
+  assert.equal(
+    savedRecord?.items?.some((item) => item.type === "todo" && item.text.includes("日历事项")),
+    true,
+    "Record drop must create a Todo item",
+  );
   assert.equal(
     await page.evaluate("document.querySelector('.calendar-todo-panel')?.textContent.includes('日历事项')"),
     true,

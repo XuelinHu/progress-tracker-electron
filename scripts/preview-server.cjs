@@ -80,7 +80,7 @@ function stateSummary(state) {
   };
 }
 
-const STATE_SCHEMA_VERSION = 9;
+const STATE_SCHEMA_VERSION = 10;
 
 function sortTimeline(entries = []) {
   const seen = new Set();
@@ -97,12 +97,15 @@ function sortTimeline(entries = []) {
     ));
 }
 
-function migrateStateToV9(state) {
+function migrateStateToV10(state) {
   if (!state || typeof state !== "object") return state;
+  const sourceVersion = Number(state.version || 0);
+  const needsLegacyItemMigration = sourceVersion < 7;
+  const needsCreationTodoMigration = sourceVersion < 8;
   const now = new Date().toISOString();
   const records = Array.isArray(state.records) ? state.records.map((record) => {
-    const dateHistory = record?.dateHistory && typeof record.dateHistory === "object" ? record.dateHistory : {};
-    const legacyTodo = Array.isArray(record?.todoHistory) ? record.todoHistory : [];
+    const dateHistory = needsLegacyItemMigration && record?.dateHistory && typeof record.dateHistory === "object" ? record.dateHistory : {};
+    const legacyTodo = needsLegacyItemMigration && Array.isArray(record?.todoHistory) ? record.todoHistory : [];
     const existingItems = Array.isArray(record?.items) ? record.items : [];
     const migratedDateTodos = Object.entries(dateHistory).flatMap(([sourceField, entries]) =>
       (Array.isArray(entries) ? entries : []).map((entry, index) => ({
@@ -162,7 +165,7 @@ function migrateStateToV9(state) {
       record?.createdAt || record?.addedAt || sortTimeline(record?.history || [])[0]?.createdAt || record?.startDate || now,
     );
     const creationTodoId = `todo-record-created-${record?.id || "record"}`;
-    if (!itemsById.has(creationTodoId)) {
+    if (needsCreationTodoMigration && !itemsById.has(creationTodoId)) {
       itemsById.set(creationTodoId, {
         id: creationTodoId,
         recordId: String(record?.id || ""),
@@ -269,7 +272,7 @@ async function readAppState() {
   ]);
   const row = result.rows[0];
   if (!row) return { data: null, updatedAt: null };
-  const data = migrateStateToV9(row.data);
+  const data = migrateStateToV10(row.data);
   if (Number(row.data?.version || 0) < STATE_SCHEMA_VERSION) {
     const updatedAt = await writeAppState(data);
     return { data, updatedAt };
@@ -287,7 +290,7 @@ async function writeAppState(data) {
       DO UPDATE SET data = EXCLUDED.data, schema_version = $3, updated_at = NOW()
       RETURNING updated_at
     `,
-    [appStateId, JSON.stringify(migrateStateToV9(data)), STATE_SCHEMA_VERSION],
+    [appStateId, JSON.stringify(migrateStateToV10(data)), STATE_SCHEMA_VERSION],
   );
   return result.rows[0]?.updated_at ?? null;
 }

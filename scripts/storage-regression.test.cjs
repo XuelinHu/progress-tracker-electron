@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const http = require("node:http");
+const net = require("node:net");
 const path = require("node:path");
 const test = require("node:test");
 const { Pool } = require("pg");
@@ -79,6 +80,17 @@ async function waitForServer(port, child) {
   throw new Error("等待测试服务启动超时");
 }
 
+function getAvailablePort() {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      server.close((error) => (error ? reject(error) : resolve(port)));
+    });
+  });
+}
+
 test("前端运行时代码不使用浏览器或文件型业务存储", () => {
   const forbidden = /\b(?:localStorage|sessionStorage|indexedDB|electron-store|lowdb)\b/;
   const violations = runtimeSourceRoots
@@ -97,7 +109,7 @@ test("后端不提供本地 JSON 业务备份链路", () => {
 test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async (t) => {
   const env = loadLocalEnv();
   const stateId = `storage-regression-${process.pid}-${Date.now()}`;
-  const port = 43_000 + Math.floor(Math.random() * 1_000);
+  const port = await getAvailablePort();
   const child = spawn(process.execPath, ["scripts/preview-server.cjs"], {
     cwd: rootDir,
     env: { ...env, APP_STATE_ID: stateId, HOST: "127.0.0.1", PORT: String(port) },
@@ -123,7 +135,11 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
     await pool.end();
   });
 
-  await waitForServer(port, child);
+  try {
+    await waitForServer(port, child);
+  } catch (error) {
+    throw new Error(`${error.message}${stderr ? `\n${stderr}` : ""}`);
+  }
   const marker = `pg-only-${Date.now()}`;
   const state = {
     version: 5,

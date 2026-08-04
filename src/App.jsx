@@ -1873,21 +1873,30 @@ function App() {
     );
   }
 
-  function deleteTodoItem(recordId, lineText) {
-    const text = lineText.trim();
-    if (!text) return;
+  function deleteTodoItem(recordId, todoKey) {
+    if (!todoKey) return;
+    const sourceRecord = records.find((record) => record.id === recordId);
+    const sourceItems = sourceRecord?.items ?? buildRecordItemsFromLegacy(sourceRecord);
+    const deletedTodoId = sourceItems.find(
+      (entry) => entry.type === RECORD_ITEM_TYPES.TODO && (entry.id === todoKey || entry.text === todoKey),
+    )?.id;
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
-        const todoText = record.todo ?? "";
-        const lines = todoText.split(/\r?\n/);
-        const newText = lines.filter((l) => l.trim() !== text).join("\n");
-        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter(
-          (entry) => entry.type !== RECORD_ITEM_TYPES.TODO || entry.text !== text,
+        const items = record.items ?? buildRecordItemsFromLegacy(record);
+        const target = items.find(
+          (entry) => entry.type === RECORD_ITEM_TYPES.TODO && (entry.id === todoKey || entry.text === todoKey),
         );
-        return syncTodoItemsLegacy({ ...record, todo: newText }, nextItems);
+        if (!target) return record;
+        const nextItems = items.filter((entry) => entry.id !== target.id);
+        return syncTodoItemsLegacy(record, nextItems);
       }),
     );
+    if (deletedTodoId) {
+      setCalendarItems((current) =>
+        current.filter((item) => !(item.recordId === recordId && item.todoId === deletedTodoId)),
+      );
+    }
   }
 
   function deleteDateHistoryItem(recordId, fieldKey, historyId) {
@@ -1933,18 +1942,7 @@ function App() {
   }
 
   function deleteTodoHistoryItem(recordId, historyId) {
-    setRecords((current) =>
-      current.map((record) => {
-        if (record.id !== recordId) return record;
-        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).filter(
-          (entry) => entry.id !== historyId || entry.type !== RECORD_ITEM_TYPES.TODO,
-        );
-        return syncTodoItemsLegacy({
-          ...record,
-          todoHistory: (record.todoHistory ?? []).filter((e) => e.id !== historyId),
-        }, nextItems);
-      }),
-    );
+    deleteTodoItem(recordId, historyId);
   }
 
   function updateTodoHistoryItem(recordId, historyId, item) {
@@ -2254,7 +2252,7 @@ function App() {
 
   function buildFullDataPayload() {
     return {
-      version: 7,
+      version: 10,
       exportedAt: new Date().toISOString(),
       scope: "pages-1-8",
       includes: [
@@ -2271,7 +2269,13 @@ function App() {
         "status-config",
       ],
       statusOptions,
-      records,
+      records: records.map((record) => {
+        const { todo, todoHistory, dateHistory, ...canonicalRecord } = record;
+        return {
+          ...canonicalRecord,
+          items: record.items ?? buildRecordItemsFromLegacy(record),
+        };
+      }),
       graph: {
         nodes: graphNodes,
         edges: graphEdges,
@@ -3382,7 +3386,7 @@ function App() {
                   <button
                     className="todo-delete-btn"
                     type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteTodoItem(record.id, trimmed); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteTodoItem(record.id, hist?.id || trimmed); }}
                     title="删除此项"
                   >×</button>
                   <CopyIconButton
