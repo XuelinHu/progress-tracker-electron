@@ -206,7 +206,7 @@ function normalizeRecord(record) {
       item: e.item || "",
       details: e.details || e.description || record.description || "",
       sourceField: e.sourceField || "",
-      doneDate: e.doneDate || (!e.addedDate && e.date ? e.date : null),
+      doneDate: e.doneDate || (e.status === "done" ? String(e.doneAt || e.date || e.createdAt || "").slice(0, 10) : null) || (!e.addedDate && e.date ? e.date : null),
       addedAt: e.addedAt || e.createdAt || e.addedDate || e.date || today(),
       doneAt: e.doneAt || null,
       createdAt: e.createdAt || e.addedAt || e.addedDate || e.date || today(),
@@ -656,6 +656,8 @@ function App() {
     const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
     setTodoDetail({
       recordTitle: getRecordTitle(record),
+      recordId: record.id,
+      todoId: todo?.id || "",
       text: todo?.item || "未命名 Todo",
       details: todo?.details || "暂无详情",
       addedDate: itemAddedDate(todo) || "未知",
@@ -1969,6 +1971,22 @@ function App() {
             entry.id === historyId ? { ...entry, item, updatedAt: new Date().toISOString() } : entry,
           ),
         };
+      }),
+    );
+  }
+
+  function updateTodoDetails(recordId, historyId, details) {
+    if (!historyId) return;
+    const updatedAt = new Date().toISOString();
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) return record;
+        const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
+          entry.id === historyId && entry.type === RECORD_ITEM_TYPES.TODO
+            ? { ...entry, details: String(details ?? ""), updatedAt }
+            : entry,
+        );
+        return syncTodoItemsLegacy(record, nextItems);
       }),
     );
   }
@@ -3891,6 +3909,15 @@ function App() {
         >
           <div className="todo-detail-popover-head">
             <strong>{todoDetail.text}</strong>
+            <button
+              className="todo-detail-save"
+              type="button"
+              onClick={() => updateTodoDetails(todoDetail.recordId, todoDetail.todoId, todoDetail.details)}
+              title="保存详情"
+              aria-label="保存详情"
+            >
+              <Save size={17} />
+            </button>
             <button type="button" onClick={() => setTodoDetail(null)} title="关闭详情" aria-label="关闭详情">
               <X size={17} />
             </button>
@@ -3900,7 +3927,12 @@ function App() {
             <div><dt>添加日期</dt><dd>{todoDetail.addedDate}</dd></div>
             {todoDetail.doneDate && <div><dt>完成日期</dt><dd>{todoDetail.doneDate}</dd></div>}
           </dl>
-          <div className="todo-detail-content">{todoDetail.details}</div>
+          <textarea
+            className="todo-detail-content"
+            value={todoDetail.details}
+            onChange={(event) => setTodoDetail((current) => ({ ...current, details: event.target.value }))}
+            aria-label={`${todoDetail.text} 详情`}
+          />
         </div>
       )}
     </div>

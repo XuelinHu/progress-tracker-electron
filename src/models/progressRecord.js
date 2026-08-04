@@ -50,7 +50,18 @@ export function createRecordItem({
   };
 }
 
+function getDoneDate(item) {
+  if (item?.doneDate) {
+    return item.doneDate;
+  }
+  if (item?.status === "done") {
+    return String(item?.doneAt || item?.date || item?.addedDate || item?.createdAt || "").slice(0, 10) || null;
+  }
+  return null;
+}
+
 function normalizeRecordItem(item, recordId) {
+  const doneDate = getDoneDate(item);
   return createRecordItem({
     ...item,
     id: item?.id,
@@ -60,8 +71,8 @@ function normalizeRecordItem(item, recordId) {
     details: item?.details ?? item?.description ?? "",
     date: item?.date ?? item?.addedDate ?? "",
     sourceField: item?.sourceField ?? "",
-    status: item?.status || (item?.doneDate ? "done" : "active"),
-    doneDate: item?.doneDate ?? null,
+    status: item?.status || (doneDate ? "done" : "active"),
+    doneDate,
     doneAt: item?.doneAt ?? null,
     createdAt: item?.createdAt,
     updatedAt: item?.updatedAt,
@@ -97,6 +108,7 @@ export function buildRecordItemsFromLegacy(record) {
   const todoByText = new Map(todoHistory.map((entry) => [entry.item, entry]));
   todoLines.forEach((text) => {
     const history = todoByText.get(text);
+    const doneDate = getDoneDate(history);
     pushItem(
       createRecordItem({
         id: history?.id,
@@ -105,8 +117,8 @@ export function buildRecordItemsFromLegacy(record) {
         text,
         details: history?.details ?? history?.description ?? "",
         date: history?.addedDate || "",
-        status: history?.doneDate ? "done" : "active",
-        doneDate: history?.doneDate || null,
+        status: history?.status || (doneDate ? "done" : "active"),
+        doneDate,
         doneAt: history?.doneAt,
         createdAt: history?.createdAt || history?.addedAt || history?.addedDate,
         updatedAt: history?.updatedAt,
@@ -114,6 +126,7 @@ export function buildRecordItemsFromLegacy(record) {
     );
   });
   todoHistory.forEach((history) => {
+    const doneDate = getDoneDate(history);
     pushItem(
       createRecordItem({
         id: history.id,
@@ -123,8 +136,8 @@ export function buildRecordItemsFromLegacy(record) {
         details: history.details ?? history.description ?? "",
         date: history.addedDate || "",
         sourceField: history.sourceField || "",
-        status: history.doneDate ? "done" : "active",
-        doneDate: history.doneDate || null,
+        status: history.status || (doneDate ? "done" : "active"),
+        doneDate,
         doneAt: history.doneAt,
         createdAt: history.createdAt || history.addedAt || history.addedDate,
         updatedAt: history.updatedAt,

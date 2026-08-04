@@ -80,7 +80,7 @@ function stateSummary(state) {
   };
 }
 
-const STATE_SCHEMA_VERSION = 8;
+const STATE_SCHEMA_VERSION = 9;
 
 function sortTimeline(entries = []) {
   const seen = new Set();
@@ -97,7 +97,7 @@ function sortTimeline(entries = []) {
     ));
 }
 
-function migrateStateToV8(state) {
+function migrateStateToV9(state) {
   if (!state || typeof state !== "object") return state;
   const now = new Date().toISOString();
   const records = Array.isArray(state.records) ? state.records.map((record) => {
@@ -133,7 +133,7 @@ function migrateStateToV8(state) {
         date: String(item?.date || item?.addedDate || ""),
         sourceField: String(item?.sourceField || ""),
         status: item?.status || (item?.doneDate ? "done" : "active"),
-        doneDate: item?.doneDate || null,
+        doneDate: item?.doneDate || (item?.status === "done" ? String(item?.doneAt || item?.date || item?.createdAt || "").slice(0, 10) || null : null),
         doneAt: item?.doneAt || null,
         createdAt: item?.createdAt || item?.addedAt || item?.date || now,
         updatedAt: item?.updatedAt || item?.createdAt || item?.date || now,
@@ -151,8 +151,8 @@ function migrateStateToV8(state) {
         details: String(entry?.details || entry?.description || ""),
         date: String(entry?.addedDate || entry?.date || ""),
         sourceField: String(entry?.sourceField || ""),
-        status: entry?.doneDate ? "done" : "active",
-        doneDate: entry?.doneDate || null,
+        status: entry?.status || (entry?.doneDate ? "done" : "active"),
+        doneDate: entry?.doneDate || (entry?.status === "done" ? String(entry?.doneAt || entry?.date || entry?.createdAt || "").slice(0, 10) || null : null),
         doneAt: entry?.doneAt || null,
         createdAt: entry?.createdAt || entry?.addedAt || entry?.addedDate || now,
         updatedAt: entry?.updatedAt || entry?.doneAt || entry?.createdAt || now,
@@ -269,7 +269,7 @@ async function readAppState() {
   ]);
   const row = result.rows[0];
   if (!row) return { data: null, updatedAt: null };
-  const data = migrateStateToV8(row.data);
+  const data = migrateStateToV9(row.data);
   if (Number(row.data?.version || 0) < STATE_SCHEMA_VERSION) {
     const updatedAt = await writeAppState(data);
     return { data, updatedAt };
@@ -287,7 +287,7 @@ async function writeAppState(data) {
       DO UPDATE SET data = EXCLUDED.data, schema_version = $3, updated_at = NOW()
       RETURNING updated_at
     `,
-    [appStateId, JSON.stringify(migrateStateToV8(data)), STATE_SCHEMA_VERSION],
+    [appStateId, JSON.stringify(migrateStateToV9(data)), STATE_SCHEMA_VERSION],
   );
   return result.rows[0]?.updated_at ?? null;
 }
