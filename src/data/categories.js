@@ -21,13 +21,13 @@ const startDateField = {
   key: "startDate",
   label: "开始日期",
   type: "date",
-  width: "minmax(160px, 0.55fr)",
+  width: "minmax(128px, 0.46fr)",
 };
 const endDateField = {
   key: "endDate",
   label: "结束日期",
   type: "date",
-  width: "minmax(160px, 0.55fr)",
+  width: "minmax(128px, 0.46fr)",
 };
 const windowsPathField = {
   key: "windowsPath",

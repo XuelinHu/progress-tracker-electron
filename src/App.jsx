@@ -3184,6 +3184,7 @@ function App() {
           value={record[field.key] ?? ""}
           history={record.dateHistory?.[field.key] ?? []}
           showHistory={false}
+          showItemInput={false}
           label={`${getRecordTitle(record)} ${field.label}`}
           resetKey={`${record.id}-${field.key}`}
           inputClassName="cell-input date-input"
