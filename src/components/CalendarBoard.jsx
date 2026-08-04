@@ -400,6 +400,7 @@ export default function CalendarBoard({
   deleteCalendarItem,
   openCalendarItemModal,
   openRecord,
+  openTodo,
 }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [searchTerm, setSearchTerm] = useState("");
@@ -1331,7 +1332,7 @@ export default function CalendarBoard({
       <aside className="calendar-todo-panel">
         <div className="calendar-panel-title">
           <CalendarDays size={16} />
-          <strong>待办事项</strong>
+          <strong>未排期事项</strong>
         </div>
         <button
           className="icon-button primary calendar-todo-add"
@@ -1339,7 +1340,7 @@ export default function CalendarBoard({
           onClick={handleAddUnscheduledItem}
         >
           <Plus size={16} />
-          <span>新增待办</span>
+          <span>新增未排期事项</span>
         </button>
         <div className="calendar-todo-list">
           {unscheduledItems.map((entry) => {
@@ -1353,13 +1354,13 @@ export default function CalendarBoard({
                   className={`calendar-todo-card record-todo calendar-type-${record.categoryId}`}
                   draggable
                   onDragStart={(event) => handleRecordTodoDragStart(event, record, todo)}
-                  onClick={() => openRecord?.(record)}
+                  onClick={() => openTodo?.(record, todo)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-                      openRecord?.(record);
+                      openTodo?.(record, todo);
                     }
                   }}
                   style={{
@@ -1422,7 +1423,7 @@ export default function CalendarBoard({
             );
           })}
           {unscheduledItems.length === 0 && (
-            <div className="calendar-empty">暂无未排期待办</div>
+            <div className="calendar-empty">暂无未排期事项</div>
           )}
         </div>
       </aside>

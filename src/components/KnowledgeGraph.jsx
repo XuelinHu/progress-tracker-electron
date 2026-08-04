@@ -20,7 +20,6 @@ import StatusHistoryPopover from "./StatusHistoryPopover.jsx";
 import PortalPopover from "./PortalPopover.jsx";
 import CopyIconButton from "./CopyIconButton.jsx";
 import CopyableControl from "./CopyableControl.jsx";
-import InlineEditableText from "./InlineEditableText.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "../data/categories.js";
 import { STATUSES } from "../data/statuses.js";
 import "../styles/graph.css";
@@ -253,7 +252,19 @@ function RecordNode({ data }) {
             const done = hist?.doneDate != null;
             if (done) return null;
             return (
-              <div key={idx} className="graph-node-todo-item">
+              <div
+                key={idx}
+                className="graph-node-todo-item"
+                role="button"
+                tabIndex={0}
+                onClick={() => hist && h.openTodo?.(hist)}
+                onKeyDown={(event) => {
+                  if ((event.key === "Enter" || event.key === " ") && hist) {
+                    event.preventDefault();
+                    h.openTodo?.(hist);
+                  }
+                }}
+              >
                 <CopyIconButton
                   value={line}
                   label="Todo"
@@ -264,13 +275,12 @@ function RecordNode({ data }) {
                   onClick={(event) => event.stopPropagation()}
                   onChange={() => h.toggleTodo?.(line)}
                 />
-                <InlineEditableText
-                  value={line}
+                <span
                   className="graph-node-todo-text"
-                  inputClassName="graph-node-todo-edit"
-                  title={`添加日期：${itemAddedDate(hist) || "未知"}；双击编辑`}
-                  onCommit={(nextText) => hist?.id && h.updateTodo?.(hist.id, nextText)}
-                />
+                  title={`添加日期：${itemAddedDate(hist) || "未知"}；点击查看详情`}
+                >
+                  {line}
+                </span>
                 <button
                   className="graph-node-todo-del"
                   type="button"
@@ -293,56 +303,6 @@ function RecordNode({ data }) {
               onKeyDown={handleTodoKey}
             />
           </CopyableControl>
-          {todoLines.some((l) => (todoHistByItem.get(l)?.doneDate != null)) && (
-            <div
-              className="graph-node-todo-done-popover"
-              ref={(el) => {
-                if (!el) return;
-                const rect = el.parentElement?.getBoundingClientRect();
-                if (!rect) return;
-                const vw = window.innerWidth;
-                const vh = window.innerHeight;
-                let left = rect.right + 6;
-                let top = rect.top;
-                if (left + 170 > vw - 10) left = rect.left - 176;
-                if (top + 120 > vh - 10) top = vh - 130;
-                if (top < 0) top = 4;
-                el.style.top = top + "px";
-                el.style.left = left + "px";
-              }}
-            >
-              <div className="graph-node-todo-done-title">已完成</div>
-              {todoLines.map((line, idx) => {
-                const hist = todoHistByItem.get(line);
-                if (hist?.doneDate == null) return null;
-                return (
-                  <div key={idx} className="graph-node-todo-item done">
-                    <CopyIconButton
-                      value={line}
-                      label="Todo"
-                      className="graph-node-todo-copy-button"
-                    />
-                    <input
-                      type="checkbox"
-                      checked={true}
-                      onClick={(event) => event.stopPropagation()}
-                      onChange={() => h.toggleTodo?.(line)}
-                    />
-                    <InlineEditableText
-                      value={line}
-                      className="graph-node-todo-text"
-                      inputClassName="graph-node-todo-edit"
-                      title={`添加日期：${itemAddedDate(hist) || "未知"}；完成日期：${hist.doneDate}；双击编辑`}
-                      onCommit={(nextText) => h.updateTodo?.(hist.id, nextText)}
-                    />
-                    <span className="graph-node-todo-done-date" title={`添加日期：${itemAddedDate(hist) || "未知"}`}>
-                      添 {itemAddedDate(hist) || "-"} / 完 {hist.doneDate}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         {/* inline date */}
@@ -735,6 +695,7 @@ function GraphCanvas({
   syncTodoItems,
   updateRecord,
   updateRecordDate,
+  openTodo,
 }) {
   const { screenToFlowPosition } = useReactFlow();
   const [contextMenu, setContextMenu] = useState(null);
@@ -802,6 +763,9 @@ function GraphCanvas({
               toggleTodo: (text) => toggleTodoItem?.(record?.id, text),
               deleteTodo: (text) => deleteTodoItem?.(record?.id, text),
               updateTodo: (historyId, text) => updateTodoHistoryItem?.(record?.id, historyId, text),
+              openTodo: (todo) => {
+                if (record && todo) openTodo?.(record, todo);
+              },
               addDate: (date, item) => {
                 if (dateKey && record) updateRecordDate?.(record.id, dateKey, date, item);
               },
@@ -835,6 +799,7 @@ function GraphCanvas({
       updateTodoHistoryItem,
       updateRecord,
       updateRecordDate,
+      openTodo,
       syncTodoItems,
       statusOptions,
       statusById,
@@ -1136,6 +1101,7 @@ export default function KnowledgeGraph({
   updateStatusHistoryItem,
   updateTodoHistoryItem,
   syncTodoItems,
+  openTodo,
 }) {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceCategories, setSourceCategories] = useState([]);
@@ -1466,6 +1432,7 @@ export default function KnowledgeGraph({
             syncTodoItems={syncTodoItems}
             updateRecord={updateRecord}
             updateRecordDate={updateRecordDate}
+            openTodo={openTodo}
           />
         </ReactFlowProvider>
         {(graphNodes.length === 0 || visibleGraphNodeCount === 0) && (

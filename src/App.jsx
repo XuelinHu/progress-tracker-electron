@@ -31,6 +31,7 @@ import PortalPopover from "./components/PortalPopover.jsx";
 import CopyIconButton from "./components/CopyIconButton.jsx";
 import CopyableControl from "./components/CopyableControl.jsx";
 import InlineEditableText from "./components/InlineEditableText.jsx";
+import TodoEditorModal from "./components/TodoEditorModal.jsx";
 import CalendarBoard from "./components/CalendarBoard.jsx";
 import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import StatisticsBoard from "./components/StatisticsBoard.jsx";
@@ -648,12 +649,7 @@ function App() {
     ]);
   }, [calendarItems, records]);
 
-  function openTodoDetail(event, record, todo) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const width = Math.min(560, window.innerWidth - 24);
-    const height = 380;
-    const showAbove = window.innerHeight - rect.bottom < height && rect.top > height;
-    const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+  function openTodoDetail(record, todo) {
     setTodoDetail({
       recordTitle: getRecordTitle(record),
       recordId: record.id,
@@ -662,9 +658,7 @@ function App() {
       details: todo?.details || "暂无详情",
       addedDate: itemAddedDate(todo) || "未知",
       doneDate: todo?.doneDate || "",
-      top: showAbove ? Math.max(12, rect.top - height - 8) : Math.min(window.innerHeight - height - 12, rect.bottom + 8),
-      left,
-      width,
+      done: Boolean(todo?.doneDate),
     });
   }
 
@@ -1973,19 +1967,40 @@ function App() {
     );
   }
 
-  function updateTodoDetails(recordId, historyId, details) {
-    if (!historyId) return;
+  function saveTodoEditor(recordId, todoId, patch) {
     const updatedAt = new Date().toISOString();
+    const completed = Boolean(patch.done);
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
         const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
-          entry.id === historyId && entry.type === RECORD_ITEM_TYPES.TODO
-            ? { ...entry, details: String(details ?? ""), updatedAt }
+          entry.id === todoId && entry.type === RECORD_ITEM_TYPES.TODO
+            ? {
+                ...entry,
+                text: patch.text,
+                details: patch.details,
+                status: completed ? "done" : "active",
+                doneDate: completed ? entry.doneDate || today() : null,
+                doneAt: completed ? entry.doneAt || updatedAt : null,
+                updatedAt,
+              }
             : entry,
         );
         return syncTodoItemsLegacy(record, nextItems);
       }),
+    );
+    setCalendarItems((current) =>
+      current.map((item) =>
+        item.recordId === recordId && item.todoId === todoId
+          ? {
+              ...item,
+              title: patch.text,
+              description: patch.details,
+              status: completed ? CALENDAR_DONE_STATUS.id : "进行中",
+              updatedAt,
+            }
+          : item,
+      ),
     );
   }
 
@@ -3381,7 +3396,7 @@ function App() {
                   key={`a-${idx}-${trimmed.substring(0, 12)}`}
                   className="todo-item"
                   title={`添加日期：${addedDate || "未知"}；详情：${hist?.details || "无"}`}
-                  onClick={(event) => openTodoDetail(event, record, hist)}
+                  onClick={() => openTodoDetail(record, hist)}
                 >
                   <button
                     className="todo-delete-btn"
@@ -3400,13 +3415,7 @@ function App() {
                     onClick={(event) => event.stopPropagation()}
                     onChange={() => toggleTodoItem(record.id, trimmed)}
                   />
-                  <InlineEditableText
-                    value={trimmed}
-                    className="todo-text"
-                    inputClassName="todo-inline-edit"
-                    title={`添加日期：${addedDate || "未知"}；双击编辑`}
-                    onCommit={(nextText) => hist?.id && updateTodoHistoryItem(record.id, hist.id, nextText)}
-                  />
+                  <span className="todo-text">{trimmed}</span>
                   <span className="todo-date">{addedDate}</span>
                 </div>
               );
@@ -3444,7 +3453,7 @@ function App() {
                     key={`d-${idx}-${trimmed.substring(0, 12)}`}
                     className="todo-item done"
                     title={`添加日期：${addedDate || "未知"}；完成日期：${hist?.doneDate || "未知"}；详情：${hist?.details || "无"}`}
-                    onClick={(event) => openTodoDetail(event, record, hist)}
+                    onClick={() => openTodoDetail(record, hist)}
                   >
                     <CopyIconButton
                       value={trimmed}
@@ -3458,13 +3467,7 @@ function App() {
                       onClick={(event) => event.stopPropagation()}
                       onChange={() => toggleTodoItem(record.id, trimmed)}
                     />
-                    <InlineEditableText
-                      value={trimmed}
-                      className="todo-text"
-                      inputClassName="todo-inline-edit"
-                      title={`添加日期：${addedDate || "未知"}；完成日期：${hist?.doneDate || "未知"}；双击编辑`}
-                      onCommit={(nextText) => hist?.id && updateTodoHistoryItem(record.id, hist.id, nextText)}
-                    />
+                    <span className="todo-text">{trimmed}</span>
                     <span className="todo-date todo-date-stack">
                       <span>添 {addedDate || "-"}</span>
                       <span>完 {hist?.doneDate || "-"}</span>
@@ -3703,6 +3706,7 @@ function App() {
             updateStatusHistoryItem={updateStatusHistoryItem}
             updateTodoHistoryItem={updateTodoHistoryItem}
             syncTodoItems={syncTodoItems}
+            openTodo={openTodoDetail}
           />
         ) : isCalendarView ? (
           <CalendarBoard
@@ -3718,6 +3722,7 @@ function App() {
             copyCalendarItem={copyCalendarItem}
             openCalendarItemModal={openCalendarItemModal}
             openRecord={openRecordFromCalendar}
+            openTodo={openTodoDetail}
           />
         ) : isStatisticsView ? (
           <StatisticsBoard
@@ -3904,43 +3909,11 @@ function App() {
         )}
       </main>
       {renderCreateModal()}
-      {todoDetail && (
-        <div
-          className="todo-detail-popover"
-          style={{ top: todoDetail.top, left: todoDetail.left, width: todoDetail.width }}
-          role="dialog"
-          aria-label={`${todoDetail.text} 详情`}
-        >
-          <div className="todo-detail-popover-head">
-            <strong>{todoDetail.text}</strong>
-            <button type="button" onClick={() => setTodoDetail(null)} title="关闭详情" aria-label="关闭详情">
-              <X size={17} />
-            </button>
-          </div>
-          <div className="todo-detail-record">{todoDetail.recordTitle}</div>
-          <dl className="todo-detail-meta">
-            <div><dt>添加日期</dt><dd>{todoDetail.addedDate}</dd></div>
-            {todoDetail.doneDate && <div><dt>完成日期</dt><dd>{todoDetail.doneDate}</dd></div>}
-          </dl>
-          <textarea
-            className="todo-detail-content"
-            value={todoDetail.details}
-            onChange={(event) => setTodoDetail((current) => ({ ...current, details: event.target.value }))}
-            aria-label={`${todoDetail.text} 详情`}
-          />
-          <div className="todo-detail-actions">
-            <button
-              className="todo-detail-save"
-              type="button"
-              onClick={() => updateTodoDetails(todoDetail.recordId, todoDetail.todoId, todoDetail.details)}
-              title="保存详情"
-              aria-label="保存详情"
-            >
-              <Save size={17} />
-            </button>
-          </div>
-        </div>
-      )}
+      <TodoEditorModal
+        todo={todoDetail}
+        onSave={(patch) => saveTodoEditor(todoDetail.recordId, todoDetail.todoId, patch)}
+        onClose={() => setTodoDetail(null)}
+      />
     </div>
   );
 }

@@ -1895,104 +1895,6 @@ button {
   background: #f1f5f9;
 }
 
-.todo-detail-popover {
-  position: fixed;
-  z-index: 2147483640;
-  max-width: calc(100vw - 24px);
-  max-height: min(380px, calc(100vh - 24px));
-  display: grid;
-  gap: 10px;
-  overflow: auto;
-  padding: 14px;
-  border: 1px solid #94a3b8;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.24);
-  color: #172033;
-  font-size: 14px;
-}
-
-.todo-detail-popover-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #dbe1ea;
-  font-size: 16px;
-}
-
-.todo-detail-popover-head button {
-  width: 26px;
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  padding: 0;
-  border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: #475569;
-  cursor: pointer;
-}
-
-.todo-detail-popover-head button:hover { background: #e2e8f0; color: #0f172a; }
-.todo-detail-record { color: #475569; font-size: 13px; }
-
-.todo-detail-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 18px;
-  margin: 0;
-}
-
-.todo-detail-meta div { display: flex; gap: 6px; }
-.todo-detail-meta dt { color: #64748b; }
-.todo-detail-meta dd { margin: 0; color: #172033; font-weight: 700; }
-
-.todo-detail-content {
-  width: 100%;
-  min-height: 110px;
-  padding: 10px;
-  border: 1px solid #dbe1ea;
-  border-radius: 5px;
-  background: #f8fafc;
-  line-height: 1.65;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  resize: vertical;
-  color: #172033;
-  font: inherit;
-  outline: 0;
-}
-
-.todo-detail-content:focus {
-  border-color: var(--category-accent);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--category-accent) 14%, transparent);
-}
-
-.todo-detail-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.todo-detail-save {
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid #86efac;
-  border-radius: 5px;
-  background: #f0fdf4;
-  color: #166534;
-  cursor: pointer;
-}
-
-.todo-detail-save:hover { background: #dcfce7; color: #14532d; }
-
 .todo-item.done .todo-text {
   color: #16a34a;
   text-decoration: line-through;
@@ -3066,6 +2968,55 @@ button {
 .calendar-schedule-actions .calendar-schedule-submit svg,
 .calendar-schedule-actions .calendar-schedule-submit span {
   color: #ffffff !important;
+}
+
+.todo-editor-backdrop {
+  z-index: 2147483640;
+}
+
+.todo-editor-modal {
+  width: min(620px, 94vw);
+}
+
+.todo-editor-modal .calendar-schedule-field textarea {
+  min-height: 180px;
+}
+
+.todo-editor-modal .calendar-schedule-statuses label {
+  --status-bg: #dbeafe;
+  --status-color: #1d4ed8;
+  --status-border: #93c5fd;
+}
+
+.todo-editor-modal .calendar-schedule-statuses label:nth-child(2) {
+  --status-bg: #dcfce7;
+  --status-color: #166534;
+  --status-border: #86efac;
+}
+
+.todo-editor-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.todo-editor-dates div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.todo-editor-dates dt {
+  color: #64748b;
+}
+
+.todo-editor-dates dd {
+  margin: 0;
+  color: #172033;
+  font-weight: 720;
 }
 
 .other-items-list {
