@@ -1391,6 +1391,12 @@ button {
   min-width: 0;
 }
 
+.row-status-control,
+.row-status-control .status-history-field {
+  display: flex;
+  justify-content: center;
+}
+
 .row-action-buttons {
   display: flex;
   align-items: center;
@@ -2237,6 +2243,8 @@ button {
   background: var(--status-bg);
   color: var(--status-color);
   font-weight: 700;
+  text-align: center;
+  text-align-last: center;
 }
 
 .status-config-page {
