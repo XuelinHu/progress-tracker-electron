@@ -2119,6 +2119,10 @@ button {
   text-align: center;
 }
 
+.combined-field-cell textarea.combined-path-input {
+  text-align: left;
+}
+
 .combined-field-cell {
   width: 100%;
   min-width: 0;

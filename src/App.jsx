@@ -3118,7 +3118,9 @@ function App() {
                   }
                 >
                   <textarea
-                    className="cell-input cell-textarea combined-field-input"
+                    className={`cell-input cell-textarea combined-field-input ${
+                      childField.type === "path" ? "combined-path-input" : ""
+                    }`}
                     rows={childField.type === "textarea" ? estimateTextRows(record[childField.key], childField.key) : 2}
                     value={record[childField.key] ?? ""}
                     onFocus={() => setSelectedId(record.id)}
