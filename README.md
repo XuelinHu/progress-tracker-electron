@@ -63,6 +63,40 @@ npm run dev
 ```bash
 npm run check
 ```
+
+## PM2 开机自启
+
+生产预览使用 PM2 管理，服务名为 `progress-tracker-electron`。首次配置或 PM2 进程列表丢失时，在项目根目录执行：
+
+```bash
+npm run build
+pm2 start npm --name progress-tracker-electron -- run preview
+pm2 save
+```
+
+为当前用户安装 systemd 自启动单元（仅首次需要，需管理员权限）：
+
+```bash
+sudo env PATH=$PATH:/home/xuelin/.nvm/versions/node/v24.14.1/bin pm2 startup systemd -u xuelin --hp /home/xuelin
+pm2 save
+```
+
+代码更新后的重建与服务重启：
+
+```bash
+npm run build
+pm2 restart progress-tracker-electron
+pm2 save
+```
+
+验证 PM2 自启动和预览服务：
+
+```bash
+systemctl is-enabled pm2-xuelin
+pm2 status
+curl -fsS http://127.0.0.1:4003/ > /dev/null
+```
+
 <!-- codex-runtime-config:start -->
 ## 运行配置与数据存储
 
