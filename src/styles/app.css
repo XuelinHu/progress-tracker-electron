@@ -630,6 +630,36 @@ button {
   font-size: 11px;
 }
 
+.calendar-view-switch {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.calendar-view-switch button {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid #cbd5e1;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.calendar-view-switch button:last-child {
+  border-right: 0;
+}
+
+.calendar-view-switch button.selected {
+  background: #e0e7ff;
+  color: #3730a3;
+  font-weight: 700;
+}
+
 .calendar-week-head {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

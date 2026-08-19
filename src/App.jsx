@@ -1087,6 +1087,76 @@ function App() {
     return historyId;
   }
 
+  function scheduleRecordDate(recordId, fieldKey, date, item, options = {}) {
+    const historyId = createId("date-history");
+    const todoText = String(options.todoItem || "").trim();
+    const completed = Boolean(options.todoCompleted);
+    const changedAt = new Date().toISOString();
+    setRecords((current) =>
+      current.map((record) => {
+        if (record.id !== recordId) {
+          return record;
+        }
+        const baseItems = record.items ?? buildRecordItemsFromLegacy(record);
+        const dateItem = createRecordItem({
+          id: historyId,
+          recordId: record.id,
+          type: RECORD_ITEM_TYPES.TODO,
+          text: item,
+          details: item,
+          date,
+          sourceField: fieldKey,
+        });
+        const nextItems = [...baseItems, dateItem];
+        if (todoText) {
+          const todoIndex = nextItems.findIndex(
+            (entry) => entry.type === RECORD_ITEM_TYPES.TODO && entry.text === todoText,
+          );
+          if (todoIndex >= 0) {
+            nextItems[todoIndex] = {
+              ...nextItems[todoIndex],
+              status: completed ? "done" : "active",
+              doneDate: completed ? date : null,
+              doneAt: completed ? changedAt : null,
+              updatedAt: changedAt,
+            };
+          } else {
+            nextItems.push(createRecordItem({
+              recordId: record.id,
+              type: RECORD_ITEM_TYPES.TODO,
+              text: todoText,
+              date,
+              status: completed ? "done" : "active",
+              doneDate: completed ? date : null,
+              doneAt: completed ? changedAt : null,
+            }));
+          }
+        }
+        const dateHistory = record.dateHistory ?? {};
+        const nextRecord = {
+          ...record,
+          ...(options.updatePrimaryDate ? { [fieldKey]: date } : {}),
+          ...(options.status ? { status: options.status } : {}),
+          dateHistory: {
+            ...dateHistory,
+            [fieldKey]: [
+              ...(dateHistory[fieldKey] ?? []),
+              { id: historyId, date, item, details: item, createdAt: changedAt, updatedAt: changedAt },
+            ],
+          },
+          items: nextItems,
+        };
+        return normalizeRecord(appendRecordHistory(nextRecord, [
+          createHistoryEntry({
+            date: today(),
+            status: options.status || record.status || "",
+            summary: `新增${getFieldLabel(record, fieldKey)}事项：${item || date || "未填写事项"}`,
+          }),
+        ]));
+      }),
+    );
+  }
+
   function removeRecordDate(recordId, fieldKey, date, historyId = "") {
     setRecords((current) =>
       current.map((record) => {
@@ -3372,8 +3442,27 @@ function App() {
           event.target.value = "";
         }
       }
-      const doneItems = lines.filter((l) => histByItem.get(l)?.doneDate != null);
-      const activeItems = lines.filter((l) => !histByItem.get(l)?.doneDate);
+      const todoEntries = lines
+        .map((line, idx) => {
+          const trimmed = line.trim();
+          const hist = histByItem.get(trimmed);
+          return {
+            line: trimmed,
+            hist,
+            index: idx,
+            done: Boolean(hist?.doneDate || hist?.status === "done"),
+          };
+        })
+        .filter((entry) => entry.line);
+      const doneItems = todoEntries
+        .filter((entry) => entry.done)
+        .sort((left, right) =>
+          String(right.hist?.doneAt || right.hist?.doneDate || "").localeCompare(
+            String(left.hist?.doneAt || left.hist?.doneDate || ""),
+          ) || right.index - left.index,
+        );
+      const activeItems = todoEntries.filter((entry) => !entry.done);
+      const orderedTodoItems = [...activeItems, ...doneItems];
       const completionRate = lines.length ? Math.round((doneItems.length / lines.length) * 100) : 0;
       return (
         <div className="todo-cell">
@@ -3386,24 +3475,21 @@ function App() {
                 <strong>已完成 {doneItems.length} / 共 {lines.length} 项 · 完成率 {completionRate}%</strong>
               </div>
             )}
-            {activeItems.map((line, idx) => {
-              const trimmed = line.trim();
-              if (!trimmed) return null;
-              const hist = histByItem.get(trimmed);
+            {orderedTodoItems.map(({ line: trimmed, hist, done }, idx) => {
               const addedDate = itemAddedDate(hist);
               return (
                 <div
-                  key={`a-${idx}-${trimmed.substring(0, 12)}`}
-                  className="todo-item"
-                  title={`添加日期：${addedDate || "未知"}；详情：${hist?.details || "无"}`}
+                  key={`${done ? "d" : "a"}-${hist?.id || idx}-${trimmed.substring(0, 12)}`}
+                  className={`todo-item ${done ? "done" : ""}`}
+                  title={`添加日期：${addedDate || "未知"}${done ? `；完成日期：${hist?.doneDate || "未知"}` : ""}；详情：${hist?.details || "无"}`}
                   onClick={() => openTodoDetail(record, hist)}
                 >
-                  <button
+                  {!done && <button
                     className="todo-delete-btn"
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteTodoItem(record.id, hist?.id || trimmed); }}
                     title="删除此项"
-                  >×</button>
+                  >×</button>}
                   <CopyIconButton
                     value={trimmed}
                     label="Todo"
@@ -3412,71 +3498,18 @@ function App() {
                   <input
                     type="checkbox"
                     className="todo-checkbox"
+                    checked={done}
                     onClick={(event) => event.stopPropagation()}
                     onChange={() => toggleTodoItem(record.id, trimmed)}
                   />
                   <span className="todo-text">{trimmed}</span>
-                  <span className="todo-date">{addedDate}</span>
+                  <span className={`todo-date ${done ? "todo-date-stack" : ""}`}>
+                    {done ? <><span>添 {addedDate || "-"}</span><span>完 {hist?.doneDate || "-"}</span></> : addedDate}
+                  </span>
                 </div>
               );
             })}
           </div>
-          {doneItems.length > 0 && (
-            <div
-              className="todo-done-popover"
-              ref={(el) => {
-                if (!el) return;
-                const rect = el.parentElement?.getBoundingClientRect();
-                if (!rect) return;
-                const vw = window.innerWidth;
-                const vh = window.innerHeight;
-                const pw = Math.min(560, vw - 20);
-                const ph = Math.min(340, doneItems.length * 32 + 42);
-                let left = rect.right + 6;
-                let top = rect.top;
-                if (left + pw > vw - 10) left = rect.left - pw - 6;
-                left = Math.min(Math.max(10, left), vw - pw - 10);
-                if (top + ph > vh - 10) top = vh - ph - 10;
-                if (top < 0) top = 4;
-                el.style.top = top + "px";
-                el.style.left = left + "px";
-              }}
-            >
-              <div className="todo-done-title">已完成 ({doneItems.length})</div>
-              {doneItems.map((line, idx) => {
-                const trimmed = line.trim();
-                if (!trimmed) return null;
-                const hist = histByItem.get(trimmed);
-                const addedDate = itemAddedDate(hist);
-                return (
-                  <div
-                    key={`d-${idx}-${trimmed.substring(0, 12)}`}
-                    className="todo-item done"
-                    title={`添加日期：${addedDate || "未知"}；完成日期：${hist?.doneDate || "未知"}；详情：${hist?.details || "无"}`}
-                    onClick={() => openTodoDetail(record, hist)}
-                  >
-                    <CopyIconButton
-                      value={trimmed}
-                      label="Todo"
-                      className="todo-copy-button"
-                    />
-                    <input
-                      type="checkbox"
-                      className="todo-checkbox"
-                      checked={true}
-                      onClick={(event) => event.stopPropagation()}
-                      onChange={() => toggleTodoItem(record.id, trimmed)}
-                    />
-                    <span className="todo-text">{trimmed}</span>
-                    <span className="todo-date todo-date-stack">
-                      <span>添 {addedDate || "-"}</span>
-                      <span>完 {hist?.doneDate || "-"}</span>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
           <CopyableControl
             value={todoText}
             label={`${getRecordTitle(record)} Todo`}
@@ -3715,6 +3748,7 @@ function App() {
             statusOptions={calendarStatusOptions}
             updateRecord={updateRecord}
             updateRecordDate={updateRecordDate}
+            scheduleRecordDate={scheduleRecordDate}
             removeRecordDate={removeRecordDate}
             addCalendarItem={addCalendarItem}
             updateCalendarItem={updateCalendarItem}

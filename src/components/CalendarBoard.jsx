@@ -57,6 +57,12 @@ function shiftIsoDateByMonth(isoDate, offset) {
   return toIsoDate(new Date(targetMonth.getFullYear(), targetMonth.getMonth(), Math.min(source.getDate(), lastDay)));
 }
 
+function shiftIsoDateByWeek(isoDate, offset) {
+  const source = toLocalDate(isoDate) || new Date();
+  source.setDate(source.getDate() + offset * 7);
+  return toIsoDate(source);
+}
+
 function getRecordTitle(record) {
   return record?.title?.trim() || "未命名记录";
 }
@@ -159,7 +165,9 @@ function getCalendarTodoItem(record, dateIso) {
 }
 
 function isCalendarTodoDone(record, item) {
-  return (record?.todoHistory ?? []).some((entry) => entry.item === item && entry.doneDate);
+  return (record?.todoHistory ?? []).some(
+    (entry) => entry.item === item && (entry.doneDate || entry.status === "done"),
+  );
 }
 
 function normalizeDurationMinutes(value) {
@@ -393,12 +401,24 @@ function buildMonthDays(monthDate) {
   ];
 }
 
+function buildWeekDays(date) {
+  const source = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const sunday = new Date(source);
+  sunday.setDate(source.getDate() - source.getDay());
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(sunday);
+    day.setDate(sunday.getDate() + index);
+    return { key: toIsoDate(day), iso: toIsoDate(day), day: day.getDate(), blank: false };
+  });
+}
+
 export default function CalendarBoard({
   records,
   calendarItems = [],
   statusOptions = [],
   updateRecord,
   updateRecordDate,
+  scheduleRecordDate,
   removeRecordDate,
   addCalendarItem,
   updateCalendarItem,
@@ -408,6 +428,7 @@ export default function CalendarBoard({
   openTodo,
 }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
+  const [calendarView, setCalendarView] = useState("month");
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilters, setCategoryFilters] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -423,6 +444,8 @@ export default function CalendarBoard({
   );
 
   const monthDays = useMemo(() => buildMonthDays(monthDate), [monthDate]);
+  const weekDays = useMemo(() => buildWeekDays(monthDate), [monthDate]);
+  const visibleDays = calendarView === "week" ? weekDays : monthDays;
   const visibleRecords = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
     return records.filter((record) => {
@@ -535,14 +558,26 @@ export default function CalendarBoard({
   );
 
   function moveMonth(offset) {
-    setMonthDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
+    setMonthDate((current) => {
+      if (calendarView === "week") {
+        const next = new Date(current);
+        next.setDate(next.getDate() + offset * 7);
+        return next;
+      }
+      return new Date(current.getFullYear(), current.getMonth() + offset, 1);
+    });
   }
 
   function handleMonthDragOver(event, offset) {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-    const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + offset, 1);
-    const targetKey = `${nextMonth.getFullYear()}-${nextMonth.getMonth()}`;
+    const nextMonth = new Date(monthDate);
+    if (calendarView === "week") {
+      nextMonth.setDate(nextMonth.getDate() + offset * 7);
+    } else {
+      nextMonth.setMonth(nextMonth.getMonth() + offset, 1);
+    }
+    const targetKey = `${nextMonth.getFullYear()}-${nextMonth.getMonth()}-${nextMonth.getDate()}`;
     if (monthDragTargetRef.current !== targetKey) {
       monthDragTargetRef.current = targetKey;
       setMonthDate(nextMonth);
@@ -556,18 +591,22 @@ export default function CalendarBoard({
     if (calendarItemId) {
       const item = calendarItems.find((entry) => String(entry.id) === calendarItemId);
       if (!item) return;
-      const date = shiftIsoDateByMonth(item.date || item.startDate || todayIso, offset);
+      const date = calendarView === "week"
+        ? shiftIsoDateByWeek(item.date || item.startDate || todayIso, offset)
+        : shiftIsoDateByMonth(item.date || item.startDate || todayIso, offset);
       updateCalendarItem?.(item.id, { date, startDate: date, endDate: date });
       const target = toLocalDate(date);
-      setMonthDate(new Date(target.getFullYear(), target.getMonth(), 1));
+      setMonthDate(calendarView === "week" ? target : new Date(target.getFullYear(), target.getMonth(), 1));
       return;
     }
     const recordId = event.dataTransfer.getData(DRAG_TYPE);
     const record = records.find((entry) => entry.id === recordId);
     if (record) {
-      const date = shiftIsoDateByMonth(getRecordDate(record) || todayIso, offset);
+      const date = calendarView === "week"
+        ? shiftIsoDateByWeek(getRecordDate(record) || todayIso, offset)
+        : shiftIsoDateByMonth(getRecordDate(record) || todayIso, offset);
       const target = toLocalDate(date);
-      setMonthDate(new Date(target.getFullYear(), target.getMonth(), 1));
+      setMonthDate(calendarView === "week" ? target : new Date(target.getFullYear(), target.getMonth(), 1));
       openRecordScheduleDraft(record, date);
     }
   }
@@ -614,7 +653,7 @@ export default function CalendarBoard({
       return;
     }
     const referenceTodos = (record.todoHistory ?? [])
-      .filter((entry) => entry.item && !entry.doneDate)
+      .filter((entry) => entry.item && !entry.doneDate && entry.status !== "done")
       .map((entry) => entry.item);
     setScheduleDraft({
       recordId: record.id,
@@ -717,36 +756,42 @@ export default function CalendarBoard({
       return;
     }
     const existingTodoItem = scheduleDraft.referenceTodos?.includes(item) ? item : "";
+    const record = records.find((entry) => entry.id === scheduleDraft.recordId);
+    const todoItem = existingTodoItem || formatScheduleItem(
+      `${scheduleDraft.date} 日历事项：`, item, durationMinutes, distanceKm,
+    );
     const dateHistoryItem = existingTodoItem
-      ? formatScheduleItem("", item, durationMinutes, distanceKm)
+      ? formatScheduleItem(`${scheduleDraft.date} 日历事项：`, item, durationMinutes, distanceKm)
       : formatScheduleItem(
           `${scheduleDraft.date === todayIso ? "今天" : "日历"}事项：`,
           item,
           durationMinutes,
           distanceKm,
         );
-    updateRecordDate?.(
-      scheduleDraft.recordId,
-      scheduleDraft.fieldKey,
-      scheduleDraft.date,
-      dateHistoryItem,
-    );
-    const record = records.find((entry) => entry.id === scheduleDraft.recordId);
-    const todoItem = existingTodoItem || formatScheduleItem(
-      `${scheduleDraft.date} 日历事项：`, item, durationMinutes, distanceKm,
-    );
     const isDone = nextStatus === DONE_STATUS;
-    updateRecord?.(scheduleDraft.recordId, {
-      ...(existingTodoItem
-        ? isDone
-          ? buildTodoCompletionPatch(record, todoItem, scheduleDraft.date, true)
-          : {}
-        : isDone
+    if (scheduleRecordDate) {
+      scheduleRecordDate(
+        scheduleDraft.recordId,
+        scheduleDraft.fieldKey,
+        scheduleDraft.date,
+        dateHistoryItem,
+        {
+          todoItem,
+          todoCompleted: isDone,
+          status: nextStatus,
+          updatePrimaryDate: !scheduleDraft.existsOnDate,
+        },
+      );
+    } else {
+      updateRecordDate?.(scheduleDraft.recordId, scheduleDraft.fieldKey, scheduleDraft.date, dateHistoryItem);
+      updateRecord?.(scheduleDraft.recordId, {
+        ...(isDone
           ? buildTodoCompletionPatch(record, todoItem, scheduleDraft.date, true)
           : buildTodoPatch(record, todoItem, scheduleDraft.date)),
-      ...(scheduleDraft.existsOnDate ? {} : { [scheduleDraft.fieldKey]: scheduleDraft.date }),
-      status: nextStatus,
-    });
+        ...(scheduleDraft.existsOnDate ? {} : { [scheduleDraft.fieldKey]: scheduleDraft.date }),
+        status: nextStatus,
+      });
+    }
     closeScheduleDraft();
   }
 
@@ -997,11 +1042,13 @@ export default function CalendarBoard({
             onDrop={(event) => handleMonthDrop(event, -1)}
           >
             <ChevronLeft size={16} />
-            <span>上月</span>
+            <span>{calendarView === "week" ? "上周" : "上月"}</span>
           </button>
           <div>
             <h2>
-              {monthDate.getFullYear()}年{monthDate.getMonth() + 1}月
+              {calendarView === "week"
+                ? `${weekDays[0]?.iso} 至 ${weekDays[6]?.iso}`
+                : `${monthDate.getFullYear()}年${monthDate.getMonth() + 1}月`}
             </h2>
             <p>拖到日期格后可选择“进行中”或“已完成”，日期历史会自动追加。</p>
           </div>
@@ -1012,9 +1059,21 @@ export default function CalendarBoard({
             onDragOver={(event) => handleMonthDragOver(event, 1)}
             onDrop={(event) => handleMonthDrop(event, 1)}
           >
-            <span>下月</span>
+            <span>{calendarView === "week" ? "下周" : "下月"}</span>
             <ChevronRight size={16} />
           </button>
+          <div className="calendar-view-switch" role="group" aria-label="日历视图">
+            <button
+              type="button"
+              className={calendarView === "month" ? "selected" : ""}
+              onClick={() => setCalendarView("month")}
+            >月视图</button>
+            <button
+              type="button"
+              className={calendarView === "week" ? "selected" : ""}
+              onClick={() => setCalendarView("week")}
+            >周视图</button>
+          </div>
         </div>
 
         <div className="calendar-week-head">
@@ -1023,7 +1082,7 @@ export default function CalendarBoard({
           ))}
         </div>
         <div className="calendar-grid">
-          {monthDays.map((day) => {
+          {visibleDays.map((day) => {
             const dayRecords = day.iso ? recordsByDate.get(day.iso) ?? [] : [];
             const dayCustomItems = day.iso ? calendarItemsByDate.get(day.iso) ?? [] : [];
             const visibleEntries = [
