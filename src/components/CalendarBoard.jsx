@@ -953,7 +953,7 @@ export default function CalendarBoard({
   }
 
   return (
-    <section className="workspace calendar-page">
+    <section className={`workspace calendar-page calendar-view-${calendarView}`}>
       <aside className="calendar-source-panel">
         <div className="calendar-panel-title">
           <CalendarDays size={16} />
@@ -1032,7 +1032,7 @@ export default function CalendarBoard({
         </div>
       </aside>
 
-      <div className="calendar-board">
+      <div className={`calendar-board calendar-board-${calendarView}`}>
         <div className="calendar-toolbar">
           <button
             className="icon-button"
@@ -1076,12 +1076,12 @@ export default function CalendarBoard({
           </div>
         </div>
 
-        <div className="calendar-week-head">
+        <div className={`calendar-week-head calendar-week-head-${calendarView}`}>
           {["日", "一", "二", "三", "四", "五", "六"].map((item) => (
             <span key={item}>周{item}</span>
           ))}
         </div>
-        <div className="calendar-grid">
+        <div className={`calendar-grid calendar-grid-${calendarView}`}>
           {visibleDays.map((day) => {
             const dayRecords = day.iso ? recordsByDate.get(day.iso) ?? [] : [];
             const dayCustomItems = day.iso ? calendarItemsByDate.get(day.iso) ?? [] : [];
