@@ -8,46 +8,6 @@ export const STATUSES = [
     border: "#93c5fd",
   },
   {
-    id: "开发完成",
-    label: "开发完成",
-    priority: 40,
-    color: "#137333",
-    bg: "#dcfce7",
-    border: "#86efac",
-  },
-  {
-    id: "已提交系统",
-    label: "已提交系统",
-    priority: 20,
-    color: "#4338ca",
-    bg: "#e0e7ff",
-    border: "#a5b4fc",
-  },
-  {
-    id: "已提交",
-    label: "已提交",
-    priority: 30,
-    color: "#4d7c0f",
-    bg: "#ecfccb",
-    border: "#bef264",
-  },
-  {
-    id: "返修中",
-    label: "返修中",
-    priority: 0,
-    color: "#be123c",
-    bg: "#ffe4e6",
-    border: "#fda4af",
-  },
-  {
-    id: "等待",
-    label: "等待",
-    priority: 60,
-    color: "#7c3aed",
-    bg: "#f3e8ff",
-    border: "#d8b4fe",
-  },
-  {
     id: "暂缓",
     label: "暂缓",
     priority: 50,
@@ -63,23 +23,12 @@ export const STATUSES = [
     bg: "#e2e8f0",
     border: "#94a3b8",
   },
-  {
-    id: "结束",
-    label: "结束",
-    priority: 1000,
-    color: "#44403c",
-    bg: "#f5f5f4",
-    border: "#a8a29e",
-  },
-  {
-    id: "其他",
-    label: "其他",
-    priority: 90,
-    color: "#be185d",
-    bg: "#fce7f3",
-    border: "#f9a8d4",
-  },
 ];
+
+export function normalizeStatusId(value) {
+  const status = String(value ?? "").trim();
+  return status === "已完成" || status === "暂缓" ? status : "进行中";
+}
 
 export const STATUS_BY_ID = Object.fromEntries(
   STATUSES.map((status) => [status.id, status]),

@@ -173,7 +173,7 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
         id: "todo-delete-regression",
         categoryId: "software",
         title: "Todo 删除回归记录",
-        status: "进行中",
+        status: "开发完成",
         items: [
           {
             id: "legacy-completed-todo",
@@ -193,8 +193,8 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
         dateHistory: { startDate: [{ id: "deleted-date-todo", item: "已删除 Todo 不应复生" }] },
       },
     ],
-    calendarItems: [],
-    statusOptions: [],
+    calendarItems: [{ id: "legacy-calendar-status", title: "历史日历状态", status: "结束" }],
+    statusOptions: [{ id: "开发完成", label: "开发完成" }, { id: "其他", label: "其他" }],
     graph: { nodes: [], edges: [] },
   };
   const todoWriteResponse = await request(port, "/api/state", { method: "PUT", body: todoState });
@@ -210,4 +210,15 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
   assert.equal("todo" in savedTodoRecord, false, "规范数据不得保留旧 Todo 文本字段");
   assert.equal("todoHistory" in savedTodoRecord, false, "规范数据不得保留旧 Todo 历史字段");
   assert.equal("dateHistory" in savedTodoRecord, false, "规范数据不得保留旧日期历史字段");
+  assert.equal(savedTodoRecord?.status, "进行中", "已完成和暂缓以外的历史状态必须归一为进行中");
+  assert.deepEqual(
+    todoResult.rows[0]?.data?.statusOptions?.map((status) => status.id),
+    ["进行中", "暂缓", "已完成"],
+    "状态配置只能保留进行中、暂缓、已完成",
+  );
+  assert.deepEqual(
+    todoResult.rows[0]?.data?.calendarItems?.map((item) => item.status),
+    ["进行中"],
+    "日历中的其他历史状态必须归一为进行中",
+  );
 });

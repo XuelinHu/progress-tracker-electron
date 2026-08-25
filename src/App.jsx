@@ -37,7 +37,7 @@ import KnowledgeGraph from "./components/KnowledgeGraph.jsx";
 import StatisticsBoard from "./components/StatisticsBoard.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
-import { STATUSES } from "./data/statuses.js";
+import { normalizeStatusId, STATUSES } from "./data/statuses.js";
 import {
   BASE_RECORD_DEFAULTS,
   RECORD_ITEM_TYPES,
@@ -193,6 +193,7 @@ function normalizeRecord(record) {
   const normalized = {
     ...BASE_RECORD_DEFAULTS,
     ...record,
+    status: normalizeStatusId(record?.status),
     startDate: normalizedStartDate,
     endDate: normalizedEndDate,
     history: sortTimelineEntries(Array.isArray(record.history) ? record.history : []),
@@ -357,7 +358,7 @@ function normalizeCalendarItems(items) {
             description: String(item?.description || ""),
             categoryId: item?.categoryId === "problem" ? "other" : item?.categoryId || "other",
             itemType: "todo",
-            status: item?.status || CALENDAR_DONE_STATUS.id,
+            status: normalizeStatusId(item?.status || CALENDAR_DONE_STATUS.id),
             recordId: String(item?.recordId || ""),
             todoId: String(item?.todoId || ""),
             durationMinutes: normalizeDurationMinutes(item?.durationMinutes),
@@ -421,38 +422,12 @@ function getCalendarItemPage(categoryId) {
 
 function normalizeStatusConfig(items) {
   const source = Array.isArray(items) && items.length > 0 ? items : STATUSES;
-  const seenIds = new Set();
-  const normalized = source
-    .map((item, index) => {
-      const label = String(item?.label ?? item?.id ?? "").trim();
-      if (!label) {
-        return null;
-      }
-
-      let id = String(item?.id ?? label).trim() || label;
-      if (seenIds.has(id)) {
-        id = `${id}-${index + 1}`;
-      }
-      seenIds.add(id);
-
-      return {
-        id,
-        label,
-        priority: Number.isFinite(Number(item?.priority))
-          ? Number(item.priority)
-          : (index + 1) * 10,
-        color: item?.color || "#273449",
-        bg: item?.bg || "#eef2ff",
-        border: item?.border || "#c7d2fe",
-      };
-    })
-    .filter(Boolean);
-
-  const defaultStatuses = STATUSES.filter(
-    (status) => !normalized.some((item) => item.id === status.id),
+  const byId = new Map(
+    source
+      .map((item) => normalizeStatusId(item?.id ?? item?.label))
+      .map((id) => [id, STATUSES.find((status) => status.id === id)]),
   );
-  const merged = [...normalized, ...defaultStatuses];
-  return merged.length > 0 ? merged : STATUSES;
+  return STATUSES.map((status) => byId.get(status.id) ?? status);
 }
 
 function sortStatusConfig(items) {

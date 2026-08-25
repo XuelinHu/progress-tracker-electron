@@ -80,7 +80,18 @@ function stateSummary(state) {
   };
 }
 
-const STATE_SCHEMA_VERSION = 10;
+const STATE_SCHEMA_VERSION = 11;
+
+const CANONICAL_STATUSES = [
+  { id: "进行中", label: "进行中", priority: 10, color: "#1d4ed8", bg: "#dbeafe", border: "#93c5fd" },
+  { id: "暂缓", label: "暂缓", priority: 50, color: "#b45309", bg: "#fef3c7", border: "#fcd34d" },
+  { id: "已完成", label: "已完成", priority: 990, color: "#334155", bg: "#e2e8f0", border: "#94a3b8" },
+];
+
+function normalizeStatus(value) {
+  const status = String(value || "").trim();
+  return status === "已完成" || status === "暂缓" ? status : "进行中";
+}
 
 function sortTimeline(entries = []) {
   const seen = new Set();
@@ -97,7 +108,7 @@ function sortTimeline(entries = []) {
     ));
 }
 
-function migrateStateToV10(state) {
+function migrateStateToV11(state) {
   if (!state || typeof state !== "object") return state;
   const sourceVersion = Number(state.version || 0);
   const needsLegacyItemMigration = sourceVersion < 7;
@@ -185,17 +196,26 @@ function migrateStateToV10(state) {
     const { todo, todoHistory, dateHistory: ignoredDateHistory, ...canonicalRecord } = record;
     return {
       ...canonicalRecord,
+      status: normalizeStatus(record?.status),
+      history: sortTimeline((record?.history || []).map((entry) => ({ ...entry, status: normalizeStatus(entry?.status) }))),
       items: todoItems,
-      history: sortTimeline(record?.history || []),
     };
   }) : [];
   const calendarItems = Array.isArray(state.calendarItems) ? state.calendarItems.map((item) => ({
     ...item,
+    status: normalizeStatus(item?.status),
     categoryId: item?.categoryId === "problem" ? "other" : item?.categoryId || "other",
     itemType: "todo",
     history: sortTimeline(item?.history || []),
   })) : [];
-  return { ...state, version: STATE_SCHEMA_VERSION, records, calendarItems, schemaVersion: STATE_SCHEMA_VERSION };
+  return {
+    ...state,
+    version: STATE_SCHEMA_VERSION,
+    statusOptions: CANONICAL_STATUSES,
+    records,
+    calendarItems,
+    schemaVersion: STATE_SCHEMA_VERSION,
+  };
 }
 
 function logEvent(level, event, details = {}) {
@@ -272,7 +292,7 @@ async function readAppState() {
   ]);
   const row = result.rows[0];
   if (!row) return { data: null, updatedAt: null };
-  const data = migrateStateToV10(row.data);
+  const data = migrateStateToV11(row.data);
   if (Number(row.data?.version || 0) < STATE_SCHEMA_VERSION) {
     const updatedAt = await writeAppState(data);
     return { data, updatedAt };
@@ -290,7 +310,7 @@ async function writeAppState(data) {
       DO UPDATE SET data = EXCLUDED.data, schema_version = $3, updated_at = NOW()
       RETURNING updated_at
     `,
-    [appStateId, JSON.stringify(migrateStateToV10(data)), STATE_SCHEMA_VERSION],
+    [appStateId, JSON.stringify(migrateStateToV11(data)), STATE_SCHEMA_VERSION],
   );
   return result.rows[0]?.updated_at ?? null;
 }
