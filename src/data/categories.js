@@ -1,4 +1,5 @@
 const statusField = { key: "status", label: "状态", type: "status", width: "112px" };
+const phaseField = { key: "phase", label: "业务阶段", type: "text", width: "minmax(130px, 0.7fr)" };
 const todoField = {
   key: "todo",
   label: "Todo",
@@ -56,6 +57,7 @@ export const CATEGORIES = [
     tint: "#dbeafe",
     fields: [
       statusField,
+      phaseField,
       titleField,
       startDateField,
       endDateField,
@@ -73,6 +75,7 @@ export const CATEGORIES = [
     tint: "#dcfce7",
     fields: [
       statusField,
+      phaseField,
       titleField,
       startDateField,
       endDateField,
@@ -91,6 +94,7 @@ export const CATEGORIES = [
     tint: "#fef3c7",
     fields: [
       statusField,
+      phaseField,
       titleField,
       startDateField,
       endDateField,
@@ -108,6 +112,7 @@ export const CATEGORIES = [
     tint: "#ffe4e6",
     fields: [
       statusField,
+      phaseField,
       titleField,
       startDateField,
       endDateField,
@@ -134,6 +139,7 @@ export const CATEGORIES = [
     tint: "#f3e8ff",
     fields: [
       statusField,
+      phaseField,
       titleField,
       startDateField,
       endDateField,
@@ -160,6 +166,7 @@ export const CATEGORIES = [
     tint: "#fef3c7",
     fields: [
       statusField,
+      phaseField,
       titleField,
       startDateField,
       endDateField,

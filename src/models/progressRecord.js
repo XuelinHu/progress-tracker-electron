@@ -6,6 +6,7 @@ export const RECORD_ITEM_TYPES = {
 
 export const BASE_RECORD_DEFAULTS = {
   status: "",
+  phase: "",
   title: "",
   description: "",
   todo: "",

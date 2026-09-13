@@ -99,7 +99,6 @@ const CALENDAR_DONE_STATUS = {
   bg: "#e2e8f0",
   border: "#94a3b8",
 };
-const STATUS_CHANGE_TODO_SOURCE = "statusChange";
 const CALENDAR_ITEM_FIELD_KEYS = [
   "todo",
   "githubUrl",
@@ -168,8 +167,14 @@ function sortTimelineEntries(entries = []) {
 }
 
 function normalizeRecord(record) {
-  const rawTodo = Array.isArray(record.todoHistory) ? record.todoHistory : [];
-  const recordItems = Array.isArray(record.items) ? record.items : [];
+  const rawStatus = String(record?.status ?? "").trim();
+  const normalizedStatus = normalizeStatusId(rawStatus);
+  const rawTodo = (Array.isArray(record.todoHistory) ? record.todoHistory : [])
+    .filter((item) => item?.sourceField !== "statusChange");
+  const recordItems = (Array.isArray(record.items) ? record.items : [])
+    // Legacy versions stored status changes as completed Todo items. They are
+    // audit events, not work items, and must not reappear in the task list.
+    .filter((item) => item?.sourceField !== "statusChange");
   const derivedDateHistory = recordItems
     .filter((item) => item?.type === RECORD_ITEM_TYPES.TODO && item?.sourceField)
     .reduce((groups, item) => {
@@ -187,13 +192,19 @@ function normalizeRecord(record) {
       ];
       return groups;
     }, {});
-  const normalizedStartDate =
-    record.startDate || record.registrationDate || record.stageDate || today();
-  const normalizedEndDate = record.endDate || normalizedStartDate || today();
+  // Missing dates mean "not scheduled". Do not silently turn them into today,
+  // otherwise records and tasks appear on the calendar without user action.
+  const normalizedStartDate = record.startDate || record.registrationDate || record.stageDate || "";
+  const normalizedEndDate = record.endDate || "";
   const normalized = {
     ...BASE_RECORD_DEFAULTS,
     ...record,
-    status: normalizeStatusId(record?.status),
+    status: normalizedStatus,
+    // Preserve legacy business states (e.g. 已报名、返修中) separately from
+    // the small lifecycle status set used for filtering and completion.
+    phase: String(record?.phase ?? (
+      rawStatus && !["进行中", "暂缓", "已完成"].includes(rawStatus) ? rawStatus : ""
+    )),
     startDate: normalizedStartDate,
     endDate: normalizedEndDate,
     history: sortTimelineEntries(Array.isArray(record.history) ? record.history : []),
@@ -338,7 +349,9 @@ function mergeMissingSeedRecords(records) {
 }
 
 function loadRecords() {
-  return mergeMissingSeedRecords(seedRecords.map(normalizeRecord));
+  // A missing database state represents a new, empty workspace. Example data
+  // is available only through the explicit "恢复默认数据" action.
+  return [];
 }
 
 function loadGraph() {
@@ -386,6 +399,47 @@ function normalizeCalendarItems(items) {
         })
         .filter((item) => item.title)
     : [];
+}
+
+function validateDataPayload(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("数据文件必须是对象格式");
+  }
+  const records = Array.isArray(payload.records) ? payload.records : [];
+  const recordIds = new Set();
+  const errors = [];
+  records.forEach((record, index) => {
+    const id = String(record?.id || "");
+    if (!id) errors.push(`第 ${index + 1} 条记录缺少 id`);
+    else if (recordIds.has(id)) errors.push(`记录 id 重复：${id}`);
+    recordIds.add(id);
+    const itemIds = new Set();
+    (Array.isArray(record?.items) ? record.items : []).forEach((item, itemIndex) => {
+      const itemId = String(item?.id || "");
+      if (!itemId) errors.push(`记录 ${id || index + 1} 的第 ${itemIndex + 1} 个事项缺少 id`);
+      else if (itemIds.has(itemId)) errors.push(`记录 ${id} 的事项 id 重复：${itemId}`);
+      itemIds.add(itemId);
+    });
+  });
+  const calendarIds = new Set();
+  (Array.isArray(payload.calendarItems) ? payload.calendarItems : []).forEach((item) => {
+    const id = String(item?.id || "");
+    if (!id) errors.push("日历事项缺少 id");
+    else if (calendarIds.has(id)) errors.push(`日历事项 id 重复：${id}`);
+    calendarIds.add(id);
+    if (item?.recordId && !recordIds.has(String(item.recordId))) {
+      errors.push(`日历事项 ${id} 引用了不存在的记录：${item.recordId}`);
+    }
+  });
+  const nodeIds = new Set((Array.isArray(payload.graph?.nodes) ? payload.graph.nodes : []).map((node) => String(node?.id || "")));
+  (Array.isArray(payload.graph?.edges) ? payload.graph.edges : []).forEach((edge) => {
+    if (!nodeIds.has(String(edge?.source || "")) || !nodeIds.has(String(edge?.target || ""))) {
+      errors.push(`图谱连线 ${edge?.id || "(无 id)"} 引用了不存在的节点`);
+    }
+  });
+  if (errors.length > 0) {
+    throw new Error(`数据校验失败：${errors.slice(0, 5).join("；")}${errors.length > 5 ? "等" : ""}`);
+  }
 }
 
 function normalizeDurationMinutes(value) {
@@ -579,50 +633,6 @@ function App() {
   const [todoDetail, setTodoDetail] = useState(null);
   const saveTimerRef = useRef(null);
   const operationStatusTimerRef = useRef(null);
-
-  useEffect(() => {
-    const linkedTodoKeys = new Set(
-      calendarItems
-        .filter((item) => item.recordId && item.todoId)
-        .map((item) => `${item.recordId}:${item.todoId}`),
-    );
-    const statusTodos = records.flatMap((record) =>
-      (record.items ?? [])
-        .filter((item) => item.type === RECORD_ITEM_TYPES.TODO && item.sourceField === STATUS_CHANGE_TODO_SOURCE)
-        .filter((item) => !linkedTodoKeys.has(`${record.id}:${item.id}`))
-        .map((item) => ({ record, item })),
-    );
-    if (statusTodos.length === 0) {
-      return;
-    }
-    const now = new Date().toISOString();
-    setCalendarItems((current) => [
-      ...current,
-      ...statusTodos.map(({ record, item }) => ({
-        id: createId("calendar-item"),
-        recordId: record.id,
-        todoId: item.id,
-        date: item.date || today(),
-        startDate: item.date || today(),
-        endDate: item.date || today(),
-        title: item.text,
-        description: item.details || "",
-        categoryId: record.categoryId || "other",
-        status: CALENDAR_DONE_STATUS.id,
-        durationMinutes: 30,
-        distanceKm: "",
-        history: [
-          createHistoryEntry({
-            date: item.date || today(),
-            status: CALENDAR_DONE_STATUS.id,
-            summary: `由状态变更自动生成：${item.text}`,
-          }),
-        ],
-        createdAt: item.createdAt || now,
-        updatedAt: now,
-      })),
-    ]);
-  }, [calendarItems, records]);
 
   function openTodoDetail(record, todo) {
     setTodoDetail({
@@ -960,25 +970,11 @@ function App() {
         const statusTodoText = statusChanged
           ? `状态变更：${previousStatusLabel} -> ${nextStatusLabel}`
           : "";
-        const statusTodo = statusChanged
-          ? createRecordItem({
-              id: createId("todo-status"),
-              recordId,
-              type: RECORD_ITEM_TYPES.TODO,
-              text: statusTodoText,
-              date: today(),
-              sourceField: STATUS_CHANGE_TODO_SOURCE,
-              status: "done",
-              doneDate: today(),
-              doneAt: new Date().toISOString(),
-            })
-          : null;
-
         const nextRecord = {
           ...record,
           ...patch,
         };
-        if (statusTodo) {
+        if (statusChanged) {
           nextRecord.history = sortTimelineEntries([
             ...(record.history ?? []).filter(
               (entry) => !(entry.date === today() && entry.summary === statusTodoText),
@@ -989,17 +985,10 @@ function App() {
               summary: statusTodoText,
             }),
           ]);
-          nextRecord.items = [
-            ...(record.items ?? buildRecordItemsFromLegacy(record)),
-            statusTodo,
-          ];
         }
 
-        const syncedRecord = statusTodo
-          ? syncTodoItemsLegacy(nextRecord, nextRecord.items)
-          : nextRecord;
         return normalizeRecord(
-          appendRecordHistory(syncedRecord, [
+          appendRecordHistory(nextRecord, [
             ...(Array.isArray(patch.todoHistory)
               ? buildAddedTodoHistoryEntries(record, patch.todoHistory)
               : []),
@@ -1178,7 +1167,7 @@ function App() {
         title,
         description: String(draft.description ?? ""),
         categoryId: draft.categoryId || "other",
-        status: draft.status || CALENDAR_DONE_STATUS.id,
+        status: draft.status || "进行中",
         recordId: String(draft.recordId || ""),
         todoId: String(draft.todoId || ""),
         durationMinutes: normalizeDurationMinutes(draft.durationMinutes),
@@ -1186,7 +1175,7 @@ function App() {
         history: [
           createHistoryEntry({
             date: today(),
-            status: draft.status || CALENDAR_DONE_STATUS.id,
+            status: draft.status || "进行中",
             summary: `新增事项：${title}`,
           }),
         ],
@@ -1800,45 +1789,34 @@ function App() {
 
   function syncLinkedTodoCalendarItems(record, todoItems) {
     setCalendarItems((current) => {
-      const retained = current.filter((item) => item.recordId !== record.id || !item.todoId);
-      const existingByTodoId = new Map(
-        current
-          .filter((item) => item.recordId === record.id && item.todoId)
-          .map((item) => [item.todoId, item]),
-      );
-      const linkedItems = todoItems.map((todoItem) => {
-        const existing = existingByTodoId.get(todoItem.id);
+      // Editing a Todo may update an already-linked calendar event, but must
+      // never create a calendar event implicitly. Scheduling is an explicit
+      // user action in the calendar.
+      return current.map((item) => {
+        if (item.recordId !== record.id || !item.todoId) return item;
+        const todoItem = todoItems.find((entry) => entry.id === item.todoId);
+        if (!todoItem) return item;
         const completed = Boolean(todoItem.doneDate);
         const now = new Date().toISOString();
         return {
-          ...(existing ?? {}),
-          id: existing?.id || createId("calendar-item"),
+          ...item,
           recordId: record.id,
           todoId: todoItem.id,
-          date: existing?.date || todoItem.date || today(),
-          startDate: existing?.startDate || todoItem.date || today(),
-          endDate: existing?.endDate || todoItem.date || today(),
+          date: item.date || "",
+          startDate: item.startDate || item.date || "",
+          endDate: item.endDate || item.startDate || item.date || "",
           title: todoItem.text,
-          description: existing?.description ?? "",
+          description: item.description ?? "",
           categoryId: record.categoryId || "other",
           status: completed ? CALENDAR_DONE_STATUS.id : "进行中",
-          durationMinutes: normalizeDurationMinutes(existing?.durationMinutes),
-          distanceKm: normalizeDistanceKm(existing?.distanceKm),
-          history: Array.isArray(existing?.history)
-            ? existing.history
-            : [
-                createHistoryEntry({
-                  date: todoItem.date || today(),
-                  status: completed ? CALENDAR_DONE_STATUS.id : "进行中",
-                  summary: `由 Todo 自动生成：${todoItem.text}`,
-                }),
-              ],
-          ...getCalendarItemSharedFields(existing),
-          createdAt: existing?.createdAt || todoItem.createdAt || now,
+          durationMinutes: normalizeDurationMinutes(item.durationMinutes),
+          distanceKm: normalizeDistanceKm(item.distanceKm),
+          history: Array.isArray(item.history) ? item.history : [],
+          ...getCalendarItemSharedFields(item),
+          createdAt: item.createdAt || todoItem.createdAt || now,
           updatedAt: now,
         };
       });
-      return [...retained, ...linkedItems];
     });
   }
 
@@ -2128,12 +2106,6 @@ function App() {
       todo: String(record.todo ?? "").trim(),
     });
     setRecords((current) => [normalizedRecord, ...current]);
-    const todoItems = (normalizedRecord.items ?? []).filter(
-      (item) => item.type === RECORD_ITEM_TYPES.TODO && item.text,
-    );
-    if (todoItems.length > 0) {
-      syncLinkedTodoCalendarItems(normalizedRecord, todoItems);
-    }
     setSelectedId(normalizedRecord.id);
     if (graphContext?.position) {
       createGraphNodeForRecord(
@@ -2345,6 +2317,9 @@ function App() {
   }
 
   function applyFullDataPayload(parsed) {
+    if (!Array.isArray(parsed)) {
+      validateDataPayload(parsed);
+    }
     const nextRecords = Array.isArray(parsed) ? parsed : parsed.records;
     let recordCount = 0;
     let graphNodeCount = 0;

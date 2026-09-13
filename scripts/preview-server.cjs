@@ -136,6 +136,7 @@ function migrateStateToV11(state) {
     );
     const itemsById = new Map();
     [...existingItems, ...migratedDateTodos].forEach((item, index) => {
+      if (item?.sourceField === "statusChange") return;
       const id = String(item?.id || `todo-${record?.id || "record"}-${index}`);
       const normalized = {
         ...item,
@@ -155,6 +156,7 @@ function migrateStateToV11(state) {
       if (normalized.text && !itemsById.has(id)) itemsById.set(id, normalized);
     });
     legacyTodo.forEach((entry, index) => {
+      if (entry?.sourceField === "statusChange") return;
       const id = String(entry?.id || `todo-legacy-${record?.id || "record"}-${index}`);
       if (itemsById.has(id)) return;
       itemsById.set(id, {
@@ -194,9 +196,13 @@ function migrateStateToV11(state) {
     }
     const todoItems = [...itemsById.values()].filter((item) => item.type === "todo");
     const { todo, todoHistory, dateHistory: ignoredDateHistory, ...canonicalRecord } = record;
+    const rawStatus = String(record?.status || "").trim();
     return {
       ...canonicalRecord,
       status: normalizeStatus(record?.status),
+      phase: String(record?.phase || (
+        rawStatus && !["进行中", "暂缓", "已完成"].includes(rawStatus) ? rawStatus : ""
+      )),
       history: sortTimeline((record?.history || []).map((entry) => ({ ...entry, status: normalizeStatus(entry?.status) }))),
       items: todoItems,
     };
