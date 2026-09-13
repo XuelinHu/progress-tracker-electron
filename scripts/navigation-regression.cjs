@@ -384,12 +384,12 @@ async function verifyRecordDropCreatesTodo(page, server) {
   let savedRecord;
   while (Date.now() < deadline) {
     savedRecord = server.getSavedState()?.records?.find((record) => record.id === calendarTodoRegressionId);
-    if (savedRecord?.items?.some((item) => item.type === "todo" && item.text.includes("日历事项"))) break;
+    if (savedRecord?.tasks?.some((item) => item.type === "todo" && item.text.includes("日历事项"))) break;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 
   assert.equal(
-    savedRecord?.items?.some((item) => item.type === "todo" && item.text.includes("日历事项")),
+    savedRecord?.tasks?.some((item) => item.type === "todo" && item.text.includes("日历事项")),
     true,
     "Record drop must create a Todo item",
   );

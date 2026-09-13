@@ -457,7 +457,7 @@ function GraphField({
                   <button
                     className="todo-delete-btn"
                     type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onDeleteTodo) onDeleteTodo(field.key, trimmed); }}
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (onDeleteTodo && hist?.id) onDeleteTodo(field.key, hist.id); }}
                     title="删除此项"
                   >×</button>
                   <CopyIconButton
@@ -469,7 +469,7 @@ function GraphField({
                     type="checkbox"
                     className="todo-checkbox"
                     onClick={(event) => event.stopPropagation()}
-                    onChange={() => onToggleTodo(field.key, trimmed)}
+                    onChange={() => hist?.id && onToggleTodo(field.key, hist.id)}
                   />
                   <InlineEditableText
                     value={trimmed}
@@ -521,7 +521,7 @@ function GraphField({
                       className="todo-checkbox"
                       checked={true}
                       onClick={(event) => event.stopPropagation()}
-                      onChange={() => onToggleTodo(field.key, trimmed)}
+                      onChange={() => hist?.id && onToggleTodo(field.key, hist.id)}
                     />
                     <InlineEditableText
                       value={trimmed}

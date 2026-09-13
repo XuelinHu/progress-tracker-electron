@@ -97,6 +97,17 @@ export function buildRecordItemsFromLegacy(record) {
     items.push(item);
   };
 
+  if (Array.isArray(record?.tasks)) {
+    record.tasks.forEach((item) => pushItem(normalizeRecordItem(item, recordId)));
+  }
+  if (Array.isArray(record?.dateEvents)) {
+    record.dateEvents.forEach((event) => pushItem(normalizeRecordItem({
+      ...event,
+      type: RECORD_ITEM_TYPES.TODO,
+      sourceField: event.sourceField || "dateEvent",
+      text: event.text ?? event.item,
+    }, recordId)));
+  }
   if (Array.isArray(record?.items)) {
     record.items.forEach((item) => pushItem(normalizeRecordItem(item, recordId)));
   }
@@ -182,8 +193,22 @@ export function syncTodoItemsLegacy(record, items = record?.items ?? []) {
   const todoItems = items.filter((item) => item.type === RECORD_ITEM_TYPES.TODO && item.text);
   const otherItems = (record?.items ?? []).filter((item) => item.type !== RECORD_ITEM_TYPES.TODO);
   const nextItems = [...otherItems, ...todoItems];
+  const tasks = todoItems.filter((item) => !item.sourceField || item.sourceField === "createdAt");
+  const dateEvents = todoItems
+    .filter((item) => item.sourceField && item.sourceField !== "createdAt")
+    .map((item) => ({
+      id: item.id,
+      date: item.date || "",
+      text: item.text,
+      details: item.details || "",
+      sourceField: item.sourceField,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    }));
   return {
     ...record,
+    tasks,
+    dateEvents,
     todo: todoItems.map((item) => item.text).join("\n"),
     todoHistory: todoItems.map((item) => ({
       id: item.id,

@@ -80,7 +80,7 @@ function stateSummary(state) {
   };
 }
 
-const STATE_SCHEMA_VERSION = 11;
+const STATE_SCHEMA_VERSION = 12;
 
 const CANONICAL_STATUSES = [
   { id: "进行中", label: "进行中", priority: 10, color: "#1d4ed8", bg: "#dbeafe", border: "#93c5fd" },
@@ -108,7 +108,7 @@ function sortTimeline(entries = []) {
     ));
 }
 
-function migrateStateToV11(state) {
+function migrateStateToV12(state) {
   if (!state || typeof state !== "object") return state;
   const sourceVersion = Number(state.version || 0);
   const needsLegacyItemMigration = sourceVersion < 7;
@@ -117,7 +117,12 @@ function migrateStateToV11(state) {
   const records = Array.isArray(state.records) ? state.records.map((record) => {
     const dateHistory = needsLegacyItemMigration && record?.dateHistory && typeof record.dateHistory === "object" ? record.dateHistory : {};
     const legacyTodo = needsLegacyItemMigration && Array.isArray(record?.todoHistory) ? record.todoHistory : [];
-    const existingItems = Array.isArray(record?.items) ? record.items : [];
+    const existingItems = Array.isArray(record?.items)
+      ? record.items
+      : Array.isArray(record?.tasks)
+        ? record.tasks
+        : [];
+    const canonicalDateEvents = Array.isArray(record?.dateEvents) ? record.dateEvents : [];
     const migratedDateTodos = Object.entries(dateHistory).flatMap(([sourceField, entries]) =>
       (Array.isArray(entries) ? entries : []).map((entry, index) => ({
         id: String(entry?.id || `todo-date-${record?.id || "record"}-${sourceField}-${index}`),
@@ -135,7 +140,13 @@ function migrateStateToV11(state) {
       })),
     );
     const itemsById = new Map();
-    [...existingItems, ...migratedDateTodos].forEach((item, index) => {
+    [...existingItems, ...migratedDateTodos, ...canonicalDateEvents.map((event, index) => ({
+      ...event,
+      id: event?.id || `date-event-${record?.id || "record"}-${index}`,
+      type: "todo",
+      text: event?.text || event?.item || "",
+      sourceField: event?.sourceField || "dateEvent",
+    }))].forEach((item, index) => {
       if (item?.sourceField === "statusChange") return;
       const id = String(item?.id || `todo-${record?.id || "record"}-${index}`);
       const normalized = {
@@ -195,6 +206,32 @@ function migrateStateToV11(state) {
       });
     }
     const todoItems = [...itemsById.values()].filter((item) => item.type === "todo");
+    const tasks = (Array.isArray(record?.tasks) && sourceVersion >= 11
+      ? record.tasks.map((item, index) => ({
+        ...item,
+        id: String(item?.id || `task-${record?.id || "record"}-${index}`),
+        recordId: String(item?.recordId || record?.id || ""),
+        type: "todo",
+        text: String(item?.text ?? item?.item ?? "").trim(),
+      }))
+      : todoItems.filter((item) => !item.sourceField || item.sourceField === "createdAt"));
+    const dateEvents = (Array.isArray(record?.dateEvents) && sourceVersion >= 11
+      ? record.dateEvents.map((event, index) => ({
+        ...event,
+        id: String(event?.id || `date-event-${record?.id || "record"}-${index}`),
+        date: String(event?.date || ""),
+        text: String(event?.text ?? event?.item ?? "").trim(),
+        details: String(event?.details ?? ""),
+      }))
+      : todoItems.filter((item) => item.sourceField && item.sourceField !== "createdAt")).map((item) => ({
+        id: item.id,
+        date: item.date || "",
+        text: item.text,
+        details: item.details || "",
+        sourceField: item.sourceField,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      }));
     const { todo, todoHistory, dateHistory: ignoredDateHistory, ...canonicalRecord } = record;
     const rawStatus = String(record?.status || "").trim();
     return {
@@ -203,8 +240,15 @@ function migrateStateToV11(state) {
       phase: String(record?.phase || (
         rawStatus && !["进行中", "暂缓", "已完成"].includes(rawStatus) ? rawStatus : ""
       )),
-      history: sortTimeline((record?.history || []).map((entry) => ({ ...entry, status: normalizeStatus(entry?.status) }))),
-      items: todoItems,
+      history: sortTimeline((record?.history || []).map((entry) => ({
+        ...entry,
+        status: normalizeStatus(entry?.status),
+        type: entry?.type || (String(entry?.summary || "").startsWith("状态变更：") ? "status-change" : "note"),
+        fromStatus: entry?.fromStatus || "",
+        toStatus: entry?.toStatus || "",
+      }))),
+      tasks,
+      dateEvents,
     };
   }) : [];
   const calendarItems = Array.isArray(state.calendarItems) ? state.calendarItems.map((item) => ({
@@ -298,7 +342,7 @@ async function readAppState() {
   ]);
   const row = result.rows[0];
   if (!row) return { data: null, updatedAt: null };
-  const data = migrateStateToV11(row.data);
+  const data = migrateStateToV12(row.data);
   if (Number(row.data?.version || 0) < STATE_SCHEMA_VERSION) {
     const updatedAt = await writeAppState(data);
     return { data, updatedAt };
@@ -316,7 +360,7 @@ async function writeAppState(data) {
       DO UPDATE SET data = EXCLUDED.data, schema_version = $3, updated_at = NOW()
       RETURNING updated_at
     `,
-    [appStateId, JSON.stringify(migrateStateToV11(data)), STATE_SCHEMA_VERSION],
+    [appStateId, JSON.stringify(migrateStateToV12(data)), STATE_SCHEMA_VERSION],
   );
   return result.rows[0]?.updated_at ?? null;
 }

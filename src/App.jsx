@@ -171,7 +171,7 @@ function normalizeRecord(record) {
   const normalizedStatus = normalizeStatusId(rawStatus);
   const rawTodo = (Array.isArray(record.todoHistory) ? record.todoHistory : [])
     .filter((item) => item?.sourceField !== "statusChange");
-  const recordItems = (Array.isArray(record.items) ? record.items : [])
+  const recordItems = buildRecordItemsFromLegacy(record)
     // Legacy versions stored status changes as completed Todo items. They are
     // audit events, not work items, and must not reappear in the task list.
     .filter((item) => item?.sourceField !== "statusChange");
@@ -207,6 +207,18 @@ function normalizeRecord(record) {
     )),
     startDate: normalizedStartDate,
     endDate: normalizedEndDate,
+    tasks: recordItems.filter((item) => !item.sourceField || item.sourceField === "createdAt"),
+    dateEvents: recordItems
+      .filter((item) => item.sourceField && item.sourceField !== "createdAt")
+      .map((item) => ({
+        id: item.id,
+        date: item.date || "",
+        text: item.text,
+        details: item.details || "",
+        sourceField: item.sourceField,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
     history: sortTimelineEntries(Array.isArray(record.history) ? record.history : []),
     dateHistory: Object.keys(derivedDateHistory).length > 0
       ? derivedDateHistory
@@ -229,12 +241,15 @@ function normalizeRecord(record) {
   return syncTodoItemsLegacy(normalized, buildRecordItemsFromLegacy(normalized));
 }
 
-function createHistoryEntry({ date = today(), status = "", summary = "" } = {}) {
+function createHistoryEntry({ date = today(), status = "", summary = "", type = "note", fromStatus = "", toStatus = "" } = {}) {
   const now = new Date().toISOString();
   return {
     id: createId("history"),
     date,
     status,
+    type,
+    fromStatus,
+    toStatus,
     owner: "",
     summary,
     createdAt: now,
@@ -982,6 +997,9 @@ function App() {
             createHistoryEntry({
               date: today(),
               status: patch.status,
+              type: "status-change",
+              fromStatus: record.status || "",
+              toStatus: patch.status || "",
               summary: statusTodoText,
             }),
           ]);
@@ -1867,15 +1885,14 @@ function App() {
     );
   }
 
-  function toggleTodoItem(recordId, lineText) {
-    const text = lineText.trim();
-    if (!text) return;
+  function toggleTodoItem(recordId, todoId) {
+    if (!todoId) return;
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
         const changedAt = new Date().toISOString();
         const nextItems = (record.items ?? buildRecordItemsFromLegacy(record)).map((entry) =>
-          entry.type === RECORD_ITEM_TYPES.TODO && entry.text === text
+          entry.type === RECORD_ITEM_TYPES.TODO && entry.id === todoId
             ? {
                 ...entry,
                 status: entry.doneDate ? "active" : "done",
@@ -1890,19 +1907,17 @@ function App() {
     );
   }
 
-  function deleteTodoItem(recordId, todoKey) {
-    if (!todoKey) return;
+  function deleteTodoItem(recordId, todoId) {
+    if (!todoId) return;
     const sourceRecord = records.find((record) => record.id === recordId);
     const sourceItems = sourceRecord?.items ?? buildRecordItemsFromLegacy(sourceRecord);
-    const deletedTodoId = sourceItems.find(
-      (entry) => entry.type === RECORD_ITEM_TYPES.TODO && (entry.id === todoKey || entry.text === todoKey),
-    )?.id;
+    const deletedTodoId = sourceItems.find((entry) => entry.type === RECORD_ITEM_TYPES.TODO && entry.id === todoId)?.id;
     setRecords((current) =>
       current.map((record) => {
         if (record.id !== recordId) return record;
         const items = record.items ?? buildRecordItemsFromLegacy(record);
         const target = items.find(
-          (entry) => entry.type === RECORD_ITEM_TYPES.TODO && (entry.id === todoKey || entry.text === todoKey),
+          (entry) => entry.type === RECORD_ITEM_TYPES.TODO && entry.id === todoId,
         );
         if (!target) return record;
         const nextItems = items.filter((entry) => entry.id !== target.id);
@@ -2284,7 +2299,7 @@ function App() {
 
   function buildFullDataPayload() {
     return {
-      version: 10,
+      version: 12,
       exportedAt: new Date().toISOString(),
       scope: "pages-1-8",
       includes: [
@@ -2302,10 +2317,23 @@ function App() {
       ],
       statusOptions,
       records: records.map((record) => {
-        const { todo, todoHistory, dateHistory, ...canonicalRecord } = record;
+        const { todo, todoHistory, dateHistory, items, ...canonicalRecord } = record;
         return {
           ...canonicalRecord,
-          items: record.items ?? buildRecordItemsFromLegacy(record),
+          tasks: record.tasks ?? (record.items ?? buildRecordItemsFromLegacy(record)).filter(
+            (item) => !item.sourceField || item.sourceField === "createdAt",
+          ),
+          dateEvents: record.dateEvents ?? (record.items ?? buildRecordItemsFromLegacy(record))
+            .filter((item) => item.sourceField && item.sourceField !== "createdAt")
+            .map((item) => ({
+              id: item.id,
+              date: item.date || "",
+              text: item.text,
+              details: item.details || "",
+              sourceField: item.sourceField,
+              createdAt: item.createdAt,
+              updatedAt: item.updatedAt,
+            })),
         };
       }),
       graph: {
@@ -3450,7 +3478,7 @@ function App() {
                     className="todo-checkbox"
                     checked={done}
                     onClick={(event) => event.stopPropagation()}
-                    onChange={() => toggleTodoItem(record.id, trimmed)}
+                    onChange={() => hist?.id && toggleTodoItem(record.id, hist.id)}
                   />
                   <span className="todo-text">{trimmed}</span>
                   <span className={`todo-date ${done ? "todo-date-stack" : ""}`}>

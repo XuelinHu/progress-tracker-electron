@@ -202,11 +202,12 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
   const todoResult = await pool.query("SELECT data FROM app_state WHERE id = $1", [stateId]);
   const savedTodoRecord = todoResult.rows[0]?.data?.records?.[0];
   assert.deepEqual(
-    savedTodoRecord?.items?.map((item) => item.id),
+    savedTodoRecord?.tasks?.map((item) => item.id),
     ["legacy-completed-todo"],
     "已删除 Todo 不得因旧兼容字段重新写入",
   );
-  assert.equal(savedTodoRecord?.items?.[0]?.doneDate, "2026-08-04", "历史完成 Todo 必须补齐完成日期");
+  assert.equal(savedTodoRecord?.tasks?.[0]?.doneDate, "2026-08-04", "历史完成 Todo 必须补齐完成日期");
+  assert.deepEqual(savedTodoRecord?.dateEvents, [], "日期事件应与任务分离");
   assert.equal("todo" in savedTodoRecord, false, "规范数据不得保留旧 Todo 文本字段");
   assert.equal("todoHistory" in savedTodoRecord, false, "规范数据不得保留旧 Todo 历史字段");
   assert.equal("dateHistory" in savedTodoRecord, false, "规范数据不得保留旧日期历史字段");
@@ -221,4 +222,27 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
     ["进行中"],
     "日历中的其他历史状态必须归一为进行中",
   );
+
+  const canonicalState = {
+    version: 11,
+    marker: `${marker}-canonical-boundary`,
+    records: [{
+      id: "canonical-boundary",
+      categoryId: "paper",
+      title: "同名任务边界",
+      status: "进行中",
+      tasks: [{ id: "task-a", recordId: "canonical-boundary", type: "todo", text: "同名事项", status: "active" }],
+      dateEvents: [{ id: "event-a", date: "2026-09-13", text: "同名事项", sourceField: "submissionDate" }],
+    }],
+    calendarItems: [],
+    statusOptions: [],
+    graph: { nodes: [], edges: [] },
+  };
+  const canonicalWrite = await request(port, "/api/state", { method: "PUT", body: canonicalState });
+  assert.equal(canonicalWrite.status, 200, stderr);
+  const canonicalRead = await request(port, "/api/state");
+  const canonicalRecord = canonicalRead.data.state.records[0];
+  assert.deepEqual(canonicalRecord.tasks.map((item) => item.id), ["task-a"]);
+  assert.deepEqual(canonicalRecord.dateEvents.map((item) => item.id), ["event-a"]);
+  assert.equal(canonicalRead.data.state.version, 12);
 });
