@@ -102,7 +102,7 @@ curl -fsS http://127.0.0.1:4027/ > /dev/null
 
 - Web/PM2 默认端口：`4027`。
 - 本机访问：`http://127.0.0.1:4027/`。
-- FRP 外网访问：`http://47.120.48.245:14003/`。
+- FRP 外网访问：`http://47.120.48.245:14027/`。
 - Electron 联调地址：`electron/main.cjs` 默认加载 `http://localhost:4027`。
 - 预览服务入口：`npm run preview` -> `scripts/preview-server.cjs`。
 - 数据库类型：PostgreSQL。

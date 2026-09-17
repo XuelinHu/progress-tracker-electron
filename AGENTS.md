@@ -14,8 +14,8 @@
 - Follow the skill's local-service-first rule and do not commit private credentials or connection strings.
 - Local frontend port: `4027`
 - Local URL: `http://127.0.0.1:4027/`
-- FRP public frontend port: `14003`
-- FRP mapping: public port `14003` to local port `4003`
+- FRP public frontend port: `14027`
+- FRP mapping: public port `14027` to local port `4027`
 - Start the production preview with PM2 using the existing service:
 
 ```bash
