@@ -12,8 +12,8 @@
 
 - Before starting, restarting, deploying, or troubleshooting this project, use the `frp-network` skill.
 - Follow the skill's local-service-first rule and do not commit private credentials or connection strings.
-- Local frontend port: `4003`
-- Local URL: `http://127.0.0.1:4003/`
+- Local frontend port: `4027`
+- Local URL: `http://127.0.0.1:4027/`
 - FRP public frontend port: `14003`
 - FRP mapping: public port `14003` to local port `4003`
 - Start the production preview with PM2 using the existing service:
@@ -52,7 +52,7 @@ pm2 save
 3. Verify the deployed service:
 
 ```bash
-curl -fsS http://127.0.0.1:4003/ > /dev/null
+curl -fsS http://127.0.0.1:4027/ > /dev/null
 pm2 describe progress-tracker-electron
 ```
 

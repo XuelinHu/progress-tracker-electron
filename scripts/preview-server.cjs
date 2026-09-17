@@ -7,7 +7,7 @@ const { Pool } = require("pg");
 
 const rootDir = path.resolve(__dirname, "..");
 const distDir = path.join(rootDir, "dist");
-const port = Number(process.env.PORT || 4003);
+const port = Number(process.env.PORT || 4027);
 const host = process.env.HOST || "0.0.0.0";
 
 loadEnvFile(path.join(rootDir, ".env.local"));

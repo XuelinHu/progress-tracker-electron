@@ -33,7 +33,7 @@ function createWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL || "http://localhost:4003");
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL || "http://localhost:4027");
   } else {
     mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }

@@ -6,11 +6,11 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: "0.0.0.0",
-    port: 4003,
+    port: 4027,
   },
   preview: {
     host: "0.0.0.0",
-    port: 4003,
+    port: 4027,
   },
   build: {
     outDir: "dist",

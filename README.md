@@ -94,16 +94,16 @@ pm2 save
 ```bash
 systemctl is-enabled pm2-xuelin
 pm2 status
-curl -fsS http://127.0.0.1:4003/ > /dev/null
+curl -fsS http://127.0.0.1:4027/ > /dev/null
 ```
 
 <!-- codex-runtime-config:start -->
 ## 运行配置与数据存储
 
-- Web/PM2 默认端口：`4003`。
-- 本机访问：`http://127.0.0.1:4003/`。
+- Web/PM2 默认端口：`4027`。
+- 本机访问：`http://127.0.0.1:4027/`。
 - FRP 外网访问：`http://47.120.48.245:14003/`。
-- Electron 联调地址：`electron/main.cjs` 默认加载 `http://localhost:4003`。
+- Electron 联调地址：`electron/main.cjs` 默认加载 `http://localhost:4027`。
 - 预览服务入口：`npm run preview` -> `scripts/preview-server.cjs`。
 - 数据库类型：PostgreSQL。
 - 数据库名称：`progress_tracker_electron`。

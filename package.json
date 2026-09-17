@@ -6,8 +6,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 4003",
-    "start": "concurrently -k \"vite --host 0.0.0.0 --port 4003\" \"wait-on tcp:4003 && electron --no-sandbox .\"",
+    "dev": "vite --host 0.0.0.0 --port 4027",
+    "start": "concurrently -k \"vite --host 0.0.0.0 --port 4027\" \"wait-on tcp:4027 && electron --no-sandbox .\"",
     "check": "vite build",
     "build": "vite build",
     "preview": "node scripts/preview-server.cjs",
