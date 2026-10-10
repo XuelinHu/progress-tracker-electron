@@ -17,7 +17,9 @@
     "dist:mac": "electron-builder --mac",
     "android:sync": "vite build && npx cap sync android",
     "android:open": "npx cap open android",
-    "android:build": "vite build && npx cap sync android && cd android && gradlew assembleDebug"
+    "android:build": "vite build && npx cap sync android && cd android && gradlew assembleDebug",
+    "api": "node scripts/preview-server.cjs --api-only",
+    "dev:all": "concurrently -k \"npm:api\" \"npm:dev\""
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

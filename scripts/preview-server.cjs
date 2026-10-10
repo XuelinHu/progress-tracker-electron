@@ -4,14 +4,17 @@ const http = require("node:http");
 const path = require("node:path");
 const { URL } = require("node:url");
 const { Pool } = require("pg");
+const { createWebServer } = require("./web-server.cjs");
 
 const rootDir = path.resolve(__dirname, "..");
 const distDir = path.join(rootDir, "dist");
-const port = Number(process.env.PORT || 4027);
-const host = process.env.HOST || "0.0.0.0";
 
 loadEnvFile(path.join(rootDir, ".env.local"));
 loadEnvFile(path.join(rootDir, ".env"));
+
+const port = Number(process.env.PORT || process.env.WEB_PORT || 4027);
+const apiPort = Number(process.env.API_PORT || 8035);
+const host = process.env.HOST || "0.0.0.0";
 
 const appStateId = process.env.APP_STATE_ID || "main";
 let dbPool = null;
@@ -632,9 +635,21 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(port, host, () => {
-  console.log(`科研进度管理平台 preview server listening at http://${host}:${port}`);
+const webServer = createWebServer(apiPort);
+for (const listener of [server, webServer]) {
+  listener.on("error", (error) => {
+    console.error(`科研进度管理服务启动失败：${error.code}`);
+    process.exit(1);
+  });
+}
+server.listen(apiPort, "127.0.0.1", () => {
+  console.log(`科研进度管理 API listening at http://127.0.0.1:${apiPort}`);
 });
+if (!process.argv.includes("--api-only")) {
+  webServer.listen(port, host, () => {
+    console.log(`科研进度管理平台 preview server listening at http://${host}:${port}`);
+  });
+}
 
 process.on("SIGTERM", async () => {
   logEvent("info", "process.sigterm", { pid: process.pid });

@@ -7,10 +7,14 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 4027,
+    strictPort: true,
+    proxy: { "/api": "http://127.0.0.1:8035" },
   },
   preview: {
     host: "0.0.0.0",
     port: 4027,
+    strictPort: true,
+    proxy: { "/api": "http://127.0.0.1:8035" },
   },
   build: {
     outDir: "dist",
