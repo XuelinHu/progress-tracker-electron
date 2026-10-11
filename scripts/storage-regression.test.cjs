@@ -34,7 +34,7 @@ function request(port, pathname, options = {}) {
         headers: {
           ...(authToken ? { authorization: `Bearer ${authToken}` } : {}),
           ...(body ? { "content-type": "application/json", "content-length": Buffer.byteLength(body) } : {}),
-          ...(body ? { "x-state-revision": String(stateRevision) } : {}),
+          ...(body ? { "x-state-revision": String(options.revision ?? stateRevision) } : {}),
         },
       },
       (res) => {
@@ -119,12 +119,15 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
   const jwksPort = Number(new URL(issuer).port);
   await new Promise((resolve) => jwksServer.listen(jwksPort, "127.0.0.1", resolve));
   const clientId = "progress-tracker-electron-web";
-  authToken = await new jose.SignJWT({ azp: clientId })
+  const tokenForSubject = (subject) => new jose.SignJWT({ azp: clientId })
     .setProtectedHeader({ alg: "RS256", kid: "storage-test-key" })
-    .setIssuer(issuer).setAudience("account").setSubject("storage-regression-user")
+    .setIssuer(issuer).setAudience("account").setSubject(subject)
     .setIssuedAt().setExpirationTime("5m").sign(privateKey);
-  stateRevision = 0;
   const subject = "storage-regression-user";
+  const secondSubject = "storage-regression-second-user";
+  authToken = await tokenForSubject(subject);
+  const secondToken = await tokenForSubject(secondSubject);
+  stateRevision = 0;
   const stateId = `storage-regression-${process.pid}-${Date.now()}`;
   const port = await getAvailablePort();
   const apiPort = await getAvailablePort();
@@ -157,7 +160,10 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
 
   t.after(async () => {
     child.kill("SIGTERM");
-    await pool.query("DELETE FROM app_state WHERE id = $1 AND owner_sub = $2", [userStateId(subject, stateId), subject]).catch(() => {});
+    await pool.query("DELETE FROM app_state WHERE (id, owner_sub) IN (($1, $2), ($3, $4))", [
+      userStateId(subject, stateId), subject,
+      userStateId(secondSubject, stateId), secondSubject,
+    ]).catch(() => {});
     await pool.end();
     jwksServer.close();
   });
@@ -189,10 +195,22 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
     rows: (await pool.query("SELECT id, owner_sub, revision FROM app_state")).rows,
   }));
 
+  const winnerState = { ...state, marker: `${marker}-winner` };
+  const winnerWrite = await request(port, "/api/state", { method: "PUT", body: winnerState, revision: 1 });
+  assert.equal(winnerWrite.status, 200, stderr);
+  const staleWrite = await request(port, "/api/state", {
+    method: "PUT",
+    body: { ...state, marker: `${marker}-stale` },
+    revision: 1,
+  });
+  assert.equal(staleWrite.status, 409, "stale PostgreSQL revision must reject a lost update");
+  const winnerRead = await request(port, "/api/state");
+  assert.equal(winnerRead.data.state.marker, winnerState.marker);
+
   const readResponse = await request(port, "/api/state");
   assert.equal(readResponse.status, 200, stderr);
   assert.equal(readResponse.data.source, "postgresql");
-  assert.equal(readResponse.data.state.marker, marker);
+  assert.equal(readResponse.data.state.marker, winnerState.marker);
 
   const backupResponse = await request(port, "/api/backups");
   assert.equal(backupResponse.status, 404, "本地文件备份接口不应继续存在");
@@ -277,4 +295,23 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
   assert.deepEqual(canonicalRecord.tasks.map((item) => item.id), ["task-a"]);
   assert.deepEqual(canonicalRecord.dateEvents.map((item) => item.id), ["event-a"]);
   assert.equal(canonicalRead.data.state.version, 12);
+
+  authToken = secondToken;
+  stateRevision = 0;
+  const secondInitialRead = await request(port, "/api/state");
+  assert.equal(secondInitialRead.status, 200, stderr);
+  assert.equal(secondInitialRead.data.state, null, "a different subject must not read the first user's row");
+  const secondState = { ...state, marker: `${marker}-second-user` };
+  const secondWrite = await request(port, "/api/state", { method: "PUT", body: secondState });
+  assert.equal(secondWrite.status, 200, stderr);
+  const secondRow = await pool.query(
+    "SELECT data FROM app_state WHERE id = $1 AND owner_sub = $2",
+    [userStateId(secondSubject, stateId), secondSubject],
+  );
+  assert.equal(secondRow.rows[0]?.data?.marker, secondState.marker);
+
+  authToken = await tokenForSubject(subject);
+  stateRevision = 0;
+  const firstUserRead = await request(port, "/api/state");
+  assert.equal(firstUserRead.data.state.marker, canonicalState.marker, "the first user's row must remain isolated");
 });
