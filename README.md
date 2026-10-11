@@ -1,10 +1,11 @@
 # 科研进度管理平台
 
 <p align="center">
-  <img height="20" alt="Electron 35" src="https://img.shields.io/badge/electron-35-47848F" />
-  <img height="20" alt="React 19.1.0" src="https://img.shields.io/badge/react-19.1.0-61DAFB" />
-  <img height="20" alt="Vite 7.0.0" src="https://img.shields.io/badge/vite-7.0.0-646CFF" />
-  <img height="20" alt="TypeScript 5.8.3" src="https://img.shields.io/badge/typescript-5.8.3-3178C6" />
+  <img height="20" alt="Electron" src="https://img.shields.io/badge/Electron-desktop-47848F?logo=electron&logoColor=white" />
+  <img height="20" alt="React" src="https://img.shields.io/badge/React-UI-61DAFB?logo=react&logoColor=black" />
+  <img height="20" alt="Vite" src="https://img.shields.io/badge/Vite-build-646CFF?logo=vite&logoColor=white" />
+  <img height="20" alt="PostgreSQL 18" src="https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white" />
+  <img height="20" alt="OIDC PKCE" src="https://img.shields.io/badge/OIDC-PKCE-4B5563" />
 </p>
 
 这是一个 Electron + Vite + React 的科研进度管理平台，用于按 4 个类别管理软著、专利、论文、比赛进程。
@@ -37,7 +38,7 @@ npm run dev
 
 当前数据库约定：
 
-- 数据库：`progress_tracker_electron`
+- 数据库：本机与 LAN 分别使用 `progress_tracker_electron_dev`；应用角色 `progress_tracker_electron_app` 各自独立
 - 表：`app_state`
 - 主键：`id`，默认值为 `main`
 - 数据字段：`data JSONB`，保存 1-7 页面记录、知识图谱、优先级配置和导出同步所需的整份状态
@@ -66,13 +67,16 @@ npm run check
 
 ## PM2 开机自启
 
-生产预览使用 PM2 管理，服务名为 `progress-tracker-electron`。首次配置或 PM2 进程列表丢失时，在项目根目录执行：
+LAN 通过两个 PM2 进程分别运行 HTTPS 前端和 loopback API。首次配置或 PM2 进程列表丢失时，在项目根目录执行：
 
 ```bash
 npm run build
-pm2 start npm --name progress-tracker-electron -- run preview
+pm2 start npm --name progress-tracker-api -- run api
+pm2 start npm --name progress-tracker-web-https -- run dev:https
 pm2 save
 ```
+
+LAN 当前 HTTPS 前端端口为 `4093`，API 端口 `8035` 仅监听 `127.0.0.1`，由前端开发代理转发。API 以 OIDC bearer token 认证；TLS 证书由私有开发 CA 签发，客户端需显式信任该 CA 后才能完成登录。
 
 为当前用户安装 systemd 自启动单元（仅首次需要，需管理员权限）：
 
@@ -85,7 +89,8 @@ pm2 save
 
 ```bash
 npm run build
-pm2 restart progress-tracker-electron
+pm2 restart progress-tracker-api
+pm2 restart progress-tracker-web-https
 pm2 save
 ```
 
@@ -94,7 +99,7 @@ pm2 save
 ```bash
 systemctl is-enabled pm2-xuelin
 pm2 status
-curl -fsS http://127.0.0.1:4027/ > /dev/null
+curl -kfsS https://127.0.0.1:4093/ > /dev/null
 ```
 
 <!-- codex-runtime-config:start -->
