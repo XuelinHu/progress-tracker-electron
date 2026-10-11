@@ -65,6 +65,8 @@ npm run dev
 npm run check
 ```
 
+在 LAN 开发机执行 `npm run test:e2e:oidc` 可进行临时 OIDC + PostgreSQL 闭环冒烟。命令要求数据库名以 `_dev`、`_development` 或 `_test` 结尾，并从私有 `identity-service/.env` 读取 Keycloak bootstrap 管理凭据；它会创建随机临时用户，走真实 S256 授权码登录，验证 API 状态读写后清除用户和测试行。启动 Node 前设置 `NODE_EXTRA_CA_CERTS` 指向 LAN 开发 CA。该脚本不替代真实浏览器 UI 或 Android 真机验收。
+
 ## PM2 开机自启
 
 LAN 通过两个 PM2 进程分别运行 HTTPS 前端和 loopback API。首次配置或 PM2 进程列表丢失时，在项目根目录执行：

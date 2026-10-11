@@ -14,6 +14,7 @@
     "preview": "node scripts/preview-server.cjs",
     "test:storage": "node --test scripts/storage-regression.test.cjs",
     "test:auth": "node --test scripts/oidc-auth.test.js scripts/auth-regression.test.cjs scripts/migration-guard.test.cjs",
+    "test:e2e:oidc": "node scripts/oidc-e2e-smoke.mjs",
     "db:migrate": "node database/migrations/apply.mjs",
     "test:navigation": "npm run check && node scripts/navigation-regression.cjs",
     "dist:win": "electron-builder --win",
