@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import pg from "pg";
 
 const { Pool } = pg;
@@ -165,6 +166,13 @@ try {
   assert.equal(tokenResponse.status, 200, "PKCE authorization code exchange must succeed");
   const tokens = await tokenResponse.json();
   assert.ok(tokens.access_token && tokens.id_token, "OIDC must issue access and ID tokens");
+  const jwks = createRemoteJWKSet(new URL(`${issuer}/protocol/openid-connect/certs`));
+  const { payload: idClaims } = await jwtVerify(tokens.id_token, jwks, {
+    issuer,
+    audience: clientId,
+    algorithms: ["RS256"],
+  });
+  assert.equal(idClaims.nonce, nonce, "ID token nonce must match the authorization request");
 
   const meResponse = await fetch(`${api}/auth/me`, { headers: { authorization: `Bearer ${tokens.access_token}` } });
   assert.equal(meResponse.status, 200, "API must accept the Keycloak access token");
