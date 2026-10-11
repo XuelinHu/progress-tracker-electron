@@ -109,6 +109,7 @@ curl -fsS http://127.0.0.1:4027/ > /dev/null
 - 数据库类型：PostgreSQL。
 - 本机开发数据库名称：`progress_tracker_electron_dev`，由独立 `progress_tracker_electron_app` 角色拥有；LAN 开发实例使用同名独立数据库和角色。
 - `npm run db:provision:local` 仅连接本机 `127.0.0.1:5432`，创建缺失的开发库/应用角色、生成随机口令、应用 migration，并将连接信息写到 Git 忽略的 `.env.local`。它不会覆盖已有环境文件或接管非空/所有者不符的数据库。
+- `npm run db:provision:lan` 固定连接 LAN 主机自身的 `127.0.0.1:5433`，只读取当前私有 `.env` 中授权管理员凭据，创建空 `_dev` 库/应用角色并写入忽略的 `.env.local`；目标库或角色已存在时会停止，不改旧数据库。
 - 默认连接变量：`PGHOST=127.0.0.1`、`PGPORT=5432`、`PGDATABASE=progress_tracker_electron_dev`、`PGUSER=progress_tracker_electron_app`；真实口令只存在于 `.env.local`。
 - 核心表：`app_state`，默认状态主键 `APP_STATE_ID=main`，`data JSONB` 保存 1-7 类别页记录、知识图谱、日历事项、其他事项、优先级配置和同步状态。
 - WebDAV：通过 `DAV_URL`、`DAV_USERNAME`、`DAV_PASSWORD`、`DAV_PROJECT` 配置云端备份；真实凭据只放本地 `.env`。
