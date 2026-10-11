@@ -5,6 +5,7 @@ const path = require("node:path");
 const { URL } = require("node:url");
 const { Pool } = require("pg");
 const { createWebServer } = require("./web-server.cjs");
+const { userStateId, userBackupSegment } = require("./user-scope.cjs");
 
 const rootDir = path.resolve(__dirname, "..");
 const distDir = path.join(rootDir, "dist");
@@ -12,11 +13,19 @@ const distDir = path.join(rootDir, "dist");
 loadEnvFile(path.join(rootDir, ".env.local"));
 loadEnvFile(path.join(rootDir, ".env"));
 
+const { OIDC_ISSUER, OIDC_CLIENT_ID, verifyAccessToken, getBearerToken } = require("./oidc-auth.cjs");
+
 const port = Number(process.env.PORT || process.env.WEB_PORT || 4027);
 const apiPort = Number(process.env.API_PORT || 8035);
 const host = process.env.HOST || "0.0.0.0";
 
 const appStateId = process.env.APP_STATE_ID || "main";
+const allowedWebOrigins = new Set(
+  String(process.env.OIDC_WEB_ORIGINS || "https://192.168.1.9:4093,http://localhost:4027,http://127.0.0.1:4027,https://localhost")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
 let dbPool = null;
 let dbReadyPromise = null;
 
@@ -324,48 +333,55 @@ function getDbPool() {
 
 async function ensureDbSchema() {
   if (!dbReadyPromise) {
-    dbReadyPromise = getDbPool().query(`
-      CREATE TABLE IF NOT EXISTS app_state (
-        id TEXT PRIMARY KEY,
-        data JSONB NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      )
-      ;
-      ALTER TABLE app_state ADD COLUMN IF NOT EXISTS schema_version INTEGER NOT NULL DEFAULT 6
-    `);
+    dbReadyPromise = getDbPool().query("SELECT 1 FROM app_state LIMIT 0");
   }
   await dbReadyPromise;
 }
 
-async function readAppState() {
+async function readAppState(subject) {
   await ensureDbSchema();
-  const result = await getDbPool().query("SELECT data, updated_at FROM app_state WHERE id = $1", [
-    appStateId,
+  const result = await getDbPool().query("SELECT data, updated_at, revision FROM app_state WHERE id = $1 AND owner_sub = $2", [
+    userStateId(subject, appStateId), subject,
   ]);
   const row = result.rows[0];
-  if (!row) return { data: null, updatedAt: null };
+  if (!row) return { data: null, updatedAt: null, revision: 0 };
   const data = migrateStateToV12(row.data);
   if (Number(row.data?.version || 0) < STATE_SCHEMA_VERSION) {
-    const updatedAt = await writeAppState(data);
-    return { data, updatedAt };
+    const updated = await writeAppState(subject, data, Number(row.revision));
+    return { data, updatedAt: updated.updatedAt, revision: updated.revision };
   }
-  return { data, updatedAt: row.updated_at };
+  return { data, updatedAt: row.updated_at, revision: Number(row.revision) };
 }
 
-async function writeAppState(data) {
+async function writeAppState(subject, data, expectedRevision) {
   await ensureDbSchema();
   const result = await getDbPool().query(
     `
-      INSERT INTO app_state (id, data, updated_at)
-      VALUES ($1, $2::jsonb, NOW())
+      INSERT INTO app_state (id, owner_sub, data, schema_version, updated_at, revision)
+      VALUES ($1, $2, $3::jsonb, $4, NOW(), 1)
       ON CONFLICT (id)
-      DO UPDATE SET data = EXCLUDED.data, schema_version = $3, updated_at = NOW()
-      RETURNING updated_at
+      DO UPDATE SET data = EXCLUDED.data, schema_version = $4, updated_at = NOW(), revision = app_state.revision + 1
+      WHERE app_state.owner_sub = EXCLUDED.owner_sub AND app_state.revision = $5
+      RETURNING updated_at, revision
     `,
-    [appStateId, JSON.stringify(migrateStateToV12(data)), STATE_SCHEMA_VERSION],
+    [userStateId(subject, appStateId), subject, JSON.stringify(migrateStateToV12(data)), STATE_SCHEMA_VERSION, expectedRevision],
   );
-  return result.rows[0]?.updated_at ?? null;
+  if (!result.rows[0]) {
+    const error = new Error("数据已被其他窗口更新，请刷新后重试");
+    error.statusCode = 409;
+    throw error;
+  }
+  return { updatedAt: result.rows[0].updated_at, revision: Number(result.rows[0].revision) };
+}
+
+function expectedRevisionFromRequest(req) {
+  const raw = String(req.headers["x-state-revision"] ?? "0");
+  if (!/^(0|[1-9]\d*)$/.test(raw) || !Number.isSafeInteger(Number(raw))) {
+    const error = new Error("无效的数据版本号");
+    error.statusCode = 400;
+    throw error;
+  }
+  return Number(raw);
 }
 
 async function readBody(req) {
@@ -445,22 +461,24 @@ async function ensureDavCollection(config, segments) {
   }
 }
 
-async function syncPayloadToDav(payload) {
+async function syncPayloadToDav(payload, subject) {
   const config = getDavConfig();
+  const userProject = `${config.project}/users/${userBackupSegment(subject)}`;
   const syncPayload = {
     ...payload,
+    ownerSubHash: userBackupSegment(subject),
     version: STATE_SCHEMA_VERSION,
     syncedAt: new Date().toISOString(),
     syncSource: "progress-tracker-electron-preview",
   };
   const body = `${JSON.stringify(syncPayload, null, 2)}\n`;
   const backupName = createBackupName();
-  await ensureDavCollection(config, [config.project]);
-  await ensureDavCollection(config, [config.project, "backups"]);
-  await davRequest(config, "PUT", [config.project, "backups", backupName], body);
-  await davRequest(config, "PUT", [config.project, "latest.json"], body);
+  await ensureDavCollection(config, userProject.split("/"));
+  await ensureDavCollection(config, [...userProject.split("/"), "backups"]);
+  await davRequest(config, "PUT", [...userProject.split("/"), "backups", backupName], body);
+  await davRequest(config, "PUT", [...userProject.split("/"), "latest.json"], body);
   return {
-    project: config.project,
+    project: userProject,
     backupName,
     latestName: "latest.json",
     size: Buffer.byteLength(body),
@@ -468,23 +486,48 @@ async function syncPayloadToDav(payload) {
   };
 }
 
-async function loadLatestPayloadFromDav() {
+async function loadLatestPayloadFromDav(subject) {
   const config = getDavConfig();
-  const response = await davRequest(config, "GET", [config.project, "latest.json"]);
+  const userProject = `${config.project}/users/${userBackupSegment(subject)}`;
+  const response = await davRequest(config, "GET", [...userProject.split("/"), "latest.json"]);
   const text = await response.text();
+  const data = JSON.parse(text);
+  if (data.ownerSubHash !== userBackupSegment(subject)) throw new Error("云端备份的用户标识不匹配");
   return {
-    project: config.project,
+    project: userProject,
     latestName: "latest.json",
-    data: JSON.parse(text),
+    data,
   };
 }
 
 async function handleApi(req, res, pathname) {
   const requestId = createRequestId(req);
   const context = requestContext(req, requestId);
+  if (pathname === "/api/auth/config" && req.method === "GET") {
+    sendJson(res, 200, { ok: true, issuer: OIDC_ISSUER, clientId: OIDC_CLIENT_ID });
+    return;
+  }
+  let identity;
+  if (pathname.startsWith("/api/") && pathname !== "/api/auth/config") {
+    const token = getBearerToken(req);
+    if (!token) {
+      sendJson(res, 401, { ok: false, error: "请先登录" });
+      return;
+    }
+    try {
+      identity = await verifyAccessToken(token);
+    } catch {
+      sendJson(res, 401, { ok: false, error: "登录已失效，请重新登录" });
+      return;
+    }
+  }
+  if (pathname === "/api/auth/me" && req.method === "GET") {
+    sendJson(res, 200, { ok: true, subject: identity.subject, username: identity.username });
+    return;
+  }
   if (pathname === "/api/state" && req.method === "GET") {
     const startedAt = Date.now();
-    const state = await readAppState();
+    const state = await readAppState(identity.subject);
     logEvent("info", "state.read.success", {
       ...context,
       durationMs: Date.now() - startedAt,
@@ -495,6 +538,7 @@ async function handleApi(req, res, pathname) {
       source: "postgresql",
       state: state.data,
       updatedAt: state.updatedAt,
+      revision: state.revision,
     });
     return;
   }
@@ -510,19 +554,20 @@ async function handleApi(req, res, pathname) {
       ...summary,
     });
     try {
-      const updatedAt = await writeAppState({
+      const expectedRevision = expectedRevisionFromRequest(req);
+      const updated = await writeAppState(identity.subject, {
         ...parsed,
         version: STATE_SCHEMA_VERSION,
         persistedAt: new Date().toISOString(),
-      });
+      }, expectedRevision);
       logEvent("info", "state.write.success", {
         ...context,
         durationMs: Date.now() - startedAt,
         payloadBytes: Buffer.byteLength(rawBody),
-        updatedAt,
+        updatedAt: updated.updatedAt,
         ...summary,
       });
-      sendJson(res, 200, { ok: true, source: "postgresql", updatedAt, requestId });
+      sendJson(res, 200, { ok: true, source: "postgresql", ...updated, requestId });
     } catch (error) {
       logEvent("error", "state.write.failure", {
         ...context,
@@ -552,29 +597,32 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/dav/sync" && req.method === "POST") {
-    const state = await readAppState();
+    const state = await readAppState(identity.subject);
     if (!state.data) {
       sendJson(res, 404, { ok: false, error: "PostgreSQL 中没有可同步的应用数据" });
       return;
     }
-    const result = await syncPayloadToDav(state.data);
+    const result = await syncPayloadToDav(state.data, identity.subject);
     sendJson(res, 201, { ok: true, source: "postgresql", sync: result });
     return;
   }
 
   if (pathname === "/api/dav/restore" && req.method === "POST") {
-    const result = await loadLatestPayloadFromDav();
+    const expectedRevision = expectedRevisionFromRequest(req);
+    const result = await loadLatestPayloadFromDav(identity.subject);
+    const restoredPayload = { ...result.data };
+    delete restoredPayload.ownerSubHash;
     const restoredState = {
-      ...result.data,
+      ...restoredPayload,
       version: STATE_SCHEMA_VERSION,
       persistedAt: new Date().toISOString(),
     };
-    const updatedAt = await writeAppState(restoredState);
+    const updated = await writeAppState(identity.subject, restoredState, expectedRevision);
     sendJson(res, 200, {
       ok: true,
       source: "postgresql",
       state: restoredState,
-      updatedAt,
+      ...updated,
       latest: { project: result.project, latestName: result.latestName },
     });
     return;
@@ -616,6 +664,23 @@ async function serveStatic(req, res, pathname) {
 const server = http.createServer(async (req, res) => {
   const requestId = createRequestId(req);
   try {
+    const origin = req.headers.origin;
+    if (origin) {
+      if (!allowedWebOrigins.has(origin)) {
+        sendJson(res, 403, { ok: false, error: "此网页来源未获准访问 API" });
+        return;
+      }
+      res.setHeader("access-control-allow-origin", origin);
+      res.setHeader("vary", "Origin");
+      res.setHeader("access-control-allow-methods", "GET, POST, PUT, PATCH, OPTIONS");
+      res.setHeader("access-control-allow-headers", "authorization, content-type, x-request-id, x-state-revision");
+      res.setHeader("access-control-max-age", "600");
+      if (req.method === "OPTIONS") {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+    }
     const url = new URL(req.url, `http://${req.headers.host || "127.0.0.1"}`);
     if (url.pathname.startsWith("/api/")) {
       await handleApi(req, res, url.pathname);
@@ -628,7 +693,7 @@ const server = http.createServer(async (req, res) => {
       error: errorContext(error),
     });
     if (!res.headersSent) {
-      sendJson(res, 500, { ok: false, error: error.message || "服务器错误", requestId });
+      sendJson(res, error.statusCode || 500, { ok: false, error: error.message || "服务器错误", requestId });
     } else {
       res.end();
     }

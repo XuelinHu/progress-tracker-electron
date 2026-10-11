@@ -38,6 +38,7 @@ import StatisticsBoard from "./components/StatisticsBoard.jsx";
 import { CATEGORIES, CATEGORY_BY_ID } from "./data/categories.js";
 import { seedRecords } from "./data/seed.js";
 import { normalizeStatusId, STATUSES } from "./data/statuses.js";
+import { finishOidcLogin, refreshOidcToken, startOidcLogin, startOidcLogout } from "./auth/oidc.js";
 import {
   BASE_RECORD_DEFAULTS,
   RECORD_ITEM_TYPES,
@@ -645,9 +646,83 @@ function App() {
   const createAssistRef = useRef(null);
   const [serverStateReady, setServerStateReady] = useState(false);
   const [serverSaveError, setServerSaveError] = useState("");
+  const [authConfig, setAuthConfig] = useState(null);
+  const [authToken, setAuthToken] = useState("");
+  const [authRefreshToken, setAuthRefreshToken] = useState("");
+  const [authIdToken, setAuthIdToken] = useState("");
+  const [authExpiresAt, setAuthExpiresAt] = useState(0);
+  const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [apiOrigin, setApiOrigin] = useState("");
+  const [stateLoadAttempt, setStateLoadAttempt] = useState(0);
+  const stateRevisionRef = useRef(0);
+  const authTokenRef = useRef("");
+  const loadedSubjectRef = useRef("");
   const [todoDetail, setTodoDetail] = useState(null);
   const saveTimerRef = useRef(null);
   const operationStatusTimerRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function initializeAuth() {
+      try {
+        const runtimeResponse = await fetch("/runtime-config.json", { cache: "no-store" });
+        const runtimeConfig = await runtimeResponse.json().catch(() => ({}));
+        const configuredApiOrigin = String(runtimeConfig.apiOrigin || "").replace(/\/$/, "");
+        if (configuredApiOrigin && new URL(configuredApiOrigin).protocol !== "https:") {
+          throw new Error("API 服务地址必须使用 HTTPS");
+        }
+        if (!cancelled) setApiOrigin(configuredApiOrigin);
+        const response = await fetch(`${configuredApiOrigin}/api/auth/config`);
+        const config = await response.json();
+        if (!response.ok || !config.ok) throw new Error("读取统一登录配置失败");
+        if (cancelled) return;
+        setAuthConfig(config);
+        const session = await finishOidcLogin(config);
+        if (!cancelled && session) {
+          applyAuthSession(session);
+        } else if (!cancelled) {
+          const saved = JSON.parse(sessionStorage.getItem("progress-tracker-session") || "null");
+          if (saved?.refreshToken && Number(saved.expiresAt) > Date.now()) applyAuthSession(saved);
+        }
+      } catch (error) {
+        if (!cancelled) setAuthError(error.message || "统一登录失败");
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    }
+    initializeAuth();
+    return () => { cancelled = true; };
+  }, []);
+
+  function applyAuthSession(session) {
+    setAuthToken(session.accessToken);
+    setAuthRefreshToken(session.refreshToken);
+    setAuthIdToken(session.idToken || "");
+    setAuthExpiresAt(session.expiresAt);
+    sessionStorage.setItem("progress-tracker-session", JSON.stringify(session));
+  }
+
+  useEffect(() => {
+    authTokenRef.current = authToken;
+  }, [authToken, stateLoadAttempt]);
+
+  useEffect(() => {
+    if (!authToken || !authConfig || !authExpiresAt) return undefined;
+    const timer = window.setTimeout(async () => {
+      if (!authRefreshToken) {
+        window.location.replace("/");
+        return;
+      }
+      try {
+        const session = await refreshOidcToken(authConfig, { refreshToken: authRefreshToken, idToken: authIdToken });
+        applyAuthSession(session);
+      } catch {
+        window.location.replace("/");
+      }
+    }, Math.max(0, authExpiresAt - Date.now() - 30_000));
+    return () => window.clearTimeout(timer);
+  }, [authConfig, authExpiresAt, authIdToken, authRefreshToken, authToken]);
 
   function openTodoDetail(record, todo) {
     setTodoDetail({
@@ -820,23 +895,37 @@ function App() {
     let cancelled = false;
 
     async function loadServerState() {
+      if (!authToken) return;
       try {
-        const response = await fetch("/api/state");
+        const identityResponse = await fetch(`${apiOrigin}/api/auth/me`, { headers: { authorization: `Bearer ${authToken}` } });
+        const identity = await identityResponse.json().catch(() => ({}));
+        if (identityResponse.status === 401) {
+          window.location.replace("/");
+          return;
+        }
+        if (!identityResponse.ok || !identity.subject) throw new Error(identity.error || "统一身份验证失败");
+        if (loadedSubjectRef.current === identity.subject) return;
+        const response = await fetch(`${apiOrigin}/api/state`, { headers: { authorization: `Bearer ${authToken}` } });
         const data = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          window.location.replace("/");
+          throw new Error("登录已失效，请重新登录");
+        }
         if (!response.ok || !data.ok || data.source !== "postgresql") {
           throw new Error(data.error || "读取数据库状态失败");
         }
+        stateRevisionRef.current = Number(data.revision || 0);
         if (!cancelled && data.state) {
           applyFullDataPayload(data.state);
         }
         if (!cancelled) {
+          loadedSubjectRef.current = identity.subject;
           setServerSaveError("");
           setServerStateReady(true);
         }
       } catch (error) {
         if (!cancelled) {
           setServerSaveError(error.message || "读取数据库状态失败");
-          setServerStateReady(true);
         }
       }
     }
@@ -846,10 +935,10 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authToken]);
 
   useEffect(() => {
-    if (!serverStateReady) {
+    if (!authTokenRef.current || !serverStateReady) {
       return undefined;
     }
 
@@ -864,25 +953,35 @@ function App() {
         graphEdges: payload.graph?.edges?.length || 0,
       };
       try {
-        const response = await fetch("/api/state", {
+          const response = await fetch(`${apiOrigin}/api/state`, {
           method: "PUT",
-          headers: { "content-type": "application/json", "x-request-id": requestId },
+          headers: {
+            "content-type": "application/json",
+            "x-request-id": requestId,
+            authorization: `Bearer ${authTokenRef.current}`,
+            "x-state-revision": String(stateRevisionRef.current),
+          },
           body: JSON.stringify(payload),
         });
         const data = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          window.location.replace("/");
+          return;
+        }
         if (!response.ok || !data.ok || data.source !== "postgresql") {
           const error = new Error(data.error || `写入数据库状态失败（HTTP ${response.status}）`);
           error.status = response.status;
           throw error;
         }
+        stateRevisionRef.current = Number(data.revision || stateRevisionRef.current);
         setServerSaveError("");
       } catch (error) {
         const message = error.message || "写入数据库状态失败";
         console.error("Database state save failed", { requestId, message, status: error.status || 0, summary });
         setServerSaveError(`${message}（请求 ${requestId}）`);
-        fetch("/api/client-log", {
+        fetch(`${apiOrigin}/api/client-log`, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", authorization: `Bearer ${authTokenRef.current}` },
           body: JSON.stringify({
             level: "error",
             event: "state.save.failure",
@@ -897,7 +996,7 @@ function App() {
     }, 450);
 
     return () => window.clearTimeout(saveTimerRef.current);
-  }, [calendarItems, graphEdges, graphNodes, records, serverStateReady, statusOptions]);
+  }, [apiOrigin, authToken, calendarItems, graphEdges, graphNodes, records, serverStateReady, statusOptions]);
 
   useEffect(() => {
     if (statusFilter !== "all" && !statusOptions.some((status) => status.id === statusFilter)) {
@@ -2492,8 +2591,9 @@ function App() {
     setBackupBusy(true);
     setStatusConfigMessage("");
     try {
-      const response = await fetch("/api/dav/sync", {
+      const response = await fetch(`${apiOrigin}/api/dav/sync`, {
         method: "POST",
+        headers: { authorization: `Bearer ${authToken}` },
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok || data.source !== "postgresql") {
@@ -2518,11 +2618,15 @@ function App() {
     setBackupBusy(true);
     setStatusConfigMessage("");
     try {
-      const response = await fetch("/api/dav/restore", { method: "POST" });
+      const response = await fetch(`${apiOrigin}/api/dav/restore`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${authToken}`, "x-state-revision": String(stateRevisionRef.current) },
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok || data.source !== "postgresql" || !data.state) {
         throw new Error(data.error || "读取云端数据失败");
       }
+      stateRevisionRef.current = Number(data.revision || stateRevisionRef.current);
       const { recordCount, graphNodeCount, graphEdgeCount } = applyFullDataPayload(data.state);
       setStatusConfigMessage(
         `已按云端优先恢复：${recordCount} 条记录、${graphNodeCount} 个图谱节点、${graphEdgeCount} 条连线`,
@@ -3531,6 +3635,33 @@ function App() {
         ? "状态降序，点击取消排序"
         : "点击按状态排序";
 
+  if (!authReady || !authToken || !serverStateReady) {
+    const authMessage = !authReady
+      ? "正在连接统一身份服务…"
+      : !authToken
+        ? authError || "请使用统一身份账号登录"
+        : serverSaveError || "正在读取个人数据…";
+    return (
+      <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#f1f5f9" }}>
+        <section style={{ width: "min(100%, 400px)", padding: 28, border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff" }}>
+          <h1 style={{ marginTop: 0 }}>科研进度管理平台</h1>
+          <p>{authMessage}</p>
+          {authConfig && authReady && (
+            authToken && !serverStateReady ? (
+              <button type="button" className="icon-button" onClick={() => setStateLoadAttempt((attempt) => attempt + 1)}>
+                重新读取数据
+              </button>
+            ) : !authToken ? (
+              <button type="button" className="icon-button" onClick={() => startOidcLogin(authConfig)}>
+                使用统一身份登录
+              </button>
+            ) : null
+          )}
+        </section>
+      </main>
+    );
+  }
+
   return (
     <div className="app-shell" style={{ "--category-accent": activeNavigationItem.accent }}>
       <header className="topbar">
@@ -3550,6 +3681,19 @@ function App() {
 
           <div className="global-data-actions">
             <div className="global-data-primary-actions">
+            <button
+              className="icon-button global-action"
+              type="button"
+              onClick={() => {
+                sessionStorage.removeItem("progress-tracker-session");
+                if (authConfig) startOidcLogout(authConfig, { idToken: authIdToken });
+                else window.location.replace("/");
+              }}
+              title="退出当前账号"
+            >
+              <X size={17} />
+              <span>退出登录</span>
+            </button>
             <button
               className="icon-button global-action data-export"
               type="button"

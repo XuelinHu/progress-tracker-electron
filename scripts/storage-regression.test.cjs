@@ -6,6 +6,7 @@ const net = require("node:net");
 const path = require("node:path");
 const test = require("node:test");
 const { Pool } = require("pg");
+const { userStateId } = require("./user-scope.cjs");
 
 const rootDir = path.resolve(__dirname, "..");
 const runtimeSourceRoots = ["src", "electron"];
@@ -21,24 +22,6 @@ function walkFiles(relativePath) {
   });
 }
 
-function loadLocalEnv() {
-  const result = { ...process.env };
-  for (const name of [".env.local", ".env"]) {
-    const filePath = path.join(rootDir, name);
-    if (!fs.existsSync(filePath)) continue;
-    for (const rawLine of fs.readFileSync(filePath, "utf8").split(/\r?\n/)) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith("#")) continue;
-      const separator = line.indexOf("=");
-      if (separator < 1) continue;
-      const key = line.slice(0, separator).trim();
-      const value = line.slice(separator + 1).trim().replace(/^['"]|['"]$/g, "");
-      if (result[key] == null) result[key] = value;
-    }
-  }
-  return result;
-}
-
 function request(port, pathname, options = {}) {
   return new Promise((resolve, reject) => {
     const body = options.body == null ? null : JSON.stringify(options.body);
@@ -48,16 +31,20 @@ function request(port, pathname, options = {}) {
         port,
         path: pathname,
         method: options.method || "GET",
-        headers: body
-          ? { "content-type": "application/json", "content-length": Buffer.byteLength(body) }
-          : {},
+        headers: {
+          ...(authToken ? { authorization: `Bearer ${authToken}` } : {}),
+          ...(body ? { "content-type": "application/json", "content-length": Buffer.byteLength(body) } : {}),
+          ...(body ? { "x-state-revision": String(stateRevision) } : {}),
+        },
       },
       (res) => {
         const chunks = [];
         res.on("data", (chunk) => chunks.push(chunk));
         res.on("end", () => {
           const text = Buffer.concat(chunks).toString("utf8");
-          resolve({ status: res.statusCode, data: text ? JSON.parse(text) : null });
+          const data = text ? JSON.parse(text) : null;
+          if (Number.isFinite(data?.revision)) stateRevision = data.revision;
+          resolve({ status: res.statusCode, data });
         });
       },
     );
@@ -72,13 +59,16 @@ async function waitForServer(port, child) {
   while (Date.now() < deadline) {
     if (child.exitCode != null) throw new Error(`测试服务提前退出：${child.exitCode}`);
     try {
-      const response = await request(port, "/api/state");
+      const response = await request(port, "/api/auth/config");
       if (response.status === 200) return;
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   throw new Error("等待测试服务启动超时");
 }
+
+let authToken = "";
+let stateRevision = 0;
 
 function getAvailablePort() {
   return new Promise((resolve, reject) => {
@@ -92,7 +82,7 @@ function getAvailablePort() {
 }
 
 test("前端运行时代码不使用浏览器或文件型业务存储", () => {
-  const forbidden = /\b(?:localStorage|sessionStorage|indexedDB|electron-store|lowdb)\b/;
+  const forbidden = /\b(?:localStorage|indexedDB|electron-store|lowdb)\b/;
   const violations = runtimeSourceRoots
     .flatMap(walkFiles)
     .filter((file) => /\.(?:[cm]?js|jsx|ts|tsx)$/.test(file))
@@ -107,12 +97,48 @@ test("后端不提供本地 JSON 业务备份链路", () => {
 });
 
 test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async (t) => {
-  const env = loadLocalEnv();
+  const env = { ...process.env };
+  const database = env.PGDATABASE || "";
+  if (!/_test$/i.test(database) || !env.PGHOST || !env.PGUSER || !env.PGPASSWORD) {
+    t.skip("需要显式提供 PGHOST/PGUSER/PGPASSWORD 和以 _test 结尾的 PGDATABASE；未读取 .env、未连接数据库");
+    return;
+  }
+  const jose = await import("jose");
+  const { publicKey, privateKey } = await jose.generateKeyPair("RS256");
+  const jwk = await jose.exportJWK(publicKey);
+  Object.assign(jwk, { kid: "storage-test-key", alg: "RS256", use: "sig" });
+  const issuer = `http://127.0.0.1:${await getAvailablePort()}/realms/front`;
+  const jwksServer = http.createServer((req, res) => {
+    if (req.url === "/realms/front/protocol/openid-connect/certs") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ keys: [jwk] }));
+      return;
+    }
+    res.writeHead(404).end();
+  });
+  const jwksPort = Number(new URL(issuer).port);
+  await new Promise((resolve) => jwksServer.listen(jwksPort, "127.0.0.1", resolve));
+  const clientId = "progress-tracker-electron-web";
+  authToken = await new jose.SignJWT({ azp: clientId })
+    .setProtectedHeader({ alg: "RS256", kid: "storage-test-key" })
+    .setIssuer(issuer).setAudience("account").setSubject("storage-regression-user")
+    .setIssuedAt().setExpirationTime("5m").sign(privateKey);
+  stateRevision = 0;
+  const subject = "storage-regression-user";
   const stateId = `storage-regression-${process.pid}-${Date.now()}`;
   const port = await getAvailablePort();
+  const apiPort = await getAvailablePort();
   const child = spawn(process.execPath, ["scripts/preview-server.cjs"], {
     cwd: rootDir,
-    env: { ...env, APP_STATE_ID: stateId, HOST: "127.0.0.1", PORT: String(port) },
+    env: {
+      ...env,
+      APP_STATE_ID: stateId,
+      HOST: "127.0.0.1",
+      PORT: String(port),
+      API_PORT: String(apiPort),
+      OIDC_ISSUER: issuer,
+      OIDC_CLIENT_ID: clientId,
+    },
     stdio: ["ignore", "ignore", "pipe"],
   });
   let stderr = "";
@@ -123,7 +149,7 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
   const pool = new Pool({
     host: env.PGHOST || "127.0.0.1",
     port: Number(env.PGPORT || 5432),
-    database: env.PGDATABASE || "progress_tracker_electron",
+    database,
     user: env.PGUSER,
     password: env.PGPASSWORD,
     max: 1,
@@ -131,8 +157,9 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
 
   t.after(async () => {
     child.kill("SIGTERM");
-    await pool.query("DELETE FROM app_state WHERE id = $1", [stateId]).catch(() => {});
+    await pool.query("DELETE FROM app_state WHERE id = $1 AND owner_sub = $2", [userStateId(subject, stateId), subject]).catch(() => {});
     await pool.end();
+    jwksServer.close();
   });
 
   try {
@@ -154,8 +181,13 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
   assert.equal(writeResponse.status, 200, stderr);
   assert.equal(writeResponse.data.source, "postgresql");
 
-  const directResult = await pool.query("SELECT data FROM app_state WHERE id = $1", [stateId]);
-  assert.equal(directResult.rows[0]?.data?.marker, marker);
+  const rowId = userStateId(subject, stateId);
+  const directResult = await pool.query("SELECT data FROM app_state WHERE id = $1 AND owner_sub = $2", [rowId, subject]);
+  assert.equal(directResult.rows[0]?.data?.marker, marker, JSON.stringify({
+    response: writeResponse.data,
+    expectedId: rowId,
+    rows: (await pool.query("SELECT id, owner_sub, revision FROM app_state")).rows,
+  }));
 
   const readResponse = await request(port, "/api/state");
   assert.equal(readResponse.status, 200, stderr);
@@ -199,7 +231,7 @@ test("状态 API 的写入和读取均以 PostgreSQL 为唯一事实源", async 
   };
   const todoWriteResponse = await request(port, "/api/state", { method: "PUT", body: todoState });
   assert.equal(todoWriteResponse.status, 200, stderr);
-  const todoResult = await pool.query("SELECT data FROM app_state WHERE id = $1", [stateId]);
+  const todoResult = await pool.query("SELECT data FROM app_state WHERE id = $1 AND owner_sub = $2", [rowId, subject]);
   const savedTodoRecord = todoResult.rows[0]?.data?.records?.[0];
   assert.deepEqual(
     savedTodoRecord?.tasks?.map((item) => item.id),

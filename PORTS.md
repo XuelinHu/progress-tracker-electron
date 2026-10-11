@@ -1,6 +1,7 @@
 # 启动端口
 
 - 前端/网页入口：4027。
+- LAN HTTPS 前端：4093（`npm run dev:https`，需要 `identity-service/tls/apps/progress-tracker-electron/server.crt` 与 `server.key`）。
 - 后端/API：8035。
 
 前端入口统一采用 40xx，后端服务统一采用 80xx。开发与生产预览为同一项目的替代启动方式，不应同时占用同一端口。端口被占用时启动失败，不自动改用相邻项目的端口。实际 `.env` 中的端口需与示例一致；密钥配置不提交到仓库。
